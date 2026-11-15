@@ -1,0 +1,11 @@
+{
+  "name": "robo-moeda",
+  "private": true,
+  "type": "module",
+  "description": "Robô que encontra e analisa lançamentos de memecoins na Solana",
+  "scripts": {
+    "scan": "node scanner/index.mjs",
+    "test": "node scanner/test.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

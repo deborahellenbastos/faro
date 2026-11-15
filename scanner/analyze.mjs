@@ -1,0 +1,332 @@
+// Análise de uma moeda: os 6 pontos do checklist + alertas do RugCheck + força de compra.
+// Funções puras (sem internet), para poderem ser testadas com dados simulados.
+
+const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
+const fmtPct = (v) => `${num(v).toFixed(1)}%`;
+const fmtUsd = (v) => {
+  const n = num(v);
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}k`;
+  return `$${n.toFixed(0)}`;
+};
+
+// Escolhe o par com mais liquidez de uma moeda no DexScreener e resume os dados de mercado
+export function summarizeMarket(pairs, now = Date.now()) {
+  if (!Array.isArray(pairs) || pairs.length === 0) return null;
+  const best = [...pairs].sort((a, b) => num(b?.liquidity?.usd) - num(a?.liquidity?.usd))[0];
+  const created = num(best.pairCreatedAt, 0);
+  const buysH1 = num(best?.txns?.h1?.buys);
+  const sellsH1 = num(best?.txns?.h1?.sells);
+  return {
+    symbol: best?.baseToken?.symbol || '?',
+    name: best?.baseToken?.name || '',
+    priceUsd: num(best.priceUsd),
+    liquidityUsd: num(best?.liquidity?.usd),
+    mcapUsd: num(best.marketCap, num(best.fdv)),
+    pairCreatedAt: created || null,
+    ageMin: created ? Math.max(0, (now - created) / 60000) : null,
+    volumeH1: num(best?.volume?.h1),
+    volumeH24: num(best?.volume?.h24),
+    buysH1,
+    sellsH1,
+    buyRatioH1: buysH1 + sellsH1 > 0 ? (buysH1 / (buysH1 + sellsH1)) * 100 : 0,
+    priceChangeH1: num(best?.priceChange?.h1),
+    priceChangeH24: num(best?.priceChange?.h24),
+    quoteSymbol: best?.quoteToken?.symbol || 'SOL',
+    boosts: num(best?.boosts?.active),
+    priceNative: num(best.priceNative),
+    fdvUsd: num(best.fdv),
+    periods: Object.fromEntries(['m5', 'h1', 'h6', 'h24'].map((k) => [k, {
+      chg: num(best?.priceChange?.[k]),
+      buys: num(best?.txns?.[k]?.buys),
+      sells: num(best?.txns?.[k]?.sells),
+      vol: num(best?.volume?.[k]),
+    }])),
+    pairUrl: best.url || null,
+    pairAddress: best.pairAddress || null,
+    dexId: best.dexId || null,
+    icon: best?.info?.imageUrl || null,
+    socials: [...(best?.info?.websites || []), ...(best?.info?.socials || [])]
+      .map((s) => ({ label: s.label || s.type || 'link', url: s.url }))
+      .filter((s) => s.url)
+      .slice(0, 4),
+  };
+}
+
+// Filtro rápido só com dados de mercado (antes de gastar uma consulta no RugCheck).
+// Retorna lista de motivos. Todos são "temporários": podem mudar nas próximas rodadas.
+export function prefilter(m, cfg) {
+  const f = cfg.filtros;
+  const b = cfg.busca;
+  const reasons = [];
+  if (m.ageMin == null) reasons.push('Sem data de criação do par');
+  else if (m.ageMin < b.idadeMinimaMinutos) reasons.push(`Muito nova (${m.ageMin.toFixed(0)} min), aguardando ${b.idadeMinimaMinutos} min`);
+  if (m.liquidityUsd < f.liquidezMinimaUsd) reasons.push(`Liquidez baixa (${fmtUsd(m.liquidityUsd)})`);
+  if (m.mcapUsd < f.marketCapMinimoUsd) reasons.push(`Market cap baixo (${fmtUsd(m.mcapUsd)})`);
+  if (m.mcapUsd > f.marketCapMaximoUsd) reasons.push(`Market cap acima do limite (${fmtUsd(m.mcapUsd)})`);
+  if (m.volumeH1 < f.volumeH1MinUsd) reasons.push(`Pouco volume na última hora (${fmtUsd(m.volumeH1)})`);
+  if (m.buyRatioH1 < f.comprasSobreTotalH1MinPct) reasons.push(`Mais vendas que compras na última hora (${fmtPct(m.buyRatioH1)} compras)`);
+  return reasons;
+}
+
+// Extrai do relatório do RugCheck o que importa, de forma defensiva (campos podem faltar)
+export function summarizeRug(r) {
+  if (!r || typeof r !== 'object') return null;
+  const known = r.knownAccounts || {};
+  const markets = Array.isArray(r.markets) ? r.markets : [];
+
+  // Contas que são pools / travas de liquidez: não contam como "holder"
+  const excluded = new Set();
+  for (const mk of markets) {
+    for (const k of ['pubkey', 'liquidityAAccount', 'liquidityBAccount', 'liquidityA', 'liquidityB']) {
+      if (typeof mk?.[k] === 'string') excluded.add(mk[k]);
+    }
+  }
+  for (const [addr, info] of Object.entries(known)) {
+    const t = String(info?.type || '').toUpperCase();
+    if (t === 'AMM' || t === 'LOCKER') excluded.add(addr);
+  }
+
+  let creator = r.creator || null;
+  if (!creator) {
+    const c = Object.entries(known).find(([, i]) => String(i?.type || '').toUpperCase() === 'CREATOR');
+    if (c) creator = c[0];
+  }
+
+  const holders = (Array.isArray(r.topHolders) ? r.topHolders : [])
+    .filter((h) => !excluded.has(h?.address) && !excluded.has(h?.owner))
+    .map((h) => ({ address: h.address, owner: h.owner, pct: num(h.pct), insider: !!h.insider }))
+    .sort((a, b) => b.pct - a.pct);
+
+  const top10Pct = holders.slice(0, 10).reduce((s, h) => s + h.pct, 0);
+  const maxHolderPct = holders.length ? holders[0].pct : 0;
+  const devPct = creator ? holders.filter((h) => h.owner === creator || h.address === creator).reduce((s, h) => s + h.pct, 0) : null;
+  const insiderHolders = holders.filter((h) => h.insider).length;
+
+  const lpPcts = markets.map((mk) => num(mk?.lp?.lpLockedPct, NaN)).filter(Number.isFinite);
+  const lpLockedPct = lpPcts.length ? Math.max(...lpPcts) : Number.isFinite(Number(r.lpLockedPct)) ? Number(r.lpLockedPct) : null;
+
+  const risks = (Array.isArray(r.risks) ? r.risks : []).map((x) => ({
+    name: x.name,
+    level: x.level,
+    value: x.value || '',
+    description: x.description || '',
+  }));
+
+  return {
+    mintAuthority: r.mintAuthority ?? r.token?.mintAuthority ?? null,
+    freezeAuthority: r.freezeAuthority ?? r.token?.freezeAuthority ?? null,
+    lpLockedPct,
+    top10Pct,
+    maxHolderPct,
+    insiders: Math.max(num(r.graphInsidersDetected), insiderHolders),
+    creator,
+    devPct,
+    devPreviousTokens: Array.isArray(r.creatorTokens) ? r.creatorTokens.length : null,
+    totalHolders: r.totalHolders != null ? num(r.totalHolders) : null,
+    scoreNormalised: r.score_normalised != null ? num(r.score_normalised) : null,
+    transferFeePct: num(r.transferFee?.pct),
+    mutableMetadata: r.tokenMeta?.mutable === true,
+    rugged: r.rugged === true,
+    dangerRisks: risks.filter((x) => x.level === 'danger'),
+    warnRisks: risks.filter((x) => x.level === 'warn'),
+  };
+}
+
+// Os 6 pontos + extras. ok: true (passou), false (reprovou), null (sem dados, olhar manualmente)
+export function runChecks(m, rug, cfg) {
+  const f = cfg.filtros;
+  const checks = [];
+  const add = (id, label, ok, detail, permanent = true) => checks.push({ id, label, ok, detail, permanent });
+
+  add('mint', '1. Mint revogada', rug.mintAuthority == null,
+    rug.mintAuthority == null ? 'Ninguém pode criar mais tokens' : 'O criador ainda pode emitir tokens novos');
+
+  add('freeze', '2. Freeze revogada', rug.freezeAuthority == null,
+    rug.freezeAuthority == null ? 'Ninguém pode congelar sua carteira' : 'O criador pode congelar carteiras e impedir a venda');
+
+  // Regra obrigatória: sem confirmação de liquidez travada/queimada, não aprova.
+  // Não é permanente: a liquidez pode ser travada ou queimada depois, então a moeda volta a ser checada.
+  if (rug.lpLockedPct == null) add('lp', '3. Liquidez travada/queimada', false, 'Sem confirmação de que a liquidez está travada', false);
+  else add('lp', '3. Liquidez travada/queimada', rug.lpLockedPct >= f.lpTravadaMinPct,
+    `${fmtPct(rug.lpLockedPct)} travada (mínimo ${f.lpTravadaMinPct}%)`, false);
+
+  const holderProblems = [];
+  if (rug.top10Pct > f.top10MaxPct) holderProblems.push(`top 10 com ${fmtPct(rug.top10Pct)} (máx ${f.top10MaxPct}%)`);
+  if (rug.maxHolderPct > f.maiorHolderMaxPct) holderProblems.push(`maior carteira com ${fmtPct(rug.maxHolderPct)} (máx ${f.maiorHolderMaxPct}%)`);
+  if (rug.insiders > f.insidersMax) holderProblems.push(`${rug.insiders} carteiras ligadas entre si (insiders)`);
+  if (rug.totalHolders != null && rug.totalHolders < f.holdersMin) holderProblems.push(`só ${rug.totalHolders} holders (mín ${f.holdersMin})`);
+  add('holders', '4. Holders bem distribuídos', holderProblems.length === 0,
+    holderProblems.length ? holderProblems.join('; ') : `Top 10 com ${fmtPct(rug.top10Pct)}, sem insiders detectados`,
+    false);
+
+  const devProblems = [];
+  let devOk = true;
+  if (rug.devPct == null) devOk = null;
+  else if (rug.devPct > f.devMaxPct) { devOk = false; devProblems.push(`dev segura ${fmtPct(rug.devPct)} (máx ${f.devMaxPct}%)`); }
+  if (rug.devPreviousTokens != null && rug.devPreviousTokens > f.devMaxTokensAnteriores) {
+    devOk = false;
+    devProblems.push(`dev já criou ${rug.devPreviousTokens} moedas (máx ${f.devMaxTokensAnteriores})`);
+  }
+  const devHist = rug.devPreviousTokens == null ? 'histórico: conferir no GMGN' : `${rug.devPreviousTokens} moedas anteriores`;
+  add('dev', '5. Dev limpo', devOk,
+    devProblems.length ? devProblems.join('; ') : rug.devPct == null ? `Carteira do dev não identificada; ${devHist}` : `Dev segura ${fmtPct(rug.devPct)}; ${devHist}`,
+    false);
+
+  const liqRatio = m.mcapUsd > 0 ? (m.liquidityUsd / m.mcapUsd) * 100 : 0;
+  add('liquidez', '6. Liquidez saudável', m.liquidityUsd >= f.liquidezMinimaUsd && liqRatio >= f.liquidezSobreMarketCapMinPct,
+    `${fmtUsd(m.liquidityUsd)} de liquidez para ${fmtUsd(m.mcapUsd)} de market cap (${fmtPct(liqRatio)}, mín ${f.liquidezSobreMarketCapMinPct}%)`,
+    false);
+
+  const rcProblems = [];
+  if (rug.rugged) rcProblems.push('RugCheck marcou como RUGADA');
+  if (rug.transferFeePct > 0) rcProblems.push(`taxa escondida de ${fmtPct(rug.transferFeePct)} em cada transferência`);
+  for (const d of rug.dangerRisks) rcProblems.push(d.name);
+  if (rug.scoreNormalised != null && rug.scoreNormalised > f.rugcheckScoreMax) rcProblems.push(`risco ${rug.scoreNormalised}/100 (máx ${f.rugcheckScoreMax})`);
+  const warns = rug.warnRisks.map((w) => w.name);
+  if (rug.mutableMetadata) warns.push('Metadados podem ser alterados');
+  add('rugcheck', 'Sem alertas graves no RugCheck', rcProblems.length === 0,
+    rcProblems.length ? rcProblems.join('; ') : warns.length ? `Avisos leves: ${warns.join('; ')}` : `Risco ${rug.scoreNormalised ?? '?'}/100`);
+
+  return checks;
+}
+
+// Nota de 0 a 100 para ordenar as aprovadas (segurança + força de compra)
+export function scoreToken(m, rug) {
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const buyPressure = clamp((m.buyRatioH1 - 50) / 25); // 50% compras = 0, 75%+ = 1
+  const volVsLiq = clamp(m.volumeH1 / Math.max(1, m.liquidityUsd) / 1.5); // girou 1,5x a liquidez em 1h = 1
+  const trend = clamp(m.priceChangeH1 / 50); // +50% na hora = 1 (negativo = 0)
+  const holders = rug.totalHolders ? clamp(Math.log10(rug.totalHolders) / 3.5) : 0.3; // ~3000 holders = 1
+  const liq = clamp(Math.log10(Math.max(1, m.liquidityUsd)) / 6); // $1M = 1
+  const safety = rug.scoreNormalised != null ? clamp(1 - rug.scoreNormalised / 100) : 0.5;
+  const distribution = clamp(1 - rug.top10Pct / 40);
+  const s = buyPressure * 20 + volVsLiq * 15 + trend * 10 + holders * 15 + liq * 10 + safety * 15 + distribution * 15;
+  return Math.round(s);
+}
+
+// Junta tudo e decide o status
+export function analyze(m, rugReport, cfg) {
+  const rug = summarizeRug(rugReport);
+  if (!rug) return { status: 'aguardando', reasons: ['RugCheck sem resposta, tenta de novo na próxima rodada'], checks: [], permanent: false };
+  const checks = runChecks(m, rug, cfg);
+  const failed = checks.filter((c) => c.ok === false);
+  const permanent = failed.some((c) => c.permanent);
+  const status = failed.length === 0 ? 'aprovada' : permanent ? 'reprovada' : 'aguardando';
+  return {
+    status,
+    permanent,
+    checks,
+    reasons: failed.map((c) => `${c.label.replace(/^\d\.\s*/, '')}: ${c.detail}`),
+    score: scoreToken(m, rug),
+    summary: rug,
+    rug: {
+      scoreNormalised: rug.scoreNormalised,
+      totalHolders: rug.totalHolders,
+      top10Pct: rug.top10Pct,
+      lpLockedPct: rug.lpLockedPct,
+      creator: rug.creator,
+    },
+  };
+}
+
+// ---------- Monitoramento depois da aprovação / compra ----------
+
+// Foto da segurança no momento da aprovação (ou da 1ª checagem de uma moeda da carteira)
+export function baselineFrom(sum) {
+  return {
+    lpLockedPct: sum.lpLockedPct, top10Pct: sum.top10Pct, maxHolderPct: sum.maxHolderPct,
+    devPct: sum.devPct, insiders: sum.insiders, scoreNormalised: sum.scoreNormalised,
+    dangerNames: sum.dangerRisks.map((d) => d.name),
+  };
+}
+
+// Alertas a partir do mercado (roda toda rodada, não gasta RugCheck)
+export function marketAlerts(t, m) {
+  const out = [];
+  if (t.entryLiquidityUsd) {
+    const drop = (1 - m.liquidityUsd / t.entryLiquidityUsd) * 100;
+    if (drop >= 80) out.push({ id: 'liq-sumiu', level: 'danger', msg: `Liquidez sumiu (-${drop.toFixed(0)}%). Possível rug` });
+    else if (drop >= 50) out.push({ id: 'liq-caiu', level: 'danger', msg: `Liquidez caiu ${drop.toFixed(0)}% desde a referência` });
+  }
+  if (t.maxPriceUsd && m.priceUsd) {
+    const fromTop = (1 - m.priceUsd / t.maxPriceUsd) * 100;
+    if (fromTop >= 50) out.push({ id: 'preco-topo', level: 'warn', msg: `Preço ${fromTop.toFixed(0)}% abaixo da máxima` });
+  }
+  if (m.buysH1 + m.sellsH1 >= 30 && m.buyRatioH1 < 35) {
+    out.push({ id: 'vendas', level: 'warn', msg: `Vendas dominando a última hora (só ${m.buyRatioH1.toFixed(0)}% compras)` });
+  }
+  return out;
+}
+
+// Alertas comparando o RugCheck de agora com a foto da aprovação
+export function rugAlerts(base, sum, cfg) {
+  const f = cfg.filtros;
+  const out = [];
+  if (sum.rugged) out.push({ id: 'rugged', level: 'danger', msg: 'RugCheck marcou como RUGADA' });
+  if (sum.mintAuthority != null) out.push({ id: 'mint', level: 'danger', msg: 'Mint authority ativa: podem emitir tokens novos' });
+  if (sum.freezeAuthority != null) out.push({ id: 'freeze', level: 'danger', msg: 'Freeze authority ativa: podem congelar sua carteira' });
+  if (sum.lpLockedPct == null || sum.lpLockedPct < f.lpTravadaMinPct) {
+    out.push({ id: 'lp', level: 'danger', msg: sum.lpLockedPct == null ? 'Não dá mais para confirmar a liquidez travada' : `Liquidez destravada: só ${sum.lpLockedPct.toFixed(0)}% travada` });
+  }
+  const newDanger = sum.dangerRisks.map((d) => d.name).filter((n) => !(base?.dangerNames || []).includes(n));
+  if (newDanger.length) out.push({ id: 'risco-novo', level: 'danger', msg: `Novo alerta grave no RugCheck: ${newDanger.join('; ')}` });
+  if (base) {
+    if (base.devPct != null && sum.devPct != null && base.devPct - sum.devPct >= 1) {
+      out.push({ id: 'dev-vendendo', level: 'danger', msg: `Dev vendendo: tinha ${base.devPct.toFixed(1)}%, agora ${sum.devPct.toFixed(1)}%` });
+    }
+    if (sum.top10Pct - base.top10Pct >= 10 || (sum.top10Pct > f.top10MaxPct && base.top10Pct <= f.top10MaxPct)) {
+      out.push({ id: 'concentracao', level: 'warn', msg: `Holders concentrando: top 10 foi de ${base.top10Pct.toFixed(0)}% para ${sum.top10Pct.toFixed(0)}%` });
+    }
+    if (sum.insiders > (base.insiders || 0)) {
+      out.push({ id: 'insiders', level: 'warn', msg: `Apareceram ${sum.insiders} carteiras ligadas entre si (insiders)` });
+    }
+  }
+  if (sum.scoreNormalised != null && sum.scoreNormalised > f.rugcheckScoreMax) {
+    out.push({ id: 'score', level: 'warn', msg: `Risco no RugCheck subiu para ${sum.scoreNormalised}/100` });
+  }
+  return out;
+}
+
+// Junta os alertas, mantendo a hora em que cada um apareceu pela primeira vez
+export function mergeSafety(prev, alerts, now) {
+  const firstSeen = new Map((prev?.alerts || []).map((a) => [a.id, a.at]));
+  const list = alerts.map((a) => ({ ...a, at: firstSeen.get(a.id) || now }));
+  const level = list.some((a) => a.level === 'danger') ? 'danger' : list.length ? 'warn' : 'ok';
+  return { level, alerts: list, checkedAt: now };
+}
+
+// ---------- Sua operação (a partir das transações da carteira) ----------
+export function positionFrom(ops, heldAmount, priceNative, priceUsd) {
+  const solUsd = priceNative > 0 ? priceUsd / priceNative : null;
+  const valueSol = heldAmount * (priceNative || 0);
+  const base = { amount: heldAmount, valueSol, valueUsd: solUsd ? valueSol * solUsd : null, solUsd };
+  const buys = (ops || []).filter((o) => o.tokens > 0 && o.sol < 0);
+  const sells = (ops || []).filter((o) => o.tokens < 0 && o.sol > 0);
+  if (!buys.length) return { ...base, known: false };
+  const spentSol = buys.reduce((a, o) => a - o.sol, 0);
+  const bought = buys.reduce((a, o) => a + o.tokens, 0);
+  const receivedSol = sells.reduce((a, o) => a + o.sol, 0);
+  const prices = buys.map((o) => -o.sol / o.tokens);
+  const avg = spentSol / bought;
+  const pnlSol = valueSol + receivedSol - spentSol;
+  const usd = (v) => (solUsd ? v * solUsd : null);
+  // Realizado: o que já foi vendido, comparado com o preço médio de compra
+  const soldTokens = sells.reduce((a, o) => a - o.tokens, 0);
+  const realizedSol = receivedSol - soldTokens * avg;
+  // Em aberto: o que você ainda tem, comparado com o preço médio
+  const costOpenSol = heldAmount * avg;
+  const openPnlSol = valueSol - costOpenSol;
+  return {
+    ...base, known: true,
+    realizedSol, realizedUsd: usd(realizedSol),
+    costOpenSol, costOpenUsd: usd(costOpenSol),
+    openPnlSol, openPnlUsd: usd(openPnlSol), openPnlPct: costOpenSol > 0 ? (openPnlSol / costOpenSol) * 100 : 0,
+    spentSol, spentUsd: usd(spentSol), receivedSol,
+    avgPriceSol: avg, avgPriceUsd: usd(avg),
+    minPriceUsd: usd(Math.min(...prices)), maxPriceUsd: usd(Math.max(...prices)),
+    pnlSol, pnlUsd: usd(pnlSol), pnlPct: (pnlSol / spentSol) * 100,
+    buys: buys.length, sells: sells.length,
+    firstBuyAt: Math.min(...buys.map((o) => o.at)), lastBuyAt: Math.max(...buys.map((o) => o.at)),
+  };
+}

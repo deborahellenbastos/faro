@@ -1,0 +1,35 @@
+{
+  "carteira": {
+    "enderecoPublico": ""
+  },
+  "busca": {
+    "idadeMinimaMinutos": 20,
+    "idadeMaximaHoras": 24,
+    "maxRugcheckPorRodada": 25,
+    "diasAcompanhando": 3
+  },
+  "filtros": {
+    "liquidezMinimaUsd": 15000,
+    "marketCapMinimoUsd": 30000,
+    "marketCapMaximoUsd": 10000000,
+    "liquidezSobreMarketCapMinPct": 5,
+    "lpTravadaMinPct": 90,
+    "top10MaxPct": 30,
+    "maiorHolderMaxPct": 10,
+    "insidersMax": 0,
+    "devMaxPct": 5,
+    "devMaxTokensAnteriores": 5,
+    "rugcheckScoreMax": 50,
+    "holdersMin": 100,
+    "volumeH1MinUsd": 5000,
+    "comprasSobreTotalH1MinPct": 50
+  },
+  "compra": {
+    "ativada": false,
+    "solPorCompra": 0.05,
+    "maxComprasPorDia": 3,
+    "scoreMinimo": 70,
+    "slippagePct": 10,
+    "impactoPrecoMaxPct": 5
+  }
+}
