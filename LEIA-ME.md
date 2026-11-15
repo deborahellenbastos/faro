@@ -52,8 +52,18 @@ Edite o `config.json` direto no GitHub (dá pelo celular: abra o arquivo e toque
 
 Os filtros começam rígidos de propósito. Se o painel ficar vazio por muito tempo, olhe a aba **Observando**. Ela mostra quais regras estão barrando as moedas, e aí você afrouxa só a regra que fizer sentido.
 
+## Privacidade: dados criptografados com senha
+O repositório e o painel são públicos (é o que deixa tudo grátis). Por isso o Faro guarda seus dados **criptografados**:
+- Em **Settings > Secrets and variables > Actions > Secrets**, crie:
+  - `FARO_SENHA`: uma senha forte (de preferência uma frase longa). É com ela que você entra no painel.
+  - `FARO_WALLET`: o **endereço público** da sua carteira Phantom (nunca a frase secreta de 12 palavras).
+- A partir da próxima rodada o robô salva `docs/data.enc.json` (ilegível sem a senha) e apaga a versão aberta.
+- O painel abre numa tela de senha. A senha fica só no seu aparelho; "Lembrar neste aparelho" evita digitar sempre. "Bloquear painel" esquece a senha.
+- Se trocar a senha nos Secrets, o histórico recomeça do zero na rodada seguinte.
+- A página também pede para não ser indexada por buscadores.
+
 ## Vigiar as moedas que você comprou
-Coloque o **endereço público** da sua carteira Phantom no `config.json`, em `"carteira": { "enderecoPublico": "..." }`. Para copiar, toque no nome da conta na Phantom. O endereço público só permite **ler** o que tem na carteira, ninguém consegue mexer em nada com ele.
+Coloque o **endereço público** da sua carteira Phantom no secret `FARO_WALLET` (veja a seção de privacidade acima). Para copiar, toque no nome da conta na Phantom. O endereço público só permite **ler** o que tem na carteira, ninguém consegue mexer em nada com ele.
 
 Com isso o robô:
 - descobre sozinho quais moedas você tem (mesmo as que você comprou fora do painel)
