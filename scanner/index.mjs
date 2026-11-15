@@ -15,8 +15,11 @@ const vaultPath = path.join(root, 'docs', 'data.enc.json');
 const cfg = JSON.parse(await readFile(cfgPath, 'utf8'));
 // O endereço da carteira vem dos Secrets do GitHub (FARO_WALLET), para não ficar público no config.json
 const walletSecret = (process.env.FARO_WALLET || '').trim();
-if (walletSecret) cfg.carteira = { ...(cfg.carteira || {}), enderecoPublico: walletSecret };
 const password = process.env.FARO_SENHA || '';
+// Trava de segurança: sem senha, a carteira não é usada (senão seus dados iriam para um arquivo público)
+if (walletSecret && !password) console.error('Carteira configurada, mas falta o secret FARO_SENHA. A carteira será ignorada até a senha existir.');
+if (walletSecret && password) cfg.carteira = { ...(cfg.carteira || {}), enderecoPublico: walletSecret };
+else cfg.carteira = { enderecoPublico: '' };
 
 // Estado da rodada anterior
 let state = {};
