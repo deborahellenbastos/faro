@@ -1586,7 +1586,10 @@
     const marks = (t.history || []).filter((o) => o.tokens && o.at / 1000 >= first).map((o) => {
       const buy = o.tokens > 0;
       return { time: Math.floor(o.at / 1000 / sec) * sec + TZ, position: buy ? 'belowBar' : 'aboveBar', color: buy ? '#10d27f' : '#ff5b5b', shape: buy ? 'arrowUp' : 'arrowDown', text: buy ? 'C' : 'V' };
-    }).sort((a, b) => a.time - b.time);
+    });
+    // A = momento do alerta (quando a moeda entrou no radar)
+    if (t.approvedAt && t.approvedAt / 1000 >= first) marks.push({ time: Math.floor(t.approvedAt / 1000 / sec) * sec + TZ, position: 'aboveBar', color: '#60a5fa', shape: 'arrowDown', text: 'A' });
+    marks.sort((a, b) => a.time - b.time);
     CH.candle.setMarkers(marks);
   }
 
