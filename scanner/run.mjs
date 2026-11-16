@@ -295,13 +295,21 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     for (const t of want) {
       try {
         const c = await api.getCandles(t.pairAddress);
-        if (c && c.length) { t.candles = c; t.candlesAt = now; }
+        if (c && c.length) { t.candles = c; t.candlesAt = now; delete t.candlesFromHist; }
       } catch (e) {
         log(`Velas de ${t.symbol} indisponíveis: ${e.message}`, true);
         if (e.rateLimited) break;
       }
       if (api.sleep) await api.sleep(6500); // respeita o limite do GeckoTerminal
     }
+  }
+  // Par sem velas no GeckoTerminal (ex.: contra uma ação tokenizada): monta velas de 5 min com os preços guardados a cada rodada
+  for (const t of Object.values(tokens)) {
+    if ((t.candles?.length && !t.candlesFromHist) || !(t.hist?.length >= 12) || !(monitored(t))) continue;
+    if (t.candlesAt && now - t.candlesAt < 30 * 60000 && !t.candlesFromHist) continue;
+    let prev = t.hist[0][1];
+    t.candles = t.hist.slice(-72).map(([ms, px]) => { const c = [ms, prev, Math.max(prev, px), Math.min(prev, px), px, 0]; prev = px; return c; });
+    t.candlesFromHist = true;
   }
   // Formato atualizado; aprovada que "morreu" sai do radar
   for (const t of Object.values(tokens)) {
