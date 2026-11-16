@@ -2426,10 +2426,13 @@
     const SIG = { insiders: 'insiders', vigia: 'robô', 'auto-venda': 'golpe', 'lucro-auto': 'lucro', 'liq-sumiu': 'liquidez', 'vivo-liq': 'liquidez', 'preco-topo': 'queda', vendas: 'vendas', lp: 'LP', 'dev-vendendo': 'dev', 'risco-novo': 'RugCheck', concentracao: 'top 10', score: 'risco', mint: 'mint', freeze: 'freeze', rugged: 'rug' };
     for (const a of t.safety?.alerts || []) {
       if (!a.at || a.at / 1000 < first) continue;
+      const time = Math.floor(a.at / 1000 / sec) * sec + TZ;
+      // Venda do robô não é alerta ruim: marca "robô vendeu" (o V da venda já aparece no candle)
+      if (ROBO_IDS.has(a.id)) { marks.push({ time, position: 'aboveBar', color: '#f472b6', shape: 'circle', text: /não compensa/.test(a.msg) ? 'robô não vendeu' : 'robô vendeu' }); continue; }
       const col = a.level === 'danger' ? '#ff5b5b' : a.level === 'warn' ? '#f5b14c' : '#8c939f';
-      marks.push({ time: Math.floor(a.at / 1000 / sec) * sec + TZ, position: 'aboveBar', color: col, shape: 'circle', text: `! ${SIG[a.id] || 'alerta'}` });
+      marks.push({ time, position: 'aboveBar', color: col, shape: 'circle', text: `! ${SIG[a.id] || 'alerta'}` });
     }
-    // E = boa entrada / S = sinal de saída (os mesmos avisos da central), no candle em que apareceram
+    // "Entre" = boa entrada / "Saia" = sinal de saída (os mesmos avisos da central), no candle em que apareceram
     { const seenK = new Set();
       const sigs = INBOX.list.filter((x) => x.mint === t.mint && (ntType(x) === 'entrada' || ntType(x) === 'saida')).map((x) => ({ at: x.at, tipo: ntType(x), bom: /^Saída/.test(x.title) }));
       if (t.sinal?.at && (t.sinal.boa || t.sinal.bom || t.sinal.ruim)) sigs.push({ at: t.sinal.at, tipo: t.sinal.tipo === 'entrada' ? 'entrada' : 'saida', bom: !!t.sinal.bom });
@@ -2438,8 +2441,8 @@
         const time = Math.floor(g.at / 1000 / sec) * sec + TZ, k = `${g.tipo}:${time}`;
         if (seenK.has(k)) continue; seenK.add(k);
         marks.push(g.tipo === 'entrada'
-          ? { time, position: 'belowBar', color: '#10d27f', shape: 'circle', text: 'E' }
-          : { time, position: 'aboveBar', color: g.bom ? '#10d27f' : '#f5b14c', shape: 'circle', text: 'S' });
+          ? { time, position: 'belowBar', color: '#10d27f', shape: 'arrowUp', text: 'Entre' }
+          : { time, position: 'aboveBar', color: g.bom ? '#10d27f' : '#f5b14c', shape: 'arrowDown', text: 'Saia' });
       } }
     // R = momento em que a moeda entrou no radar (mesma cor da linha "radar")
     if (t.approvedAt && t.approvedAt / 1000 >= first) marks.push({ time: Math.floor(t.approvedAt / 1000 / sec) * sec + TZ, position: 'aboveBar', color: '#a78bfa', shape: 'arrowDown', text: 'R' });
