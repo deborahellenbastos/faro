@@ -399,6 +399,17 @@
   .alerts li small { color: var(--muted); white-space: nowrap; }
 
   /* Operação + compra/venda */
+  .d-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 400px); gap: var(--sp-4); align-items: start; }
+  .d-split.solo { grid-template-columns: minmax(0, 1fr); }
+  .d-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); min-width: 0; }
+  .d-side { position: sticky; top: var(--sp-4); display: grid; gap: var(--sp-4); max-height: calc(100vh - 2 * var(--sp-4)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  .d-split.solo .d-side { display: none; }
+  @media (max-width: 1599px) {
+    .d-split { display: flex; flex-direction: column; }
+    .d-main { display: contents; }
+    .d-main > * { order: 2; } .d-main > .d-card:first-child { order: 0; }
+    .d-side { order: 1; position: static; max-height: none; overflow: visible; }
+  }
   .op-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--sp-4); align-items: stretch; }
   .op-grid.hist-open { align-items: start; }
   .op { padding: var(--sp-5); }
@@ -1591,13 +1602,15 @@
         <div class="tile"><span>Máxima desde o alerta</span><b class="num pos">${pct(t.maxChangePct)}</b></div>
         <div class="tile"><span>Preço no alerta</span><b class="num">${price(t.entryPriceUsd)}</b></div>
       </div>` : '';
-    const ops = mine ? `<div class="op-grid ${ui.hist[t.mint]?.open ? 'hist-open' : ''}">${opBlock(t)}${tradeBlock(t)}</div>`
+    // Operação e compra/venda ficam numa coluna ao lado do gráfico (fixa ao rolar)
+    const trade = mine ? tradeBlock(t)
       : t.status === 'aprovada' ? tradeBlock(t)
       : t.status === 'aguardando' && (t.score || 0) >= 75 && levelOf(t) !== 'danger' ? tradeBlock(t) : '';
+    const side = trade + (mine ? opBlock(t) : '');
     const tw = twinInfo(t);
     const twinBox = tw ? `<section class="panel d-card twins"><h3 class="sec-title">Moedas com o mesmo nome</h3><p class="sp-note">${tw.best ? 'Esta é a mais forte (mais liquidez) entre as que têm esse nome.' : 'Existe outra com esse nome e mais liquidez. Cópias (vamps) costumam ser a versão mais fraca: confira qual é a original antes de comprar.'}</p>
       ${tw.all.map((x) => `<button class="twin ${x.mint === t.mint ? 'on' : ''}" data-goto="${esc(x.mint)}"><b>${esc(x.symbol)}</b><span>liquidez ${usd(x.liquidityUsd)} - ${x.rug?.totalHolders ? int(x.rug.totalHolders) + ' holders' : 'holders ?'} - ${{ aprovada: 'no radar', aguardando: 'observando', reprovada: 'reprovada', carteira: 'na carteira' }[x.status] || x.status}</span><code>${esc(x.mint.slice(0, 4) + '...' + x.mint.slice(-4))}</code></button>`).join('')}</section>` : '';
-    return head + perf + ops + (mine ? alertsHtml(t) : '') + twinBox + scoreHtml(t) + checksHtml(t, t.status !== 'aprovada');
+    return `<div class="d-split ${side ? '' : 'solo'}"><div class="d-main">${head}${perf}${mine ? alertsHtml(t) : ''}${twinBox}${scoreHtml(t)}${checksHtml(t, t.status !== 'aprovada')}</div><div class="d-side">${side}</div></div>`;
   }
 
   // =========================================================
@@ -2363,10 +2376,15 @@
         let before = true;
         for (const c of [...newCard.children]) { if (c === newBox) { before = false; continue; } if (before) oldCard.insertBefore(c, oldBox); else oldCard.appendChild(c); }
       }
-      if (!patch(el, tpl.content, oldCard, newCard)) {
-        for (const c of [...el.children]) if (c !== oldCard) c.remove();
-        for (const c of [...tpl.content.children]) if (c !== newCard) el.appendChild(c);
+      const oldMain = oldCard.parentElement, newMain = newCard.parentElement;
+      if (!patch(oldMain, newMain, oldCard, newCard)) {
+        for (const c of [...oldMain.children]) if (c !== oldCard) c.remove();
+        let before = true;
+        for (const c of [...newMain.children]) { if (c === newCard) { before = false; continue; } if (before) oldMain.insertBefore(c, oldCard); else oldMain.appendChild(c); }
       }
+      const oldSide = el.querySelector('.d-side'), newSide = tpl.content.querySelector('.d-side');
+      if (oldSide && newSide && !patch(oldSide, newSide)) oldSide.replaceChildren(...newSide.childNodes);
+      const split = el.querySelector('.d-split'); if (split) split.className = tpl.content.querySelector('.d-split').className;
       return false;
     }
     if (chartIsMax()) document.body.style.overflow = '';
