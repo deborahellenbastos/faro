@@ -513,6 +513,12 @@
   .ov-ivals button.on { color: var(--text); background: var(--panel-3); }
   .ov-since { position: absolute; top: 44px; left: 8px; z-index: 4; display: grid; grid-template-columns: auto auto; gap: 2px 10px; padding: 6px 10px; border-radius: 8px; background: rgba(12,14,17,.88); border: 1px solid #1f232a; font-size: 11px; color: var(--muted); pointer-events: none; }
   .ov-since b { text-align: right; font-size: 12px; } .ov-since em { font-style: normal; font-weight: 600; opacity: .8; } .ov-since b.pos { color: var(--green); } .ov-since b.neg { color: var(--red); }
+  .ov-nav { position: absolute; left: 50%; bottom: 36px; transform: translateX(-50%); z-index: 4; display: flex; gap: 6px; opacity: 0; transition: opacity .15s; }
+  .farohost:hover .ov-nav, .ov-nav:focus-within { opacity: 1; }
+  .ov-nav button { width: 30px; height: 30px; border-radius: 6px; border: 1px solid #2a2f37; background: rgba(20,23,28,.92); color: var(--text); font-size: 16px; font-weight: 700; display: grid; place-items: center; }
+  .ov-nav button svg { width: 14px; height: 14px; }
+  .ov-nav button:hover { background: var(--panel-3); }
+  @media (hover: none) { .ov-nav { opacity: 1; } }
   .ov-hint { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 4; padding: 4px 10px; border-radius: 999px; background: rgba(12,14,17,.9); border: 1px solid #1f232a; color: var(--muted); font-size: 11px; font-weight: 600; pointer-events: none; }
   .seg-sm button:focus, .ov-tools button:focus, .ov-ivals button:focus { outline: none; }
   .seg-sm button:focus:not(:focus-visible), .ov-tools button:focus:not(:focus-visible), .ov-ivals button:focus:not(:focus-visible) { outline: none; }
@@ -1219,6 +1225,13 @@
           <div class="ov-ivals">${IVALS.map(([k]) => `<button data-ival="${k}" class="${k === iv ? 'on' : ''}">${k}</button>`).join('')}</div>
           <div class="ov-hint" id="chart-hint" hidden></div>
           <div class="ov-since" id="chart-since" hidden></div>
+          <div class="ov-nav" title="Largura das velas e navegação">
+            <button data-cnav="out" title="Velas mais finas (ver mais tempo)">&minus;</button>
+            <button data-cnav="in" title="Velas mais largas">+</button>
+            <button data-cnav="left" title="Voltar no tempo">&lsaquo;</button>
+            <button data-cnav="right" title="Avançar no tempo">&rsaquo;</button>
+            <button data-chartreset title="Voltar o gráfico para a posição normal">${TOOL_ICON.reset}</button>
+          </div>
         </div>
       </div></div>
       <div class="mini-grip faro-only" data-grip title="Arraste para mudar a altura do gráfico"><i></i></div>
@@ -1646,7 +1659,7 @@
       layout: { background: { type: 'solid', color: '#0c0e11' }, textColor: '#8c939f', fontFamily: 'Plus Jakarta Sans, system-ui', fontSize: 11 },
       grid: { vertLines: { color: '#171a1f' }, horzLines: { color: '#171a1f' } },
       rightPriceScale: { borderColor: '#22262d', scaleMargins: { top: 0.08, bottom: 0.22 } },
-      timeScale: { borderColor: '#22262d', timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: 8 },
+      timeScale: { borderColor: '#22262d', timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: Number(store.get('faro-bar', 8)) || 8 },
       crosshair: { mode: 0, vertLine: { color: '#5d6470', labelBackgroundColor: '#1c2026' }, horzLine: { color: '#5d6470', labelBackgroundColor: '#1c2026' } },
       localization: { locale: 'pt-BR', priceFormatter: pxFmt },
       handleScroll: true, handleScale: true,
@@ -1828,11 +1841,25 @@
     if (!CH.chart) return;
     CH.chart.priceScale('right').applyOptions({ autoScale: true });
     CH.chart.timeScale().resetTimeScale();
-    CH.chart.timeScale().applyOptions({ rightOffset: 6, barSpacing: 8 });
+    CH.chart.timeScale().applyOptions({ rightOffset: 6, barSpacing: 8 }); store.set('faro-bar', 8);
     CH.chart.timeScale().scrollToRealTime();
     setTool('cursor');
   }
+  // Largura das velas (+/-) e navegação no tempo (</>), como na Dex
+  function chartNav(dir) {
+    if (!CH.chart) return;
+    const ts = CH.chart.timeScale();
+    if (dir === 'in' || dir === 'out') {
+      const cur = ts.options().barSpacing || 8;
+      const next = Math.min(40, Math.max(1.5, dir === 'in' ? cur * 1.25 : cur / 1.25));
+      ts.applyOptions({ barSpacing: next }); store.set('faro-bar', +next.toFixed(2));
+    } else {
+      const step = Math.max(5, Math.round((ts.width ? ts.width() : 600) / (ts.options().barSpacing || 8) / 4));
+      ts.scrollToPosition(ts.scrollPosition() + (dir === 'left' ? -step : step), true);
+    }
+  }
   document.addEventListener('click', (e) => {
+    const nv = e.target.closest('[data-cnav]'); if (nv) chartNav(nv.dataset.cnav);
     if (e.target.closest('[data-chartreset]')) resetChart();
     const fb = e.target.closest('[data-fibtoggle]');
     if (fb) { const on = !store.get('faro-fib', true); store.set('faro-fib', on); fb.classList.toggle('on', on); const t = data?.tokens?.[CH.mint]; if (t) decorate(t); }
