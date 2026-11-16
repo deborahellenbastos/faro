@@ -278,6 +278,9 @@
   .sp-bar i { display: block; height: 100%; border-radius: 3px; }
   .sp-bar i.g { background: var(--green); } .sp-bar i.m { background: #f5b14c; } .sp-bar i.w { background: var(--red); }
   .sp small { color: var(--faint); font-size: 11px; line-height: 1.4; }
+  .risk-lock { display: grid; justify-items: center; text-align: center; gap: 6px; padding: var(--sp-5) var(--sp-4); color: var(--muted); font-size: 13px; }
+  .risk-lock svg { width: 26px; height: 26px; color: var(--red); }
+  .risk-lock b { color: var(--text); font-size: 15px; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -841,6 +844,7 @@
       data = await res.json();
       }
       document.querySelectorAll('[data-lock]').forEach((b) => { b.hidden = !vaultUsed; });
+      for (const t of Object.values(data.tokens || {})) if (levelOf(t) === 'danger' && t.score != null) t.score = 0;
       detectEvents(data);
       applyLive(); connectWallet();
       if (!LIVE.booted) { LIVE.booted = true; pollPrice(); pollLive(); pollWallet(); }
@@ -1075,6 +1079,12 @@
 
   function tradeBlock(t) {
     const st = tradeState(t.mint);
+    const risky = !t.held && (levelOf(t) === 'danger' || t.status === 'reprovada');
+    if (risky && !st.unlockRisk) {
+      return `<section class="panel trade"><div class="tbody risk-lock">${ICON.warn}<b>Compra bloqueada</b>
+        <span>${t.status === 'reprovada' ? 'Essa moeda foi reprovada nos filtros de segurança.' : 'Essa moeda virou perigo depois da aprovação.'} O Faro não deixa comprar por aqui para evitar um clique sem querer.</span>
+        <button class="linkbtn" data-tunlock="${esc(t.mint)}">Quero comprar mesmo assim</button></div></section>`;
+    }
     if (!t.held && st.side === 'sell') st.side = 'buy';
     const buy = st.side === 'buy';
     const limit = st.mode === 'limit';
@@ -1391,7 +1401,28 @@
   for (const ev of ['pointerup', 'pointercancel']) document.addEventListener(ev, () => { LIVE.down = 0; }, true);
   const liveRender = () => { if (busyUi()) updateLivePill(); else render(); };
 
+  // Mesma conta da nota do robô (scanner/analyze.mjs), refeita com os dados ao vivo
+  function liveScore(t) {
+    const P = t.periods?.h1; const rug = t.rug;
+    if (!P || !rug || t.score == null) return;
+    const tot = (P.buys || 0) + (P.sells || 0);
+    const m = { buyRatioH1: tot ? (P.buys / tot) * 100 : 0, volumeH1: P.vol || 0, liquidityUsd: t.liquidityUsd || 0, priceChangeH1: P.chg || 0 };
+    const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)); const n = (v) => (Number.isFinite(v) ? v : 0);
+    const usdS = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v / 1e3).toFixed(0)}k` : `$${Math.round(n(v))}`);
+    const p = (label, max, frac, why) => ({ label, max, pts: Math.round(n(frac) * max), why });
+    t.scoreParts = [
+      p('Força de compra', 20, clamp((m.buyRatioH1 - 50) / 25), `${Math.round(m.buyRatioH1)}% das negociações da última hora foram compras (75%+ = nota cheia)`),
+      p('Giro de volume', 15, clamp(m.volumeH1 / Math.max(1, m.liquidityUsd) / 1.5), `volume de ${usdS(m.volumeH1)} na hora para ${usdS(m.liquidityUsd)} de liquidez (1,5x = nota cheia)`),
+      p('Tendência', 10, clamp(m.priceChangeH1 / 50), `preço ${m.priceChangeH1 >= 0 ? '+' : ''}${Math.round(m.priceChangeH1)}% na última hora (+50% = nota cheia)`),
+      p('Holders', 15, rug.totalHolders ? clamp(Math.log10(rug.totalHolders) / 3.5) : 0.3, rug.totalHolders ? `${rug.totalHolders} carteiras (~3.000 = nota cheia)` : 'ainda sem dados do RugCheck'),
+      p('Tamanho da liquidez', 10, clamp(Math.log10(Math.max(1, m.liquidityUsd)) / 6), `${usdS(m.liquidityUsd)} (US$ 1M = nota cheia)`),
+      p('Segurança (RugCheck)', 15, rug.scoreNormalised != null ? clamp(1 - rug.scoreNormalised / 100) : 0.5, rug.scoreNormalised != null ? `risco ${rug.scoreNormalised}/100 no RugCheck (0 = nota cheia)` : 'ainda sem dados do RugCheck'),
+      p('Distribuição', 15, rug.top10Pct != null ? clamp(1 - rug.top10Pct / 40) : 0.5, rug.top10Pct != null ? `top 10 carteiras com ${Math.round(rug.top10Pct)}% (quanto menos, melhor)` : 'ainda sem dados do RugCheck'),
+    ];
+    t.score = levelOf(t) === 'danger' ? 0 : t.scoreParts.reduce((a, x) => a + x.pts, 0);
+  }
   function recalcLive(t) {
+    liveScore(t);
     const p = t.position;
     if (p && t.priceNative > 0) {
       const solUsd = t.priceUsd / t.priceNative;
@@ -2203,6 +2234,8 @@
     } finally { st.busy = false; render(); }
   }
   document.addEventListener('click', (e) => {
+    const ul = e.target.closest('[data-tunlock]');
+    if (ul) { tradeState(ul.dataset.tunlock).unlockRisk = true; return render(); }
     const el = e.target.closest('[data-tside],[data-tunit],[data-tp],[data-tpct],[data-tslip],[data-tgo],[data-tcancel],[data-temerg]'); if (!el || el.disabled) return;
     const mint = el.dataset.tmint || el.dataset.tgo || el.dataset.tcancel || el.dataset.tunit || el.dataset.temerg;
     if (el.dataset.temerg) { onEmergency(mint); return; } const st = tradeState(mint); const t = data.tokens[mint];

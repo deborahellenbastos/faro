@@ -138,6 +138,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       t.hist = [...(t.hist || []), [now, m.priceUsd]].slice(-288); // ~24h de pontos a cada 5 min
       t._mktAlerts = marketAlerts(t, m);
       t.safety = mergeSafety(t.safety, [...(t._rugAlerts || []), ...t._mktAlerts], now);
+      // Nota atualizada toda rodada com o mercado de agora; perigo zera a nota
+      if (t.rug) { t.score = t.safety.level === 'danger' ? 0 : scoreToken(m, t.rug); t.scoreParts = scoreParts(m, t.rug); }
       // Aprovada que virou perigo (rug, despejo...): sai do radar e vai para as reprovadas
       if (!t.held && t.status === 'aprovada' && t.safety.level === 'danger') {
         t.status = 'reprovada'; t.rejectedAt = now;
