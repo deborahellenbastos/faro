@@ -391,6 +391,9 @@
   .ntm-h { display: flex; align-items: center; gap: 8px; } .ntm-h b { flex: 1; font-size: 16px; }
   .ntm-at { color: var(--faint); font-size: 12px; margin-top: -6px; } .ntm-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
   .ntm-rows { display: grid; gap: 10px; } .ntm-rows div { display: grid; gap: 2px; } .ntm-rows span { color: var(--faint); font-size: 11px; } .ntm-rows b { font-size: 13px; font-weight: 600; line-height: 1.45; }
+  .ntm-card h5 { margin: 4px 0 -4px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .ntm-card { max-height: calc(100vh - 32px); overflow-y: auto; }
+  .ntm-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; color: var(--text); line-height: 1.45; }
   .ntm-go { height: 38px; border-radius: var(--r-2); border: 1px solid var(--line-2); background: var(--panel-3); color: var(--text); font-weight: 700; cursor: pointer; }
   .info-btn { border: 0; background: none; padding: 0 0 0 4px; color: var(--faint); cursor: pointer; vertical-align: -2px; line-height: 0; display: inline-block; }
   .info-btn:hover, .info-btn.on { color: var(--text); } .rr .info-btn { color: inherit; }
@@ -933,7 +936,7 @@
   function addInbox(title, body, mint, level, id, extra) {
     const key = id || `${title}|${body}`;
     if (INBOX.list.some((x) => x.key === key && Date.now() - x.at < 10 * 60000)) return;
-    INBOX.list.unshift({ key, title, body, mint, level, at: Date.now(), read: false, ...(extra || {}) });
+    INBOX.list.unshift({ key, title, body, mint, level, at: Date.now(), read: false, snap: mint ? tokenSnap(mint) : null, ...(extra || {}) });
     INBOX.list = INBOX.list.slice(0, 200);
     store.set('faro-inbox', INBOX.list); renderInbox();
   }
@@ -964,24 +967,104 @@
     if ((x.txAt || x.at) > robotAt) return { who: 'Ainda conferindo', why: 'Foi feita fora do painel (Phantom) ou pelo robô. Se foi o robô, o motivo aparece aqui em até 5 min, na próxima rodada.' };
     return { who: 'Você vendeu fora do Faro', why: 'Venda feita direto na Phantom (ou outro app), sem passar pelo painel nem pelo robô.' };
   }
+  // Foto da moeda no momento do aviso (para comparar com agora)
+  function tokenSnap(mint) {
+    const t = data?.tokens?.[mint]; if (!t) return null;
+    const p = t.position;
+    return { px: t.priceUsd, score: t.score, mc: t.mcapUsd, liq: t.liquidityUsd, held: !!t.held, value: p?.known ? p.valueUsd : null, pnlUsd: p?.known ? p.pnlUsd : null, pnlPct: p?.known ? p.openPnlPct : null, spent: p?.known ? p.spentUsd : null };
+  }
+  function ntType(x) {
+    if (x.kind) return x.kind;
+    const T = x.title || '';
+    if (/^Compra confirmada/.test(T)) return 'compra';
+    if (/^Venda confirmada/.test(T)) return 'venda';
+    if (/^Nova no radar/.test(T)) return 'nova';
+    if (/^Boa entrada/.test(T)) return 'entrada';
+    if (/^(Robô vendeu|Não vendida|Venda automática falhou|Vigia)/.test(T)) return 'robo';
+    if (/^(Perigo|Atenção) em/.test(T)) return 'alerta';
+    if (/^(Saída|Atenção): .+ - /.test(T)) return 'saida';
+    if (/^Recuperou/.test(T)) return 'recupera';
+    if (/^Ordem/.test(T)) return 'ordem';
+    return 'info';
+  }
+  const ntRow = (label, value, cl = '') => `<div><span>${label}</span><b class="${cl}">${value}</b></div>`;
+  // O que o robô faz com esta moeda agora (para os avisos de perigo e de saída)
+  function robotPlan(t) {
+    if (!t?.held) return 'Você não tem essa moeda: é só um aviso.';
+    const v = t.position?.valueUsd || 0, V = data?.config?.venda || {};
+    if (v < (V.valorMinimoUsd ?? 1)) return `Ela vale ${money(v)}, menos de US$ 1: o robô não vende sozinho (a taxa não compensa). A decisão é sua.`;
+    const tr = t.trail?.ativo ? `stop móvel ligado em ${price(t.trail.stop)} (garante +${Math.round(t.trail.travadoPct)}%)` : `stop móvel liga em +${V.stopMovel?.ativarPct ?? 30}%`;
+    return `A vigia está de olho a cada 10 s: vende sozinho em golpe confirmado, queda forte com confirmação, ${tr}, e realiza em +50%/+80% se a alta perder força.`;
+  }
+  // Bloco "Na sua carteira": quanto isso pesa no seu dinheiro, antes (no aviso) e agora
+  function walletBlock(x, t) {
+    const S = x.snap, p = t?.position;
+    const rows = [];
+    const same = S?.value != null && p?.known && t?.held && Math.abs((p.valueUsd || 0) - S.value) < Math.max(0.01, S.value * 0.01);
+    if (S?.held && S.value != null && !same) rows.push(ntRow('No momento do aviso', `${money(S.value)}${S.pnlUsd != null ? ` - <span class="${cls(S.pnlUsd)}">${signedMoney(S.pnlUsd)} (${pct(S.pnlPct)})</span>` : ''}`));
+    if (t?.held && p?.known) rows.push(ntRow('Agora', `${money(p.valueUsd)} - <span class="${cls(p.pnlUsd)}">${signedMoney(p.pnlUsd)} (${pct(p.openPnlPct)})</span>`), ntRow('Investido', money(p.spentUsd)));
+    else if (t && isSold(t)) { const r = closedResult(t); if (r) rows.push(ntRow('Resultado da operação', `<span class="${cls(r.pnl)}">${signedMoney(r.pnl)} (${pct(r.pct)})</span> - investiu ${money(r.spent)}, recebeu ${money(r.received)}`)); }
+    const W = walletTotals();
+    if (W.total != null) rows.push(ntRow('Carteira agora', `${money(W.total)} no total - ${money(W.solUsd)} disponível para comprar`));
+    return rows.length ? `<h5>Na sua carteira</h5><div class="ntm-rows">${rows.join('')}</div>` : '';
+  }
   function openNt(x) {
     const when = new Date(x.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Sao_Paulo' });
-    let body = `<p>${esc(x.body || '')}</p>`;
-    if (x.kind === 'venda') {
+    const t = x.mint ? data?.tokens?.[x.mint] : null, type = ntType(x), S = x.snap;
+    const chg = S?.px && t?.priceUsd ? (t.priceUsd / S.px - 1) * 100 : 0;
+    const sinceAviso = Math.abs(chg) >= 0.1 ? ` - desde o aviso: <span class="${cls(chg)}">${pct(chg)}</span>` : '';
+    let what = '', why = '', wallet = '', link = '', whyTitle = 'Por quê';
+    const txLink = (sig) => (sig ? `<a class="linkbtn" href="https://solscan.io/tx/${esc(sig)}" target="_blank" rel="noopener">Ver a transação no Solscan</a>` : '');
+    if (type === 'venda' && x.tokens != null) {
       const R = sellReason(x), usdv = x.solUsd ? ` (aprox. ${money(Math.abs(x.sol) * x.solUsd)})` : '';
-      body = `<div class="ntm-rows">
-        <div><span>Quantidade</span><b>${tokFmt(Math.abs(x.tokens))} ${esc(x.sym || '')} por ${solFmt(Math.abs(x.sol), 4)}${usdv}</b></div>
-        ${x.res ? `<div><span>Resultado da operação</span><b class="${cls(x.res.pnl)}">${signedMoney(x.res.pnl)} (${pct(x.res.pct)})</b></div>` : ''}
-        <div><span>${esc(R.who)}</span><b>${esc(R.why)}</b></div>
-        ${x.sinal ? `<div><span>No momento da venda</span><b>${esc(x.sinal)}</b></div>` : ''}
-      </div>${x.sig ? `<a class="linkbtn" href="https://solscan.io/tx/${esc(x.sig)}" target="_blank" rel="noopener">Ver a transação no Solscan</a>` : ''}`;
-    } else if (x.kind === 'compra') {
-      body = `<div class="ntm-rows"><div><span>Quantidade</span><b>${tokFmt(Math.abs(x.tokens))} ${esc(x.sym || '')} por ${solFmt(Math.abs(x.sol), 4)}</b></div></div>${x.sig ? `<a class="linkbtn" href="https://solscan.io/tx/${esc(x.sig)}" target="_blank" rel="noopener">Ver a transação no Solscan</a>` : ''}`;
+      what = ntRow('Vendeu', `${tokFmt(Math.abs(x.tokens))} ${esc(x.sym || '')} por ${solFmt(Math.abs(x.sol), 4)}${usdv}`) + (x.res ? ntRow('Resultado da operação', `${signedMoney(x.res.pnl)} (${pct(x.res.pct)})`, cls(x.res.pnl)) : '');
+      why = ntRow(esc(R.who), esc(R.why)) + (x.sinal ? ntRow('Sinal do Faro na hora', esc(x.sinal)) : '');
+      if (x.solPost != null) what += ntRow('Saldo de SOL depois', `${solFmt(x.solPost, 4)}${x.solUsd ? ` (aprox. ${money(x.solPost * x.solUsd)})` : ''}`);
+      link = txLink(x.sig);
+    } else if (type === 'compra' && x.tokens != null) {
+      const usdv = x.solUsd ? ` (aprox. ${money(Math.abs(x.sol) * x.solUsd)})` : '';
+      const pxBuy = x.solUsd && x.tokens ? (Math.abs(x.sol) * x.solUsd) / Math.abs(x.tokens) : null;
+      what = ntRow('Comprou', `${tokFmt(Math.abs(x.tokens))} ${esc(x.sym || '')} por ${solFmt(Math.abs(x.sol), 4)}${usdv}`) + (pxBuy ? ntRow('Preço médio da compra', price(pxBuy)) : '');
+      const robo = (data?.trades || []).find((r) => r.sig === x.sig);
+      why = SELL_SRC[x.sig] === 'faro-compra' ? ntRow('Quem comprou', 'Você, pelo Faro.') : robo ? ntRow('Quem comprou', `O robô, na compra automática${robo.sinal ? `: ${esc(robo.sinal)}` : ''}.`) : ntRow('Quem comprou', 'Você, fora do Faro (Phantom), ou o robô (aparece em até 5 min).');
+      if (x.solPost != null) what += ntRow('Saldo de SOL depois', `${solFmt(x.solPost, 4)}${x.solUsd ? ` (aprox. ${money(x.solPost * x.solUsd)})` : ''}`);
+      link = txLink(x.sig);
+    } else if (type === 'nova') {
+      const ok = (t?.checks || []).filter((c) => c.ok).map((c) => `${esc(c.label.replace(/^\d\.\s*/, ''))}: ${esc(c.detail)}`);
+      what = ntRow('Nota no aviso', `${S?.score ?? t?.score ?? '-'}${t?.score != null && S?.score != null && t.score !== S.score ? ` (agora ${t.score})` : ''}`) + ntRow('Market cap e liquidez', `${usd(S?.mc ?? t?.mcapUsd)} - liquidez ${usd(S?.liq ?? t?.liquidityUsd)}`) + (t?.priceUsd ? ntRow('Preço', `${price(t.priceUsd)}${sinceAviso}`) : '');
+      why = `<div><span>Passou em todos os filtros de segurança</span><ul class="ntm-list">${ok.map((x2) => `<li>${x2}</li>`).join('') || '<li>Mint, freeze, liquidez, holders, dev e RugCheck ok.</li>'}</ul></div>${t?.shape?.msg ? ntRow('Formato do gráfico', esc(t.shape.msg)) : ''}`;
+      const g = t ? liveSig(t) : null; if (g) why += ntRow('Sinal agora', `${esc(g.titulo)}: ${esc(g.msg)}`);
+    } else if (type === 'entrada') {
+      const g0 = x.sig0;
+      what = g0 ? ntRow('Sinal', esc(g0.msg)) + (g0.zona ? ntRow('Zona de compra', `${price(g0.zona[0])} a ${price(g0.zona[1])}`) : '') + ntRow('Stop e alvo', `${price(g0.stop)} - ${price(g0.alvo)} (risco/retorno 1:${(g0.rr || 0).toFixed(1).replace('.', ',')})`) : `<p>${esc(x.body)}</p>`;
+      if (t?.priceUsd) what += ntRow('Preço', `no aviso ${price(S?.px)} - agora ${price(t.priceUsd)}${sinceAviso}`);
+      why = ntRow('Por que é boa entrada', 'A moeda corrigiu até a zona de 50% a 61,8% da última alta, o fundo segurou e fechou uma vela verde com mais compra que venda (o método dos vídeos).');
+    } else if (type === 'saida') {
+      const g0 = x.sig0;
+      what = ntRow('Sinal', esc(g0?.msg || x.body)) + (g0?.stop ? ntRow('Stop e alvo', `${price(g0.stop)} - ${price(g0.alvo)}`) : '') + (t?.priceUsd ? ntRow('Preço', `${price(t.priceUsd)}${sinceAviso}`) : '');
+      why = `<p>${esc(robotPlan(t))}</p>`; whyTitle = 'O que o robô faz';
+    } else if (type === 'alerta') {
+      what = `<ul class="ntm-list">${String(x.body || '').split(/\.\s+/).filter(Boolean).map((m) => `<li>${esc(m.replace(/\.$/, ''))}</li>`).join('')}</ul>` + (t?.priceUsd ? ntRow('Preço', `${price(t.priceUsd)}${sinceAviso}`) : '');
+      why = `<p>${esc(robotPlan(t))}</p>`; whyTitle = 'O que o robô faz';
+    } else if (type === 'robo') {
+      const a = [t?.watchSell, t?.autoSell, t?.takeProfit].filter(Boolean).sort((p1, p2) => (p2.at || 0) - (p1.at || 0))[0];
+      what = ntRow('O que aconteceu', esc(x.body));
+      why = a ? ntRow('Regra que disparou', esc(`${ROBO_KIND[a.kind] || 'proteção automática'}${a.why ? `: ${a.why}` : ''}`)) + (a.outSol ? ntRow('Recebido', solFmt(a.outSol, 4)) : '') : '';
+      link = txLink(a?.sig);
+    } else if (type === 'recupera') {
+      what = ntRow('O que aconteceu', esc(x.body));
+      why = ntRow('Por quê', 'Ela estava perdida (valendo quase nada) e voltou a valer US$ 1 ou mais. A partir daí vale a pena vender, e as proteções do robô voltam a valer.');
+    } else {
+      what = `<p>${esc(x.body || '')}</p>`;
     }
+    if (x.mint && ['compra', 'venda', 'saida', 'alerta', 'robo', 'recupera', 'entrada', 'nova'].includes(type)) wallet = walletBlock(x, t);
     const m = $('ntm');
     m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>${esc(x.title)}</b><button class="icon-btn" data-ntmclose aria-label="Fechar">&times;</button></div>
-      <small class="ntm-at">${when}</small>${body}
-      ${x.mint && data?.tokens?.[x.mint] ? `<button class="ntm-go" data-ntmgo="${esc(x.mint)}">Abrir a moeda</button>` : ''}</div>`;
+      <small class="ntm-at">${when}</small>
+      ${what ? `<h5>O que aconteceu</h5><div class="ntm-rows">${what}</div>` : ''}
+      ${why ? `<h5>${whyTitle}</h5><div class="ntm-rows">${why}</div>` : ''}
+      ${wallet}${link}
+      ${x.mint && t ? `<button class="ntm-go" data-ntmgo="${esc(x.mint)}">Abrir a moeda</button>` : ''}</div>`;
     m.hidden = false;
   }
   document.addEventListener('click', (e) => {
@@ -1124,11 +1207,11 @@
       const sym = t.symbol || t.mint.slice(0, 6);
       if (g.tipo === 'entrada') {
         entrada = true;
-        addInbox(`Boa entrada: ${sym}`, `${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${g.rr.toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k);
+        addInbox(`Boa entrada: ${sym}`, `${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${g.rr.toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k, { kind: 'entrada', sig0: { msg: g.msg, zona: g.zona, stop: g.stop, alvo: g.alvo, rr: g.rr } });
         toast(`Boa entrada: ${sym}`);
       } else {
         g.fase === 'realizar' ? (bom = true) : (ruim = true);
-        addInbox(`${g.fase === 'realizar' ? 'Saída' : 'Atenção'}: ${sym} - ${g.titulo.toLowerCase()}`, g.msg, t.mint, g.fase === 'realizar' ? 'good' : 'warn', 'sinal-' + k);
+        addInbox(`${g.fase === 'realizar' ? 'Saída' : 'Atenção'}: ${sym} - ${g.titulo.toLowerCase()}`, g.msg, t.mint, g.fase === 'realizar' ? 'good' : 'warn', 'sinal-' + k, { kind: 'saida', sig0: { msg: g.msg, stop: g.stop, alvo: g.alvo, fase: g.fase } });
         toast(`${sym}: ${g.titulo.toLowerCase()}`);
       }
       if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') {
@@ -2858,7 +2941,7 @@
         const r0 = sold && t ? (isSold(t) ? closedResult(t) : null) : null;
         const g0 = sold && t ? (() => { try { return liveSig(t); } catch { return null; } })() : null;
         addInbox(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${t?.symbol || o.mint.slice(0, 6)}`, `${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''} por ${solFmt(Math.abs(o.sol), 4)}${sold ? ' - toque para ver o motivo' : ''}`, o.mint, 'info', 'tx-' + o.sig,
-          { sig: o.sig, kind: sold ? 'venda' : 'compra', tokens: o.tokens, sol: o.sol, solUsd: LIVE.solUsd || null, sym: t?.symbol, txAt: o.at, res: r0 ? { pnl: r0.pnl, pct: r0.pct, spent: r0.spent } : null, sinal: g0 ? `${g0.tipo === 'saida' ? 'Sinal de saída' : 'Sinal de entrada'}: ${g0.titulo}` : null });
+          { sig: o.sig, kind: sold ? 'venda' : 'compra', solPost: WAL.sol?.v ?? null, tokens: o.tokens, sol: o.sol, solUsd: LIVE.solUsd || null, sym: t?.symbol, txAt: o.at, res: r0 ? { pnl: r0.pnl, pct: r0.pct, spent: r0.spent } : null, sinal: g0 ? `${g0.tipo === 'saida' ? 'Sinal de saída' : 'Sinal de entrada'}: ${g0.titulo}` : null });
         if (t && CH.mint === o.mint && chartSrc === 'faro') decorate(t);
       }
       if (r.ops.length && !quiet && !SND.has(sig)) { SND.add(sig); play(r.ops.some((o) => o.tokens < 0) ? 'venda' : 'boa'); }
@@ -3470,7 +3553,7 @@
           }
         }
         const sig = await execute(t, st);
-        if (st.side === 'sell' && sig && sig !== 'DEMO') { SELL_SRC[sig] = st.emergency ? 'emergencia' : 'faro'; store.set('faro-sell-src', SELL_SRC); }
+        if (sig && sig !== 'DEMO') { SELL_SRC[sig] = st.side === 'sell' ? (st.emergency ? 'emergencia' : 'faro') : 'faro-compra'; store.set('faro-sell-src', SELL_SRC); }
         const buy = st.side === 'buy';
         st.quote = null; st.amt = '';
         st.msg = sig === 'DEMO'
