@@ -614,6 +614,9 @@
   .seg button { border: 0; background: transparent; height: 34px; border-radius: var(--r-1); color: var(--muted); font-weight: 700; font-size: 13px; }
   .seg button[aria-pressed="true"] { background: var(--panel-3); color: var(--text); }
   .drawer-body { flex: 1; overflow-y: auto; margin-top: var(--sp-5); }
+  .drawer-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding-top: var(--sp-4); margin-top: var(--sp-3); border-top: 1px solid var(--line); }
+  .drawer-foot .hpager { margin: 0; }
+  .foot-close { height: 36px; padding: 0 16px; border-radius: var(--r-2); border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); font-weight: 700; cursor: pointer; }
   .kv { display: grid; grid-template-columns: 1fr auto; gap: 10px var(--sp-3); font-size: 13px; }
   .kv span:nth-child(odd) { color: var(--muted); }
   .kv span:nth-child(even) { font-weight: 700; text-align: right; }
@@ -776,10 +779,10 @@
   <div class="drawer" id="inbox" role="dialog" aria-modal="true" aria-label="Central de notificações">
     <div class="drawer-panel">
       <div class="drawer-head">
-        <button class="back" id="inbox-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Voltar</button>
         <b>Notificações</b><span style="flex:1"></span><button class="linkbtn" id="inbox-clear">Limpar tudo</button>
       </div>
       <div class="drawer-body" id="inbox-list"></div>
+      <div class="drawer-foot"><button class="foot-close" id="inbox-back">Fechar</button><div class="hpager" id="inbox-pager"></div></div>
     </div>
   </div>
 
@@ -948,13 +951,14 @@
     const el = $('inbox-list'); if (!el || !$('inbox').classList.contains('show')) return;
     const per = 10, pages = Math.max(1, Math.ceil(INBOX.list.length / per));
     INBOX.page = Math.min(INBOX.page, pages);
+    $('inbox-pager').innerHTML = pages > 1 ? `<button data-ntpage="-1" ${INBOX.page <= 1 ? 'disabled' : ''} aria-label="Anterior">&larr;</button><span>${INBOX.page} de ${pages}</span><button data-ntpage="1" ${INBOX.page >= pages ? 'disabled' : ''} aria-label="Próxima">&rarr;</button>` : '';
     const ico = { danger: ICON.warn, warn: ICON.warn, good: ICON.radar, info: ICON.swap };
     el.innerHTML = INBOX.list.length ? INBOX.list.slice((INBOX.page - 1) * per, INBOX.page * per).map((x, i) => `
       <button class="nt ${x.level} ${x.read ? '' : 'unread'}" data-nt="${(INBOX.page - 1) * per + i}">
         <i class="nt-ico">${ico[x.level] || ICON.swap}</i>
         <span class="nt-txt"><b>${esc(x.title)}</b><small>${esc(x.body || '')}</small></span>
         <span class="nt-at">${ago(x.at)}<br>${hhmm(x.at)}</span>
-      </button>`).join('') + (pages > 1 ? `<div class="hpager"><button data-ntpage="-1" ${INBOX.page <= 1 ? 'disabled' : ''}>&larr;</button><span>${INBOX.page} de ${pages}</span><button data-ntpage="1" ${INBOX.page >= pages ? 'disabled' : ''}>&rarr;</button></div>` : '')
+      </button>`).join('')
       : `<div class="empty">${BELL_ICON}<b>Nada por aqui</b>Quando tocar um som ou aparecer um aviso, ele fica guardado nesta lista.</div>`;
   }
   // ---------- Detalhe da notificação (modal): motivo da venda e o resultado ----------
