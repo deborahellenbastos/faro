@@ -46,7 +46,8 @@ const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
 
 // Moedas que você tem agora, com o pico desde a compra (velas do robô + o que a vigia já viu)
 // Uma venda feita antes de uma nova compra da mesma moeda não conta mais
-const done = (t) => mem.sold[t.mint] && mem.sold[t.mint].at > (t.position?.lastBuyAt || 0);
+// (também vale o que ficou registrado nas rodadas anteriores, para não repetir o mesmo aviso)
+const done = (t) => [mem.sold[t.mint], t.watchSell].some((x) => x && x.at > (t.position?.lastBuyAt || 0));
 let held = Object.values(state.tokens || {}).filter((t) => t.held && t.heldAmount > 0 && !done(t));
 const L = cfg.venda?.lucro || {};
 const lucroOn = L.ligado === true && process.env.LUCRO_AUTO !== 'false';

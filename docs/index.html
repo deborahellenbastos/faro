@@ -902,13 +902,25 @@
 
   // Compara com o que você já viu e dispara sons/avisos só para o que é novo
   const ROBO_IDS = new Set(['vigia', 'auto-venda', 'lucro-auto']);
+  const roboTitle = (msg) => /não compensa/.test(msg) ? 'Não vendida (vale menos de US$ 1)' : /falh/i.test(msg) ? 'Venda automática falhou' : 'Robô vendeu';
+  // Limpa avisos repetidos de versões anteriores: mesma moeda e mesmo texto ficam uma vez só (o mais antigo)
+  (() => {
+    const seenK = new Set(); const out = [];
+    for (const x of [...INBOX.list].sort((a, b) => a.at - b.at)) {
+      const k = String(x.key || '').startsWith('robo-') ? `${x.mint}|${x.body}` : x.key + '|' + x.at;
+      if (seenK.has(k)) continue; seenK.add(k);
+      if (String(x.key || '').startsWith('robo-')) x.title = `${roboTitle(x.body || '')}: ${String(x.title || '').split(': ').slice(1).join(': ')}`;
+      out.push(x);
+    }
+    INBOX.list = out.sort((a, b) => b.at - a.at); store.set('faro-inbox', INBOX.list);
+  })();
   // Vendas do robô que aconteceram antes desta versão também entram na central (uma vez só)
   function backfillRobo(d) {
     for (const t of Object.values(d.tokens || {})) for (const a of t.safety?.alerts || []) {
       if (!ROBO_IDS.has(a.id)) continue;
       const key = `robo-${t.mint}-${a.id}-${a.at}`;
-      if (INBOX.list.some((x) => x.key === key)) continue;
-      INBOX.list.push({ key, title: `${/falh/i.test(a.msg) ? 'Venda automática falhou' : 'Robô vendeu'}: ${t.symbol}`, body: a.msg, mint: t.mint, level: a.level === 'danger' ? 'danger' : a.level === 'warn' ? 'warn' : 'info', at: a.at, read: false });
+      if (INBOX.list.some((x) => x.key === key || (x.mint === t.mint && x.body === a.msg && String(x.key).startsWith('robo-')))) continue;
+      INBOX.list.push({ key, title: `${roboTitle(a.msg)}: ${t.symbol}`, body: a.msg, mint: t.mint, level: a.level === 'danger' ? 'danger' : a.level === 'warn' ? 'warn' : 'info', at: a.at, read: false });
     }
     INBOX.list.sort((x, y) => y.at - x.at); store.set('faro-inbox', INBOX.list); renderInbox();
   }
@@ -934,7 +946,9 @@
     store.set('moeda-seen', seen);
     if (!events.length) return;
     // Um som por atualização: problema numa moeda sua tem prioridade (venda no lucro toca o som bom)
-    const bad = events.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto'));
+    const loud = events.filter((e) => !(e.kind === 'robo' && /não compensa/.test(e.alerts[0].msg)));
+    if (!loud.length) return;
+    const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto'));
     play(bad ? 'problema' : 'boa');
     for (const e of events) {
       if (e.kind === 'nova') {
@@ -942,6 +956,7 @@
         notify(`Nova no radar: ${e.t.symbol}`, `Nota ${e.t.score} - market cap ${usd(e.t.mcapUsd)}`, 'nova-' + e.t.mint);
       } else if (e.kind === 'robo') {
         const a = e.alerts[0];
+        if (/não compensa/.test(a.msg)) continue; // não vendida por valer pouco: só fica registrada, sem som nem aviso
         toast(`${e.t.symbol}: ${a.msg.split('.')[0]}`);
         if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') { try { new Notification(`Robô vendeu: ${e.t.symbol}`, { body: a.msg, tag: 'robo-' + e.t.mint }); } catch {} }
       } else {
