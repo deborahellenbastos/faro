@@ -902,6 +902,17 @@
   const isSold = (t) => !!t.closedOp && !t.held;
   const isLost = (t) => !!(t.held && t.position?.known && t.position.openPnlPct <= -95);
   const isClosed = (t) => isSold(t) || isLost(t);
+  // Resultado de uma operação encerrada fica congelado (não muda com o preço da moeda nem do SOL depois da venda)
+  const CLOSED = store.get('faro-closed', {});
+  function closedResult(t) {
+    const p = t.position; if (!p?.known) return null;
+    const key = t.history?.[0]?.sig || '';
+    const c = CLOSED[t.mint]; if (c && c.key === key) return c;
+    const spent = p.spentUsd || 0, received = p.receivedUsd || 0;
+    const r = { key, spent, received, pnl: received - spent, pct: spent ? ((received - spent) / spent) * 100 : 0, buys: p.buys, sells: p.sells, entry: p.avgPriceUsd };
+    CLOSED[t.mint] = r; store.set('faro-closed', CLOSED);
+    return r;
+  }
   function isMine(t) { return !!(t.held || (!walletOn() && manualMine.has(t.mint))); }
 
   // Compara com o que você já viu e dispara sons/avisos só para o que é novo
@@ -1404,17 +1415,18 @@
   function opBlock(t) {
     const p = t.position;
     if (isSold(t) && p?.known) {
-      const res = (p.receivedUsd || 0) - (p.spentUsd || 0);
+      const R = closedResult(t);
+      const res = R.pnl;
       return `<section class="panel op"><div class="op-h"><b>Operação encerrada</b><span>${p.buys} ${p.buys === 1 ? 'compra' : 'compras'} - ${p.sells} ${p.sells === 1 ? 'venda' : 'vendas'}</span></div>
         <div class="op-top">
-          <div><div class="op-val num">${money(p.receivedUsd)}</div><div class="op-qty">recebido nas vendas</div></div>
-          <div class="op-res"><div class="op-pnl num ${cls(res)}">${signedMoney(res)}</div><div class="op-pct num"><i class="tri ${res >= 0 ? 'up' : 'down'}"></i>${pct(p.spentUsd ? (res / p.spentUsd) * 100 : 0)}</div></div>
+          <div><div class="op-val num">${money(R.received)}</div><div class="op-qty">recebido nas vendas</div></div>
+          <div class="op-res"><div class="op-pnl num ${cls(res)}">${signedMoney(res)}</div><div class="op-pct num"><i class="tri ${res >= 0 ? 'up' : 'down'}"></i>${pct(R.pct)}</div></div>
         </div>
         <hr class="op-sep">
         <div class="op-rows">
-          <span>Montante investido</span><b class="num">${money(p.spentUsd)}</b>
-          <span>Recebido</span><b class="num">${money(p.receivedUsd)}</b>
-          <span>Preço de entrada</span><b class="num">${price(p.avgPriceUsd)}</b>
+          <span>Montante investido</span><b class="num">${money(R.spent)}</b>
+          <span>Recebido</span><b class="num">${money(R.received)}</b>
+          <span>Preço de entrada</span><b class="num">${price(R.entry || p.avgPriceUsd)}</b>
         </div>
         ${historyBlock(t)}
       </section>`;
@@ -1576,7 +1588,8 @@
       const l = levelOf(t);
       if (isSold(t)) {
         main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>Vendida ${t.history?.[0] ? ago(t.history[0].at) : ''}</small>`;
-        side = `<b class="num ${cls(p?.pnlUsd)}">${signedMoney(p?.pnlUsd || 0)}</b><small class="num ${cls(p?.pnlPct)}">${pct(p?.pnlPct)}</small>`;
+        const r = closedResult(t);
+        side = r ? `<b class="num ${cls(r.pnl)}">${signedMoney(r.pnl)}</b><small class="num ${cls(r.pct)}">${pct(r.pct)}</small>` : '';
       } else {
       main = `<b>${esc(t.symbol)} ${l !== 'ok' && !isLost(t) ? `<i class="sdot ${l}" title="${l === 'danger' ? 'Perigo' : 'Atenção'}"></i>` : ''}</b><small class="num">${isLost(t) ? 'Perdida - ' : ''}${t.held ? `${tokFmt(t.heldAmount)} ${esc(t.symbol)}` : 'marcada por você'}</small>`;
       const val = `<div class="r-val"><b class="num">${p?.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p?.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</div>`;
@@ -2489,10 +2502,11 @@
     // Resumo
     const stat = (label, value, sub = '', extra = '') => `<div class="stat ${extra}"><span>${label}</span><b class="num">${value}</b>${sub ? `<small class="num">${sub}</small>` : ''}</div>`;
     if (ui.tab === 'minhas') {
-      const ps = [...mine, ...closed].map((t) => t.position).filter((p) => p && p.known);
+      const ps = held.map((t) => t.position).filter((p) => p && p.known);
+      const shut = closed.filter(isSold).map(closedResult).filter(Boolean);
       const value = held.reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
-      const spent = ps.reduce((a, p) => a + (p.spentUsd || 0), 0);
-      const pnl = ps.reduce((a, p) => a + (p.pnlUsd || 0), 0);
+      const spent = ps.reduce((a, p) => a + (p.spentUsd || 0), 0) + shut.reduce((a, r) => a + r.spent, 0);
+      const pnl = ps.reduce((a, p) => a + (p.pnlUsd || 0), 0) + shut.reduce((a, r) => a + r.pnl, 0);
       const solUsd = ps.find((p) => p.solUsd)?.solUsd;
       const solBal = data.wallet?.solBalance;
       $('summary').innerHTML = [
