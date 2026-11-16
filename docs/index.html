@@ -870,6 +870,7 @@
   const save = () => store.set('moeda-ui', { tab: ui.tab, sort: ui.sort });
   const isNarrow = () => window.matchMedia('(max-width: 1099px)').matches;
   const ICON = {
+    claude: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>',
     chev: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>',
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
     expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>',
@@ -1595,6 +1596,58 @@
   const infoBox = (key, id) => (INFO_OPEN.has(id) ? `<div class="info-box">${INFO_TXT[key]}</div>` : '');
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-info]'); if (!b) return; e.preventDefault(); const id = b.dataset.info; INFO_OPEN.has(id) ? INFO_OPEN.delete(id) : INFO_OPEN.add(id); render(); });
 
+  // ---------- Perguntar ao Claude (custo zero): abre o Claude com o contexto da moeda e copia a foto do gráfico ----------
+  function claudeContext(t) {
+    const P = t.periods || {}, L = [];
+    const st = isMine(t) ? 'na minha carteira' : { aprovada: 'no Radar', aguardando: 'em Observando', reprovada: 'reprovada' }[t.status] || t.status;
+    L.push(`Estou operando memecoins na Solana com o meu painel (Faro). Me ajude a analisar esta moeda. Os dados abaixo são de agora (${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}). Se eu colar a imagem, é o gráfico de 1 min do meu painel.`);
+    L.push('');
+    L.push(`Moeda: ${t.symbol || ''} (${t.name || ''}) - contrato ${t.mint}${t.pairUrl ? ` - ${t.pairUrl}` : ''}`);
+    L.push(`Situação no Faro: ${st}${t.score != null ? ` - nota ${t.score}` : ''}${t.shape?.msg ? ` - gráfico: ${t.shape.msg}` : ''}`);
+    L.push(`Preço: ${price(t.priceUsd)} - variação 5m ${pct(P.m5?.chg || 0)}, 1h ${pct(P.h1?.chg || 0)}, 6h ${pct(P.h6?.chg || 0)}, 24h ${pct(P.h24?.chg || 0)}`);
+    L.push(`Market cap ${usd(t.mcapUsd)} - liquidez ${usd(t.liquidityUsd)}${t.rug?.totalHolders ? ` - ${t.rug.totalHolders} holders` : ''}${t.rug?.top10Pct != null ? ` - top 10 com ${t.rug.top10Pct.toFixed(1)}%` : ''}`);
+    if (P.m5 || P.h1) L.push(`Transações: 5 min ${P.m5?.buys ?? '-'} compras x ${P.m5?.sells ?? '-'} vendas (vol ${usd(P.m5?.vol || 0)}) - 1h ${P.h1?.buys ?? '-'} x ${P.h1?.sells ?? '-'} (vol ${usd(P.h1?.vol || 0)})`);
+    const al = (t.safety?.alerts || []).map((a) => a.msg);
+    L.push(`Alertas de segurança: ${al.length ? al.join(' | ') : 'nenhum'}`);
+    const g = liveSig(t);
+    if (g) L.push(`Sinal do Faro: ${g.tipo === 'entrada' ? 'entrada' : 'saída'} - ${g.titulo}: ${g.msg}${g.zona ? ` Zona de compra ${price(g.zona[0])} a ${price(g.zona[1])}.` : ''}${g.stop ? ` Stop ${price(g.stop)}.` : ''}${g.alvo ? ` Alvo ${price(g.alvo)}.` : ''}${g.rr ? ` Risco/retorno 1:${g.rr.toFixed(1)}.` : ''}`);
+    const sw = swingMove(t);
+    if (sw) L.push(`Fibonacci da última alta (fundo ${price(sw.lo)} -> topo ${price(sw.hi)}): 38,2% = ${price(sw.hi - (sw.hi - sw.lo) * 0.382)}, 50% = ${price(sw.hi - (sw.hi - sw.lo) * 0.5)}, 61,8% = ${price(sw.hi - (sw.hi - sw.lo) * 0.618)}`);
+    const c = candlesOf(t).slice(-12);
+    if (c.length) {
+      L.push('Últimas velas de 5 min (hora: abertura / máxima / mínima / fechamento - volume US$):');
+      for (const x of c) L.push(`${hhmm(x[0])}: ${price(x[1])} / ${price(x[2])} / ${price(x[3])} / ${price(x[4])} - ${Math.round(x[5] || 0)}`);
+    }
+    if (t.held && t.position?.known) {
+      const p = t.position, tr = t.trail;
+      L.push(`Minha posição: entrei a ${price(p.avgPriceUsd)}, investi ${money(p.spentUsd)}, vale ${money(p.valueUsd)} agora (${pct(p.openPnlPct)}).${tr?.ativo ? ` Stop móvel do robô em ${price(tr.stop)}.` : ''}`);
+      L.push('Meu robô vende sozinho: golpe no contrato, queda forte com confirmação, stop móvel (liga em +30%, segue o topo a partir de +60%), realização em +50%/+80% se a alta perder força, e +100%.');
+    } else {
+      L.push(`Não tenho essa moeda. Banca: ${money(walletTotals().solUsd || 0)} disponível, valor por operação ${data.banca?.faixaUsd ? 'US$ ' + data.banca.faixaUsd : (data.config?.compra?.solPorCompra || '') + ' SOL'}.`);
+    }
+    L.push('');
+    L.push('Minha pergunta: ');
+    return L.join('\n');
+  }
+  async function askClaude(mint) {
+    const t = data?.tokens?.[mint]; if (!t) return;
+    const text = claudeContext(t);
+    let img = false;
+    try {
+      if (CH.chart && CH.mint === mint && chartSrc === 'faro' && window.ClipboardItem) {
+        const canvas = CH.chart.takeScreenshot();
+        const blob = await new Promise((ok) => canvas.toBlob(ok, 'image/png'));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        img = true;
+      }
+    } catch {}
+    const url = `https://claude.ai/new?q=${encodeURIComponent(text)}`;
+    if (url.length < 12000) window.open(url, '_blank', 'noopener');
+    else { try { await navigator.clipboard.writeText(text); } catch {} window.open('https://claude.ai/new', '_blank', 'noopener'); }
+    toast(img ? 'Abri o Claude com os dados. A foto do gráfico está copiada: cole com Cmd+V e escreva sua pergunta.' : chartSrc === 'faro' ? 'Abri o Claude com os dados desta moeda. Escreva sua pergunta no fim.' : 'Abri o Claude com os dados. Para mandar a foto do gráfico, use o gráfico Faro e clique de novo.');
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-askclaude]'); if (b) askClaude(b.dataset.askclaude); });
+
   // Sinal ao vivo: velas do robô (5 min) ou as do gráfico aberto, com o preço de agora
   function liveSig(t) {
     const c = candlesOf(t);
@@ -1775,6 +1828,7 @@
         <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
         <div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>
         <span style="flex:1"></span>
+        <button class="btn btn-sm" data-askclaude="${esc(t.mint)}" title="Abre o Claude com os dados desta moeda e copia a foto do gráfico do Faro para você colar">${ICON.claude}Perguntar ao Claude</button>
         <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
       </div>
       <div class="lw-slot" data-lwslot="${esc(t.mint)}"><div class="dexwrap" data-dexslot></div><div class="farowrap" data-faroslot>
