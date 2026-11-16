@@ -69,15 +69,20 @@ export function trailStop(c, pos, o = {}, prev = 0) {
   const peak = Math.max(pos.entryPx, pos.peak || 0, ...since.map((x) => x[2]));
   const peakGain = (peak / pos.entryPx - 1) * 100;
   if (peakGain < ativar && !(prev > 0)) return { ativo: false, peak, ativarPx: pos.entryPx * (1 + ativar / 100), falta: ativar - peakGain };
-  let pivot = 0;
-  for (let i = 2; i < since.length - 2; i++) {
-    const l = since[i][3];
-    if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) pivot = l;
+  // Começo da alta (até seguirAPartirPct): o stop fica logo acima da entrada, só sai se devolver quase tudo.
+  // Memecoin corrige 20-30% no meio da subida; seguir o topo cedo demais vende na correção normal.
+  const seguir = o.seguirAPartirPct ?? 60;
+  const floor = pos.entryPx * (1 + minLock / 100);
+  let stop = floor;
+  if (peakGain >= seguir) {
+    let pivot = 0;
+    for (let i = 2; i < since.length - 2; i++) {
+      const l = since[i][3];
+      if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) pivot = l;
+    }
+    stop = Math.min(Math.max(pivot * 0.97, peak * (1 - dist / 100)), peak * 0.88);
   }
-  const byPct = peak * (1 - dist / 100);
-  let stop = Math.max(pivot * 0.97, byPct);
-  stop = Math.min(stop, peak * 0.88);
-  stop = Math.max(stop, pos.entryPx * (1 + minLock / 100), prev || 0);
+  stop = Math.max(stop, floor, prev || 0);
   return { ativo: true, stop, peak, travadoPct: (stop / pos.entryPx - 1) * 100 };
 }
 

@@ -176,7 +176,9 @@ O Faro avisa quando é uma boa hora de entrar ou sair. Ele usa as velas de 5 min
 O stop móvel protege o lucro de uma moeda que você tem e que está subindo.
 
 - **Quando liga:** sozinho, quando a moeda chega a +30% desde a sua compra.
-- **Onde fica o stop:** no último fundo da subida, ou 25% abaixo do topo, o que estiver mais alto.
+- **De +30% a +60%:** o stop fica logo acima da sua entrada (+5%). Ele só vende se a moeda devolver quase toda a alta, porque memecoin corrige 20% a 30% no meio da subida.
+- **Acima de +60%:** o stop passa a seguir o topo. Fica no último fundo da subida, ou 25% abaixo do topo, o que estiver mais alto.
+- **Filtro de pavio:** só vende se o preço ficar abaixo do stop por 60 s seguidos.
   - Nunca fica a menos de 12% do topo, porque memecoin oscila.
   - Sempre garante pelo menos +5% de lucro.
 - **Como anda:** sobe junto com o preço e nunca desce.

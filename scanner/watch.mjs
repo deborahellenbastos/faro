@@ -179,8 +179,10 @@ while (Date.now() < until) {
       let trailPx = 0;
       if (trailOn && t.trail?.ativo && t.position?.avgPriceUsd > 0) {
         const entry = t.position.avgPriceUsd, pk = mem.peak[t.mint];
-        trailPx = Math.max(t.trail.stop, Math.min(pk * (1 - (SM.distanciaPct ?? 25) / 100), pk * 0.88), entry * (1 + (SM.minimoTravadoPct ?? 5) / 100));
+        const follow = (pk / entry - 1) * 100 >= (SM.seguirAPartirPct ?? 60) ? Math.min(pk * (1 - (SM.distanciaPct ?? 25) / 100), pk * 0.88) : 0;
+        trailPx = Math.max(t.trail.stop, follow, entry * (1 + (SM.minimoTravadoPct ?? 5) / 100));
       }
+      if (mem.below?.[t.mint] && !(trailPx && px < trailPx)) delete mem.below[t.mint]; // voltou acima do stop: zera a confirmação
       // LP destravada só vende se a liquidez estiver saindo de verdade (15%+ na janela); os outros sinais de golpe vendem direto
       let golpe = scam[t.mint];
       if (golpe && /^liquidez destravada/.test(golpe) && !golpe.includes(';') && liqDrop < confLiq) {
@@ -188,6 +190,8 @@ while (Date.now() < until) {
         golpe = null;
       }
       if (golpe) await sell(t, `golpe no contrato: ${golpe}`, 'golpe', px);
+      // Filtro de pavio: só vende se ficar abaixo do stop por confirmarSegundos seguidos
+      else if (trailPx && px < trailPx && !(() => { mem.below = mem.below || {}; mem.below[t.mint] = mem.below[t.mint] || now; const ok = now - mem.below[t.mint] >= (SM.confirmarSegundos ?? 60) * 1000; if (!ok && mem.below[t.mint] === now) log(`${t.symbol}: abaixo do stop móvel, confirmando por ${SM.confirmarSegundos ?? 60}s antes de vender...`); return ok; })()) { /* aguardando confirmação */ }
       else if (trailPx && px < trailPx) await sell(t, `stop móvel: caiu abaixo de US$ ${trailPx.toPrecision(4)} (garantindo +${((trailPx / t.position.avgPriceUsd - 1) * 100).toFixed(0)}%)`, 'stop-movel', px);
       else if (realizeOn && gain != null && gain >= 50 && gain < (L.alvoPct ?? 100) && (() => {
         const weak = weakSignals({ candles: t.candles, entryAt: t.position?.lastBuyAt || t.heldSince || 0, buys5: Number(p?.txns?.m5?.buys) || 0, sells5: Number(p?.txns?.m5?.sells) || 0, vol5: Number(p?.volume?.m5), volH1: Number(p?.volume?.h1), fromPeak });

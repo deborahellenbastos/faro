@@ -292,6 +292,17 @@ assert.equal(cfg.compra.ativada, false);
   assert.deepEqual(w.map((x) => x.id), ['vendas', 'volume', 'recuo']);
 }
 
+// VI (16/11): subiu +44%, corrigiu 27% sem voltar à entrada. O stop fica logo acima da entrada até +60%
+{
+  const T0 = Date.now() - 20 * 300000; const c = [];
+  const push = (o, h, l, cl) => c.push([T0 + c.length * 300000, o, h, l, cl, 100]);
+  push(0.0000392, 0.0000439, 0.0000365, 0.000039); push(0.000039, 0.0000406, 0.0000319, 0.0000383);
+  push(0.0000383, 0.0000522, 0.0000378, 0.0000443); push(0.0000443, 0.0000578, 0.0000414, 0.0000517); push(0.0000517, 0.0000529, 0.0000422, 0.000045);
+  const tr = trailStop(c, { entryPx: 0.00004, entryAt: T0 }, { ativarPct: 30, seguirAPartirPct: 60, distanciaPct: 25, minimoTravadoPct: 5 });
+  assert.ok(tr.ativo && Math.abs(tr.stop - 0.000042) < 1e-12, 'stop na entrada +5%');
+  assert.ok(0.0000422 > tr.stop, 'a mínima da correção não teria vendido');
+}
+
 // O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais
 {
   const norm = (x) => x.replace(/export /g, '').replace(/\s+/g, ' ').trim();
