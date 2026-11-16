@@ -1228,7 +1228,8 @@
     const sw = swing(t);
     // sugestões: stop abaixo do fundo recente (entre -8% e -40%), alvo no topo anterior (se 30%+ acima) ou +100%
     // Com sinal de entrada, o plano já vem pronto: stop abaixo do fundo da correção e alvo no topo anterior
-    const g = liveSig(t), gOk = g?.tipo === 'entrada' && g.stop > 0 && g.stop < E && g.alvo > E;
+    // (se o preço já está no topo anterior ou acima, o alvo do sinal não serve: usa +100%)
+    const g = liveSig(t), gOk = g?.tipo === 'entrada' && g.stop > 0 && g.stop < E && g.alvo > E * 1.3;
     const sugStop = gOk ? g.stop : sw && sw.low < E * 0.92 && sw.low > E * 0.6 ? sw.low * 0.97 : E * 0.75;
     const sugTp = gOk ? g.alvo : sw && sw.high > E * 1.3 ? sw.high : E * 2;
     const stop = numIn(st.pStop) || sugStop, tp = numIn(st.pTp) || sugTp;
@@ -1263,7 +1264,7 @@
         <input inputmode="decimal" value="${String(P.R.pct).replace('.', ',')}" data-riscopct>%</span>
         ${P.sizeUsd > 0 ? `<button class="linkbtn planlink" data-usesize="${m}" data-usd="${P.sizeUsd.toFixed(2)}">Tamanho sugerido: ${brl(P.sizeUsd)} (usar)</button>` : ''}
       </div>
-      ${ok ? '' : `<p class="pl-warn">Comprando agora, você arrisca ${pctBr(P.riskPct)} para ganhar ${pctBr(P.gainPct)}. O ganho precisa ser pelo menos o dobro da perda, senão as operações que dão errado comem o lucro das que dão certo. ${P.g?.zona && P.g.zona[1] < P.E ? `Isso costuma acontecer perto do topo: o melhor é esperar a correção até ${price(P.g.zona[0])} a ${price(P.g.zona[1])}, e o Faro avisa quando chegar.` : 'Isso costuma acontecer perto do topo: o melhor é esperar uma correção.'}${st.planOverride ? '' : ` <button class="linkbtn" data-planok="${m}">Comprar mesmo assim</button>`}</p>`}
+      ${ok ? '' : `<p class="pl-warn">Comprando agora, você arrisca ${pctBr(P.riskPct)} para ganhar ${pctBr(P.gainPct)}. O ideal é o ganho ser pelo menos o dobro da perda. ${P.g?.zona && P.g.zona[1] < P.E ? `Isso costuma acontecer perto do topo: o melhor é esperar a correção até ${price(P.g.zona[0])} a ${price(P.g.zona[1])}, e o Faro avisa quando chegar.` : 'Isso costuma acontecer perto do topo: o melhor é esperar uma correção.'}</p>`}
     </div>`;
   }
 
@@ -1910,7 +1911,7 @@
             <span>Você ${buy ? 'paga' : 'vende'} <b>${buy ? solFmt(q.inUi, 4) : `${tokFmt(q.inUi)} ${esc(t.symbol)}`}</b></span>
             <span>Recebe aprox. <b>${buy ? `${tokFmt(q.outUi)} ${esc(t.symbol)}` : solFmt(q.outUi, 4)}</b></span>
             <span>Impacto no preço <b>${q.impact.toFixed(2)}%</b> - slippage ${auto ? 'automático' : st.slip + '%'}</span></div>` : '';
-      const blockBuy = buy && !t.held && !st.planOverride && (planOf(t, st)?.rr || 0) < 2;
+      const blockBuy = false; // o plano avisa, mas a decisão é sua: nunca trava a compra
       body = `${amountBox}
         ${buy ? planHtml(t, st, m) : ''}
         <div class="tbox">
