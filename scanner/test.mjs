@@ -221,6 +221,27 @@ assert.equal(scamSignals(base0, { rugged: true, lpLockedPct: 100, devPct: 4 }, c
 // moeda comprada já sem liquidez travada não dispara venda
 assert.equal(scamSignals({ lpLockedPct: 0, devPct: 0 }, { lpLockedPct: 0, devPct: 0 }, cfgT).length, 0);
 
+// Simulação: abre com plano (risco/retorno >= 2) e fecha no alvo ou no stop
+{
+  const { simStep } = await import('./sim.mjs');
+  const cfgS = { compra: { solPorCompra: 0.05, scoreMinimo: 70, maxComprasPorDia: 5 }, simulacao: { ligado: true } };
+  const st = {}; const logs = [];
+  const tk = { A: { mint: 'A', symbol: 'AAA', priceUsd: 1, score: 80, candles: [] }, B: { mint: 'B', symbol: 'BBB', priceUsd: 1, score: 50, candles: [] } };
+  simStep({ state: st, tokens: tk, newlyApproved: [tk.A, tk.B], cfg: cfgS, now: 1000, log: (m) => logs.push(m) });
+  assert.equal(st.sim.open.length, 1); // B tem nota baixa
+  tk.A.priceUsd = 2.1; // passou do alvo (+100%)
+  simStep({ state: st, tokens: tk, newlyApproved: [], cfg: cfgS, now: 2000, log: (m) => logs.push(m) });
+  assert.equal(st.sim.closed[0].why, 'alvo');
+  assert.ok(st.sim.closed[0].pnlPct > 85 && st.sim.closed[0].pnlPct < 100); // descontados os custos
+  tk.C = { mint: 'C', symbol: 'CCC', priceUsd: 1, score: 90, candles: [] };
+  simStep({ state: st, tokens: tk, newlyApproved: [tk.C], cfg: cfgS, now: 3000, log: (m) => logs.push(m) });
+  tk.C.priceUsd = 0.7;
+  simStep({ state: st, tokens: tk, newlyApproved: [], cfg: cfgS, now: 4000, log: (m) => logs.push(m) });
+  assert.equal(st.sim.closed[0].why, 'stop');
+  assert.ok(st.sim.closed[0].pnlPct < -25);
+  assert.equal(st.sim.stats.ops, 2);
+}
+
 // Compra desligada por padrão
 assert.equal(state.lastRun.autoBuy, false);
 assert.equal(cfg.compra.ativada, false);

@@ -1,4 +1,5 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
+import { simStep } from './sim.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
@@ -100,7 +101,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     }
   }
 
-  const monitored = (t) => t.held || t.status === 'carteira' || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
+  const simOpen = new Set((state.sim?.open || []).map((o) => o.mint));
+  const monitored = (t) => t.held || simOpen.has(t.mint) || t.status === 'carteira' || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
   const active = Object.values(tokens).filter((t) => t.status === 'nova' || t.status === 'aguardando' || monitored(t));
 
   // 3. Dados de mercado de todas de uma vez
@@ -285,7 +287,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   if (api.getCandles) {
     const want = Object.values(tokens)
       .filter((t) => t.pairAddress && (monitored(t) || newlyApproved.includes(t)))
-      .filter((t) => t.held || !t.candlesAt || now - t.candlesAt >= CANDLE_REFRESH_MIN * 60000)
+      .filter((t) => t.held || (state.sim?.open || []).some((o) => o.mint === t.mint) || !t.candlesAt || now - t.candlesAt >= CANDLE_REFRESH_MIN * 60000)
       .sort((a, b) => (b.held ? 1 : 0) - (a.held ? 1 : 0) || (a.candlesAt || 0) - (b.candlesAt || 0))
       .slice(0, MAX_CANDLE_CALLS);
     for (const t of want) {
@@ -364,11 +366,15 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: a.skipped ? 'info' : lvl, at: a.at, msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
   }
 
+  // 6d. Modo simulação (opera de mentira com o plano de trade e mede o resultado)
+  try { simStep({ state, tokens, newlyApproved, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
+
   // 7. Limpeza
   const rejected = Object.values(tokens).filter((t) => t.status === 'reprovada').sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));
-  for (const t of rejected.slice(MAX_REJECTED_KEPT)) delete tokens[t.mint];
+  const simNow = new Set((state.sim?.open || []).map((o) => o.mint));
+  for (const t of rejected.slice(MAX_REJECTED_KEPT)) if (!simNow.has(t.mint)) delete tokens[t.mint];
   for (const t of Object.values(tokens)) {
-    if (t.held) { delete t._rug; continue; }
+    if (t.held || simNow.has(t.mint)) { delete t._rug; continue; }
     if (t.status === 'carteira' && now - (t.soldAt || t.firstSeen || now) > 86400000) delete tokens[t.mint];
     else if (t.status === 'aprovada' && now - (t.approvedAt || now) > trackMs * 3) delete tokens[t.mint];
     else if (!['aprovada', 'carteira'].includes(t.status) && now - (t.firstSeen || now) > 3 * 86400000) delete tokens[t.mint];

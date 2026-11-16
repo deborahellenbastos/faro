@@ -3,18 +3,18 @@
     "enderecoPublico": ""
   },
   "busca": {
-    "idadeMinimaMinutos": 20,
+    "idadeMinimaMinutos": 10,
     "idadeMaximaHoras": 24,
     "maxRugcheckPorRodada": 25,
     "diasAcompanhando": 3
   },
   "filtros": {
-    "liquidezMinimaUsd": 15000,
+    "liquidezMinimaUsd": 10000,
     "marketCapMinimoUsd": 30000,
     "marketCapMaximoUsd": 10000000,
     "liquidezSobreMarketCapMinPct": 5,
     "lpTravadaMinPct": 90,
-    "top10MaxPct": 30,
+    "top10MaxPct": 35,
     "maiorHolderMaxPct": 10,
     "insidersMax": 0,
     "devMaxPct": 5,
@@ -27,7 +27,7 @@
   "compra": {
     "ativada": false,
     "solPorCompra": 0.05,
-    "maxComprasPorDia": 3,
+    "maxComprasPorDia": 5,
     "scoreMinimo": 70,
     "slippagePct": 10,
     "impactoPrecoMaxPct": 5
@@ -50,5 +50,22 @@
       "confirmaLiquidezPct": 15,
       "confirmaVendasPct": 60
     }
+  },
+  "perfil": "equilibrado",
+  "banca": {
+    "usd": 20,
+    "riscoPorOperacaoPct": 2
+  },
+  "simulacao": {
+    "ligado": true,
+    "maxAbertas": 2,
+    "perdaMaxDiaVezesBase": 3,
+    "riscoRetornoMin": 2,
+    "stopPadraoPct": 25,
+    "alvoPadraoPct": 100,
+    "taxaPct": 1,
+    "slippagePct": 2,
+    "slippageStopPct": 5,
+    "horasMaximas": 24
   }
 }

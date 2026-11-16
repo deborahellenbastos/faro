@@ -356,6 +356,14 @@
   .pl-calc input { width: 64px; height: 22px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); font-size: 11px; outline: none; }
   .pl-calc input[data-riscopct] { width: 36px; }
   .pl-warn { margin: 0; font-size: 11px; color: #f5b14c; line-height: 1.4; }
+  .sim-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+  .sim-stats div { display: grid; gap: 2px; padding: 10px; border-radius: var(--r-2); background: var(--panel-2); border: 1px solid var(--line); }
+  .sim-stats span { color: var(--muted); font-size: 11px; } .sim-stats b { font-size: 18px; } .sim-stats small { color: var(--faint); font-size: 10px; line-height: 1.3; }
+  .sim-list { display: grid; gap: 4px; margin-top: 8px; }
+  .sim-op { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-2); border: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; }
+  .sim-op:hover { background: var(--panel-2); }
+  .sim-op span { display: grid; gap: 2px; } .sim-op small { color: var(--muted); font-size: 11px; }
+  #robot-seg { display: grid; grid-template-columns: repeat(3, 1fr); }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -723,12 +731,14 @@
       <div class="seg" id="robot-seg">
         <button data-rt="filtros" aria-pressed="true">Filtros em uso</button>
         <button data-rt="rodada" aria-pressed="false">Última rodada</button>
+        <button data-rt="sim" aria-pressed="false">Simulação</button>
       </div>
       <div class="drawer-body">
         <div id="rt-filtros">
           <div class="kv" id="cfg"></div>
           <p class="note">Para mudar, edite o arquivo <b>config.json</b> no GitHub. A próxima rodada já usa os valores novos.</p>
         </div>
+        <div id="rt-sim" hidden></div>
         <div id="rt-rodada" hidden>
           <div class="kv" id="run"></div>
           <div class="log" id="log"></div>
@@ -1103,7 +1113,7 @@
     return L.slice(0, 4).map((x) => `<a class="soc" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${name(x)}</a>`).join('');
   }
   // ---------- Plano de trade: stop, alvo, risco/retorno e tamanho da posição ----------
-  const RISK = () => ({ banca: Number(store.get('faro-banca', 0)) || 0, pct: Number(store.get('faro-risco', 2)) || 2 });
+  const RISK = () => ({ banca: Number(store.get('faro-banca', 0)) || Number(data?.config?.banca?.usd) || 0, pct: Number(store.get('faro-risco', 0)) || Number(data?.config?.banca?.riscoPorOperacaoPct) || 2 });
   const numIn = (v) => Number(String(v ?? '').replace(',', '.')) || 0;
   function swing(t) {
     const c = CH.mint === t.mint && CH.bars.length > 6 ? CH.bars.map((b) => [b.time * 1000, b.open, b.high, b.low, b.close]) : t.candles || [];
@@ -2578,6 +2588,36 @@
     renderRobot();
   }
 
+  // Simulação: o robô opera de mentira com o plano de trade e mostra se as regras dão lucro
+  let simPage = 1;
+  function renderSim() {
+    const el = $('rt-sim'); if (!el) return;
+    const sim = data.sim, st = sim?.stats;
+    if (!sim) { el.innerHTML = '<p class="note">A simulação começa na próxima rodada do robô. A cada moeda aprovada com nota 70+ e risco/retorno 1:2 ou melhor, ele "entra" com 0,05 SOL de mentira e registra o resultado.</p>'; return; }
+    const solUsd = LIVE.solUsd || 0;
+    const usdOf = (sol) => (solUsd ? ` (${signedMoney(sol * solUsd)})` : '');
+    const ops = [...(sim.open || []).map((o) => ({ ...o, aberta: true })), ...(sim.closed || [])];
+    const per = 10, pages = Math.max(1, Math.ceil(ops.length / per)); simPage = Math.min(simPage, pages);
+    const whyTxt = { alvo: 'bateu o alvo', stop: 'bateu o stop', perigo: 'virou perigo', tempo: 'tempo máximo', sumiu: 'saiu do radar' };
+    const pass = st && st.ops >= 30 && st.pnlSol > 0;
+    el.innerHTML = `
+      <div class="sim-stats">
+        <div><span>Operações</span><b class="num">${st?.ops || 0}</b><small>${st?.open || 0} abertas</small></div>
+        <div><span>Acerto</span><b class="num">${(st?.winRate || 0).toFixed(0)}%</b><small>ganho médio ${pct(st?.avgWin || 0)} - perda média ${pct(st?.avgLoss || 0)}</small></div>
+        <div><span>Resultado</span><b class="num ${cls(st?.pnlSol)}">${(st?.pnlSol || 0) >= 0 ? '+' : ''}${solFmt(st?.pnlSol || 0, 4)}</b><small>${usdOf(st?.pnlSol || 0).replace(/[()]/g, '') || 'já descontadas taxas'}</small></div>
+      </div>
+      <p class="note">${pass ? '<b>Critério atingido:</b> 30+ operações com resultado positivo. Dá para pensar na fase "um toque para executar".' : `Para avançar: 30 operações simuladas com resultado positivo (faltam ${Math.max(0, 30 - (st?.ops || 0))}). Nenhum dinheiro é usado.`}</p>
+      <div class="sim-list">${ops.slice((simPage - 1) * per, simPage * per).map((o) => `
+        <button class="sim-op" data-goto="${esc(o.mint)}">
+          <span><b>${esc(o.symbol || o.mint.slice(0, 6))}</b><small>${o.aberta ? `aberta ${ago(o.at)} - stop ${pct((o.stop / o.entry - 1) * 100)}, alvo ${pct((o.tp / o.entry - 1) * 100)}` : `${whyTxt[o.why] || o.why} - ${dt(o.exitAt)}`}</small></span>
+          <b class="num ${o.aberta ? '' : cls(o.pnlPct)}">${o.aberta ? '1:' + o.rr.toFixed(1).replace('.', ',') : pct(o.pnlPct)}</b>
+        </button>`).join('') || '<p class="note">Nenhuma operação ainda.</p>'}</div>
+      ${pages > 1 ? `<div class="hpager"><button data-simpage="-1" ${simPage <= 1 ? 'disabled' : ''}>&larr;</button><span>${simPage} de ${pages}</span><button data-simpage="1" ${simPage >= pages ? 'disabled' : ''}>&rarr;</button></div>` : ''}`;
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-simpage]'); if (b) { simPage += Number(b.dataset.simpage); renderSim(); }
+    if (e.target.closest('#rt-sim [data-goto]')) closeRobot();
+  });
   function renderRobot() {
     const f = data.config?.filtros || {}, b = data.config?.busca || {}, c = data.config?.compra || {};
     const rows = [
@@ -2597,6 +2637,8 @@
       ['Compras na última hora', `mín ${f.comprasSobreTotalH1MinPct}%`],
       ['Compra automática', c.ativada ? `ligada (${c.solPorCompra} SOL, até ${c.maxComprasPorDia}/dia)` : 'desligada'],
       ['Venda automática por golpe', data.lastRun?.autoSell ? 'ligada (vende 100% se o contrato mudar para golpe)' : 'desligada'],
+      ['Perfil', data.config?.perfil === 'equilibrado' ? 'Equilibrado' : 'Conservador'],
+      ['Simulação', data.config?.simulacao?.ligado ? `ligada (${c.solPorCompra} SOL de mentira por operação, até ${data.config.simulacao.maxAbertas} abertas)` : 'desligada'],
       ['Venda no lucro', data.lastRun?.takeProfit ? `ligada (posições abaixo de US$ ${data.lastRun.takeProfit.ateUsd}: vende 100% com +${data.lastRun.takeProfit.alvoPct}%)` : 'desligada'],
     ];
     $('cfg').innerHTML = rows.map(([k, v]) => `<span>${esc(k)}</span><span class="num">${esc(v)}</span>`).join('');
@@ -2605,6 +2647,7 @@
       ['Horário', r.at ? hhmm(r.at) : '-'], ['Candidatas encontradas', r.candidates ?? '-'], ['Consultas ao RugCheck', r.rugcheckCalls ?? '-'],
       ['Novas aprovadas', (r.newApproved || []).join(', ') || 'nenhuma'], ['Carteira', r.wallet || 'não conectada'], ['Duração', r.durationMs ? `${(r.durationMs / 1000).toFixed(1)}s` : '-'],
     ].map(([k, v]) => `<span>${esc(k)}</span><span>${esc(v)}</span>`).join('');
+    renderSim();
     $('log').innerHTML = (r.logs || []).map((l) => `<div class="${l.erro ? 'err' : ''}">${hhmm(l.t)} ${esc(l.msg)}</div>`).join('');
   }
 
@@ -2712,6 +2755,7 @@
     for (const x of $('robot-seg').children) x.setAttribute('aria-pressed', x === b);
     $('rt-filtros').hidden = b.dataset.rt !== 'filtros';
     $('rt-rodada').hidden = b.dataset.rt !== 'rodada';
+    $('rt-sim').hidden = b.dataset.rt !== 'sim';
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;

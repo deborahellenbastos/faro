@@ -138,3 +138,7 @@ A vigia também relê a carteira a cada 30 s, então moedas recém-compradas ent
 - **Redes sociais:** links do X/Telegram/site no detalhe; "Sem rede social" quando não há.
 - **Fibonacci:** na ordem limite de compra, atalhos nos níveis 38,2%, 50% e 61,8% do último movimento. Na venda, atalhos de +25/+50/+100% sobre a sua entrada.
 - **Ordem de venda desatualizada:** se você comprar de novo uma moeda com ordem de venda aberta, o Faro avisa que a ordem não cobre a compra nova.
+
+## Modo simulação
+
+O robô "opera de mentira" com as mesmas regras do plano de trade: entra em moedas recém-aprovadas com nota 70+, formato não morto/reto e risco/retorno 1:2 ou melhor, usando o valor base (0,05 SOL). Fecha no alvo, no stop (com 5% de slippage extra), se a moeda virar perigo ou depois de 24 h. Taxa (1%) e slippage (2%) entram nos dois lados. Travas: até 2 abertas, até 5 por dia e pausa se perder 3x o valor base no dia. Resultado em **Robô e filtros > Simulação**. Para avançar para compras de verdade: 30 operações simuladas com resultado positivo.
