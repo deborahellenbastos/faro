@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write   # para o robô chamar a própria próxima execução
 
 # Só uma execução por vez. A próxima fica na fila e assume quando a atual termina: o robô nunca fica parado.
 concurrency:
@@ -77,3 +78,11 @@ jobs:
             ESPERA=$(( 300 - (AGORA - INICIO) ))
             [ "$ESPERA" -gt 0 ] && sleep "$ESPERA"
           done
+
+      # O agendador do GitHub falha com frequência. Ao terminar, o robô agenda a própria continuação;
+      # o agendamento acima fica só como reserva, caso a corrente se quebre.
+      - name: Chamar a próxima execução
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run scan.yml --ref "$BRANCH" || echo "Não consegui chamar a próxima; o agendamento reserva assume"
