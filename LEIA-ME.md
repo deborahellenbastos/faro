@@ -182,7 +182,7 @@ O stop móvel protege o lucro de uma moeda que você tem e que está subindo.
   - Nunca fica a menos de 12% do topo, porque memecoin oscila.
   - Sempre garante pelo menos +5% de lucro.
 - **Como anda:** sobe junto com o preço e nunca desce.
-- **Quem vende:** a vigia, a cada 10 s, com a chave do robô (sem Phantom). Se você investiu menos de US$ 1 na operação, ou se ela vale menos de US$ 1, nenhuma venda automática acontece: a taxa não compensa e a moeda ainda pode ter um bump.
+- **Quem vende:** a vigia, a cada 10 s, com a chave do robô (sem Phantom). Se a posição vale menos de US$ 1 naquele momento, nenhuma venda automática acontece: a taxa não compensa e a moeda ainda pode ter um bump. Se ela passar a valer US$ 1 ou mais, as proteções voltam a valer, mesmo que você tenha investido menos que isso.
 - **No gráfico:** aparece a linha laranja "stop móvel +X%".
 - **No quadro "Como está a alta":** mostra o stop, se os fundos estão subindo, se tem mais compra que venda e a distância do topo.
 - **Para ajustar:** em `config.json`, `venda.stopMovel`.

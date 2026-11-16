@@ -1499,8 +1499,8 @@
     const h = trendHealth(c, { entryAt }, { px: t.priceUsd, buys5: P5.buys, sells5: P5.sells, buys1h: P1.buys, sells1h: P1.sells });
     const tr = liveTrail(t, c, entryAt), SM = data?.config?.venda?.stopMovel;
     const rows = [];
-    const small = (t.position.costOpenUsd > 0 && t.position.costOpenUsd < (data?.config?.venda?.valorMinimoUsd ?? 1)) || (t.position.valueUsd || 0) < (data?.config?.venda?.valorMinimoUsd ?? 1);
-    if (small) rows.push(['wait', 'Operação pequena', 'Você investiu (ou ela vale) menos de US$ 1: o robô não vende sozinho, porque a taxa não compensa e ela ainda pode ter um bump. A venda fica com você.']);
+    const small = (t.position.valueUsd || 0) < (data?.config?.venda?.valorMinimoUsd ?? 1);
+    if (small) rows.push(['wait', 'Operação pequena', 'Ela vale menos de US$ 1 agora: o robô não vende sozinho, porque a taxa não compensa e ela ainda pode ter um bump. Se passar a valer US$ 1 ou mais, as proteções voltam sozinhas.']);
     if (small) {} else if (tr?.ativo) rows.push(['ok', 'Stop móvel ligado', `Se cair até ${price(tr.stop)}, o robô vende e você garante <b>+${Math.round(tr.travadoPct)}%</b>. Ele sobe junto se ela subir e nunca desce.`]);
     else if (SM?.ligado && tr) rows.push(['wait', 'Stop móvel', `Liga sozinho quando ela chegar a +${SM.ativarPct}% (em ${price(tr.ativarPx)}). Aí o lucro fica protegido.`]);
     const RZ = data?.config?.venda?.realizar, gain = t.position.openPnlPct;
@@ -2234,7 +2234,7 @@
         if (V.stopMovel?.ligado) { add(E * (1 + (V.stopMovel.ativarPct ?? 30) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.ativarPct ?? 30}% liga stop móvel`, 3, 1); add(E * (1 + (V.stopMovel.seguirAPartirPct ?? 60) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.seguirAPartirPct ?? 60}% stop segue o topo`, 3, 1); }
         if (V.realizar?.ligado) for (const f of V.realizar.faixas || []) add(E * (1 + f.lucroPct / 100), 'rgba(16,210,127,.65)', `+${f.lucroPct}% ${f.sinais <= 1 ? 'vende no 1º sinal' : `vende com ${f.sinais} sinais`}`, 3, 1);
       }
-      if (t.held && t.position.costOpenUsd >= (data?.config?.venda?.valorMinimoUsd ?? 1)) { const tr = liveTrail(t, candlesOf(t), posStart(t)); if (tr?.ativo) add(tr.stop, '#f5b14c', `stop móvel +${Math.round(tr.travadoPct)}%`, 1, 2); }
+      if (t.held && (t.position.valueUsd || 0) >= (data?.config?.venda?.valorMinimoUsd ?? 1)) { const tr = liveTrail(t, candlesOf(t), posStart(t)); if (tr?.ativo) add(tr.stop, '#f5b14c', `stop móvel +${Math.round(tr.travadoPct)}%`, 1, 2); }
       // Saída: preço médio das suas vendas
       const sells = (t.history || []).filter((o) => o.tokens < 0);
       const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
@@ -2753,6 +2753,7 @@
         // Saldo da moeda ainda não foi lido depois da última operação: usa o que as operações dizem (comprou e não vendeu tudo = ainda tem)
         const net = ops.reduce((a, o) => a + (o.tokens || 0), 0), bought = ops.reduce((a, o) => a + Math.max(0, o.tokens || 0), 0);
         if (net > bought * 0.01) { if (!t.held) t.heldSince = Date.now(); t.held = true; t.heldAmount = Math.max(t.heldAmount || 0, net); }
+        else if (ops[ops.length - 1].tokens < 0) { t.held = false; t.heldAmount = 0; } // vendeu tudo depois da última leitura do robô
       }
       if (t.held) t.position = positionCalc(ops, t.heldAmount || 0, t.priceNative, t.priceUsd);
       t.history = ops.slice(-50).reverse().map((o) => ({ sig: o.sig, at: o.at, tokens: o.tokens, sol: o.sol, ...(o.est ? { est: 1 } : {}) }));

@@ -55,7 +55,8 @@ const realizeOn = RZ.ligado === true && process.env.LUCRO_AUTO !== 'false';
 // Moedas que você tem agora, com o pico desde a compra (velas do robô + o que a vigia já viu)
 // Uma venda feita antes de uma nova compra da mesma moeda não conta mais
 // (também vale o que ficou registrado nas rodadas anteriores, para não repetir o mesmo aviso)
-const done = (t) => [mem.sold[t.mint], t.watchSell].some((x) => x && x.at > (t.position?.lastBuyAt || 0));
+// "Não vendida por valer pouco" não tira a moeda da vigia para sempre: depois de 10 min ela volta a ser vigiada (pode ter subido)
+const done = (t) => [mem.sold[t.mint], t.watchSell].some((x) => x && x.at > (t.position?.lastBuyAt || 0) && (!x.skipped || Date.now() - x.at < 600000));
 let held = Object.values(state.tokens || {}).filter((t) => t.held && t.heldAmount > 0 && !done(t));
 const L = cfg.venda?.lucro || {};
 const lucroOn = L.ligado === true && process.env.LUCRO_AUTO !== 'false';
@@ -126,9 +127,9 @@ async function contractCheck(now) {
 }
 
 async function sell(t, why, kind, px) {
-  // Operação pequena (investiu ou vale menos de US$ 1): não vende sozinho, a taxa não compensa e ela pode ter um bump
+  // Posição que vale menos de US$ 1 agora: não vende sozinho (a taxa não compensa e ela pode ter um bump). Se passar a valer US$ 1+, as proteções voltam
   const worth = (t.heldAmount || 0) * px, cost = t.position?.known ? t.position.costOpenUsd || 0 : 0;
-  if (worth < minUsd || (cost > 0 && cost < minUsd)) { mem.sold[t.mint] = { skipped: true, at: Date.now(), why, worth, kind }; log(`${t.symbol}: ${why}, mas a operação é pequena (investido US$ ${cost.toFixed(2)}, vale US$ ${worth.toFixed(2)}). Não vendi.`); return; }
+  if (worth < minUsd) { mem.sold[t.mint] = { skipped: true, at: Date.now(), why, worth, kind }; log(`${t.symbol}: ${why}, mas a operação é pequena (investido US$ ${cost.toFixed(2)}, vale US$ ${worth.toFixed(2)}). Não vendi.`); return; }
   log(`${t.symbol}: ${why}. Vendendo 100%...`);
   try {
     const s = await trader.sellAll(t.mint);

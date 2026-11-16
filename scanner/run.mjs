@@ -209,8 +209,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       }
       // Só vale vender se sobrar pelo menos o valor mínimo (senão as taxas comem tudo)
       const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
-      // Operação pequena (investiu ou vale menos de US$ 1): não vende sozinho, a taxa não compensa e ela pode ter um bump
-      const worth = Math.min((t.heldAmount || 0) * (m.priceUsd || 0), t.position?.known && t.position.costOpenUsd > 0 ? t.position.costOpenUsd : Infinity);
+      // Posição que vale menos de US$ 1: não vende sozinho (a taxa não compensa e ela pode ter um bump)
+      const worth = (t.heldAmount || 0) * (m.priceUsd || 0);
       if (scam.length && trader?.canSell && !(t.autoSell?.ok) && worth < minUsd) {
         if (!t.autoSell?.skipped) log(`GOLPE em ${t.symbol}, mas a operação é de só US$ ${worth.toFixed(2)} (mínimo US$ ${minUsd}). Não vendi.`);
         t.autoSell = { ok: false, skipped: true, at: now, why: scam.join('; '), worth };
@@ -371,7 +371,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     for (const t of Object.values(tokens)) {
       const p = t.position;
       if (!t.held || !p?.known || t.takeProfit?.ok || (t.takeProfit?.tries || 0) >= 3) continue;
-      if (!(p.costOpenUsd > 0) || p.costOpenUsd < (cfg.venda?.valorMinimoUsd ?? 1) || p.costOpenUsd >= L.ateUsd || !(p.openPnlPct >= L.alvoPct)) continue;
+      if (!(p.costOpenUsd > 0) || !((t.heldAmount || 0) * (t.priceUsd || 0) >= (cfg.venda?.valorMinimoUsd ?? 1)) || p.costOpenUsd >= L.ateUsd || !(p.openPnlPct >= L.alvoPct)) continue;
       log(`LUCRO em ${t.symbol}: +${p.openPnlPct.toFixed(0)}% (investido US$ ${p.costOpenUsd.toFixed(2)}). Vendendo 100%...`);
       try {
         const r = await trader.sellAll(t.mint);
