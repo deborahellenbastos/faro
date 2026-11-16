@@ -2931,9 +2931,9 @@
       const pnl = ps.reduce((a, p) => a + (p.pnlUsd || 0), 0) + shut.reduce((a, r) => a + r.pnl, 0);
       const W = walletTotals();
       $('summary').innerHTML = [
-        stat('Total na carteira', W.total != null ? money(W.total) : '-', W.total != null ? `${money(W.solUsd)} para comprar - ${money(W.coins)} em moedas` : 'somando SOL e moedas', 'hero'),
+        stat('Total na carteira', W.total != null ? money(W.total) : '-', W.total != null ? `${money(W.coins)} em transações abertas - ${money(W.solUsd)} para comprar` : 'somando SOL e moedas', 'hero'),
+        stat('Em transações abertas', money(value), `${mine.length} em aberto${closed.length ? ` - ${closed.length} ${closed.length === 1 ? 'encerrada' : 'encerradas'}` : ''}`),
         stat('Disponível para comprar', W.sol != null ? solFmt(W.sol, 4) : '-', W.solUsd != null ? `aprox. ${money(W.solUsd)}${W.buys != null ? ` - dá para ${W.buys} ${W.buys === 1 ? 'compra' : 'compras'}` : ''}` : 'saldo em SOL'),
-        stat('Em moedas agora', money(value), `${mine.length} em aberto${closed.length ? ` - ${closed.length} ${closed.length === 1 ? 'encerrada' : 'encerradas'}` : ''}`),
         stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, spent ? `${pct((pnl / spent) * 100)} sobre ${money(spent)} investidos` : ''),
       ].join('');
     } else {
@@ -2953,8 +2953,8 @@
     // Carteira resumida nas outras abas: quanto tenho para gastar
     { const ws = $('wallet-strip'), W = walletTotals();
       ws.hidden = ui.tab === 'minhas' || W.sol == null;
-      if (!ws.hidden) ws.innerHTML = `<span><small>Disponível para comprar</small><b class="num">${money(W.solUsd)}</b><em class="num">${solFmt(W.sol, 4)}</em></span>
-        <span><small>Em moedas</small><b class="num">${money(W.coins)}</b></span>
+      if (!ws.hidden) ws.innerHTML = `<span><small>Em transações abertas</small><b class="num">${money(W.coins)}</b></span>
+        <span><small>Disponível para comprar</small><b class="num">${money(W.solUsd)}</b><em class="num">${solFmt(W.sol, 4)}</em></span>
         <span><small>Total na carteira</small><b class="num">${money(W.total)}</b></span>
         ${W.buys != null ? `<span><small>Valor por operação</small><b class="num">${money(W.perBuy)}</b><em>dá para ${W.buys} ${W.buys === 1 ? 'compra' : 'compras'}</em></span>` : ''}`; }
 
