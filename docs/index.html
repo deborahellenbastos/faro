@@ -483,7 +483,7 @@
   .ov-ivals button:hover { color: var(--text); }
   .ov-ivals button.on { color: var(--text); background: var(--panel-3); }
   .ov-since { position: absolute; top: 44px; left: 8px; z-index: 4; display: grid; grid-template-columns: auto auto; gap: 2px 10px; padding: 6px 10px; border-radius: 8px; background: rgba(12,14,17,.88); border: 1px solid #1f232a; font-size: 11px; color: var(--muted); pointer-events: none; }
-  .ov-since b { text-align: right; font-size: 12px; } .ov-since b.pos { color: var(--green); } .ov-since b.neg { color: var(--red); }
+  .ov-since b { text-align: right; font-size: 12px; } .ov-since em { font-style: normal; font-weight: 600; opacity: .8; } .ov-since b.pos { color: var(--green); } .ov-since b.neg { color: var(--red); }
   .ov-hint { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 4; padding: 4px 10px; border-radius: 999px; background: rgba(12,14,17,.9); border: 1px solid #1f232a; color: var(--muted); font-size: 11px; font-weight: 600; pointer-events: none; }
   .seg-sm button:focus, .ov-tools button:focus, .ov-ivals button:focus { outline: none; }
   .seg-sm button:focus:not(:focus-visible), .ov-tools button:focus:not(:focus-visible), .ov-ivals button:focus:not(:focus-visible) { outline: none; }
@@ -1738,11 +1738,14 @@
     const sells = (t.history || []).filter((o) => o.tokens < 0);
     const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
     const exit = soldTok > 0 && p.receivedUsd > 0 ? p.receivedUsd / soldTok : 0;
-    const row = (label, ref) => { const c = (t.priceUsd / ref - 1) * 100; return `<span>${label}</span><b class="${c >= 0 ? 'pos' : 'neg'}">${c >= 0 ? '+' : ''}${c.toFixed(Math.abs(c) < 10 ? 2 : 1).replace('.', ',')}%</b>`; };
+    const usdBr = (v) => `${v >= 0 ? '+' : '-'}$${Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // valor em dólar: quanto você ganha/perde agora (entrada) ou teria ganho/perdido se não tivesse vendido (saída)
+    const row = (label, ref, qty) => { const c = (t.priceUsd / ref - 1) * 100; const v = (qty || 0) * (t.priceUsd - ref);
+      return `<span>${label}</span><b class="${c >= 0 ? 'pos' : 'neg'}">${c >= 0 ? '+' : ''}${c.toFixed(Math.abs(c) < 10 ? 2 : 1).replace('.', ',')}% <em>(${usdBr(v)})</em></b>`; };
     const tp = t.held ? metaOf(t) : null;
     const toGo = tp ? (tp.px / t.priceUsd - 1) * 100 : null;
-    el.innerHTML = (p.avgPriceUsd > 0 ? row('Desde a entrada', p.avgPriceUsd) : '') + (exit ? row('Desde a saída', exit) : '')
-      + (tp ? `<span>Até a meta +${tp.pct}%</span><b class="${toGo <= 0 ? 'pos' : ''}">${toGo <= 0 ? 'bateu!' : `falta +${toGo.toFixed(toGo < 10 ? 2 : 1).replace('.', ',')}%`}</b>` : '');
+    el.innerHTML = (p.avgPriceUsd > 0 ? row('Desde a entrada', p.avgPriceUsd, t.held ? t.heldAmount : sells.reduce((a, o) => a - o.tokens, 0)) : '') + (exit ? row('Desde a saída', exit, soldTok) : '')
+      + (tp ? `<span>Até a meta +${tp.pct}%</span><b class="${toGo <= 0 ? 'pos' : ''}">${toGo <= 0 ? 'bateu!' : `falta +${toGo.toFixed(toGo < 10 ? 2 : 1).replace('.', ',')}% <em>(${usdBr((t.heldAmount || 0) * (tp.px - t.priceUsd))})</em>`}</b>` : '');
     el.hidden = !el.innerHTML;
   }
   function setTool(tool) {
