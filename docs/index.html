@@ -253,6 +253,15 @@
   .chart-empty { display: grid; place-items: center; height: 100%; color: var(--faint); font-size: 12px; }
   .live { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
   .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .autowrap { position: relative; display: inline-flex; }
+  .autopill { cursor: pointer; } .autopill.on { color: var(--green); border-color: rgba(16,210,127,.4); } .autopill.on i { background: var(--green); }
+  .autopill.pend { color: #f5b14c; border-color: rgba(245,177,76,.4); } .autopill.pend i { background: #f5b14c; }
+  .auto-pop { position: absolute; top: 34px; left: 0; z-index: 60; width: 340px; max-width: calc(100vw - 32px); padding: var(--sp-4); background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r-3); box-shadow: 0 12px 40px rgba(0,0,0,.5); display: grid; gap: 10px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .auto-pop[hidden] { display: none; }
+  .auto-pop h4 { margin: 0; color: var(--text); font-size: 14px; } .auto-pop ul { margin: 0; padding-left: 16px; } .auto-pop b { color: var(--text); }
+  .auto-pop .ap-go { height: 36px; border-radius: var(--r-2); border: 0; font-weight: 800; cursor: pointer; background: var(--green); color: #04150c; }
+  .auto-pop .ap-go.off { background: rgba(255,91,91,.14); color: var(--red); border: 1px solid rgba(255,91,91,.4); }
+  .auto-pop .ap-warn { color: #f5b14c; }
   .live.on { color: var(--green); }
   .live.on i { background: var(--green); animation: blink 1.6s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: .3; } }
@@ -708,6 +717,7 @@
       <div class="page-h"><div class="title-row"><h1 id="page-title">Carteira</h1>
           <span class="solbal" id="solbal" hidden title="Saldo de SOL na sua carteira, lido direto da blockchain"></span>
           <span class="live" id="live" title="Preços atualizados a cada 10 segundos"><i></i><span>Conectando...</span></span>
+          <span class="autowrap"><button class="live autopill" id="autopill" hidden title="Compra automática no sinal de boa entrada"><i></i><span>Compra auto</span></button><div class="auto-pop" id="auto-pop" hidden></div></span>
         </div><p id="hint"></p></div>
       <div class="top-tools">
         <button class="icon-btn bell" id="bell" aria-label="Central de notificações" title="Central de notificações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><i class="badge" id="bell-n" hidden></i></button>
@@ -2534,8 +2544,66 @@
     el.hidden = false;
     el.innerHTML = `<b class="num">${solFmt(v, 4)}</b>${usdNow ? `<span class="num">${money(v * usdNow)}</span>` : ''}`;
   }
+  // ---------- Compra automática no sinal: interruptor assinado pela sua carteira ----------
+  // O painel manda um memo "faro:compra=on/off" assinado na Phantom; o robô lê na próxima rodada e confere a assinatura.
+  const MEMO_PROGRAM = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+  function autoState() {
+    const robot = data?.lastRun?.autoCompra || null; // o que o robô leu
+    let pend = store.get('faro-auto-pend', null);
+    if (pend && robot && robot.at >= pend.at - 120000 && robot.on === pend.on) { store.set('faro-auto-pend', null); pend = null; }
+    if (pend && Date.now() - pend.at > 20 * 60000) { store.set('faro-auto-pend', null); pend = null; }
+    return { on: !!robot?.on, pend, canBuy: !!data?.lastRun?.autoBuy };
+  }
+  function updateAutoPill() {
+    const el = $('autopill'); if (!el) return;
+    if (!data || isDemo()) { el.hidden = true; return; }
+    const A = autoState(); el.hidden = false;
+    el.className = 'live autopill ' + (A.pend ? 'pend' : A.on ? 'on' : '');
+    el.querySelector('span').textContent = A.pend ? (A.pend.on ? 'Ligando compra auto...' : 'Desligando compra auto...') : A.on ? 'Compra auto ligada' : 'Compra auto desligada';
+    if (!$('auto-pop').hidden) renderAutoPop();
+  }
+  function renderAutoPop() {
+    const A = autoState(), c = data.config?.compra || {}, S = data.config?.simulacao || {}, st = data.sim?.stats;
+    const per = data.banca?.faixaUsd ? `US$ ${data.banca.faixaUsd}` : `${c.solPorCompra} SOL`;
+    $('auto-pop').innerHTML = `<h4>Compra automática no sinal</h4>
+      <p>Quando aparecer uma <b>Boa entrada</b> no Radar, o robô compra sozinho, sem Phantom. As proteções de venda continuam valendo.</p>
+      <ul><li>${per} por compra (a faixa da sua banca)</li><li>Até ${S.maxAbertas ?? 2} abertas e ${c.maxComprasPorDia ?? 5} compras por dia</li>
+        <li>Para no dia se perder ${S.perdaMaxDiaVezesBase ?? 3}x o valor por compra</li><li>Só nota ${c.scoreMinimo ?? 70}+, risco/retorno 1:${S.riscoRetornoMin ?? 2}+ e sem perigo</li></ul>
+      <p>Simulação até agora: <b>${st?.ops || 0} operações</b>${st?.ops ? `, ${Math.round(st.winRate)}% de acerto, ${(st.pnlSol >= 0 ? '+' : '') + solFmt(st.pnlSol, 4)}` : ''}.</p>
+      ${A.canBuy ? '' : `<p class="ap-warn">Falta uma trava que só você liga, uma vez: no GitHub, em Settings > Secrets and variables > Actions > Variables, crie <b>AUTO_BUY</b> com o valor <b>true</b>. Sem ela o robô não compra mesmo com o botão ligado.</p>`}
+      ${A.pend ? `<p>Pedido enviado. O robô confirma na próxima rodada (até 5 min).</p>` : `<button class="ap-go ${A.on ? 'off' : ''}" data-autoset="${A.on ? 'off' : 'on'}">${A.on ? 'Desligar compra automática' : 'Ligar compra automática'}</button>
+        <small>Abre a Phantom para você assinar um aviso para o robô (custa uma taxa de rede mínima, menos de US$ 0,01). Não movimenta dinheiro.</small>`}`;
+  }
+  async function sendAutoSwitch(on) {
+    const ph = getPhantom(); if (!ph) throw new Error('Phantom não encontrada neste navegador');
+    const { publicKey } = await ph.connect();
+    if (data.wallet?.address && publicKey.toString() !== data.wallet.address) throw new Error('A Phantom está em outra carteira. Troque para a carteira do Faro.');
+    const W = await loadWeb3();
+    const conn = new W.Connection(RPC_URL, 'confirmed');
+    const { blockhash } = await conn.getLatestBlockhash();
+    const ix = new W.TransactionInstruction({ keys: [{ pubkey: publicKey, isSigner: true, isWritable: false }], programId: new W.PublicKey(MEMO_PROGRAM), data: new TextEncoder().encode(`faro:compra=${on ? 'on' : 'off'}`) });
+    const msg = new W.TransactionMessage({ payerKey: publicKey, recentBlockhash: blockhash, instructions: [ix] }).compileToV0Message();
+    const res = await ph.signAndSendTransaction(new W.VersionedTransaction(msg));
+    return res.signature;
+  }
+  document.addEventListener('click', async (e) => {
+    if (e.target.closest('#autopill')) { const pop = $('auto-pop'); pop.hidden = !pop.hidden; if (!pop.hidden) renderAutoPop(); return; }
+    const go = e.target.closest('[data-autoset]');
+    if (go) {
+      const on = go.dataset.autoset === 'on'; go.disabled = true; go.textContent = 'Assine na Phantom...';
+      try {
+        const sig = await sendAutoSwitch(on);
+        store.set('faro-auto-pend', { on, sig, at: Date.now() });
+        toast(on ? 'Pedido para ligar enviado. O robô liga na próxima rodada.' : 'Pedido para desligar enviado. O robô desliga na próxima rodada.');
+        play('boa');
+      } catch (err) { toast(err?.message?.includes('User rejected') ? 'Cancelado na Phantom' : `Não deu: ${err.message}`); }
+      updateAutoPill(); renderAutoPop(); return;
+    }
+    if (!e.target.closest('#auto-pop')) { const pop = $('auto-pop'); if (pop && !pop.hidden) pop.hidden = true; }
+  });
+
   function updateLivePill() {
-    updateSolBal();
+    updateSolBal(); updateAutoPill();
     const el = $('live'); if (!el) return;
     const fresh = LIVE.ok && Date.now() - LIVE.at < 15000;
     el.className = 'live ' + (fresh ? 'on' : '');
@@ -3058,12 +3126,12 @@
   function renderSim() {
     const el = $('rt-sim'); if (!el) return;
     const sim = data.sim, st = sim?.stats;
-    if (!sim) { el.innerHTML = '<p class="note">A simulação começa na próxima rodada do robô. A cada moeda aprovada com nota 70+ e risco/retorno 1:2 ou melhor, ele "entra" com 0,05 SOL de mentira e registra o resultado.</p>'; return; }
+    if (!sim) { el.innerHTML = '<p class="note">A simulação começa na próxima rodada do robô. A cada sinal de Boa entrada (nota 70+, risco/retorno 1:2 ou melhor), ele "entra" de mentira com o valor por operação e sai pelas mesmas regras do robô de verdade. Nenhum dinheiro é usado.</p>'; return; }
     const solUsd = LIVE.solUsd || 0;
     const usdOf = (sol) => (solUsd ? ` (${signedMoney(sol * solUsd)})` : '');
     const ops = [...(sim.open || []).map((o) => ({ ...o, aberta: true })), ...(sim.closed || [])];
     const per = 10, pages = Math.max(1, Math.ceil(ops.length / per)); simPage = Math.min(simPage, pages);
-    const whyTxt = { alvo: 'bateu o alvo', stop: 'bateu o stop', perigo: 'virou perigo', tempo: 'tempo máximo', sumiu: 'saiu do radar' };
+    const whyTxt = { alvo: 'bateu o +100%', stop: 'bateu o stop', 'stop móvel': 'stop móvel', perigo: 'virou perigo', tempo: 'tempo máximo', sumiu: 'saiu do radar' };
     const pass = st && st.ops >= 30 && st.pnlSol > 0;
     el.innerHTML = `
       <div class="sim-stats">
@@ -3100,7 +3168,7 @@
       ['Holders', `mín ${f.holdersMin}`],
       ['Volume na última hora', `mín ${usd(f.volumeH1MinUsd)}`],
       ['Compras na última hora', `mín ${f.comprasSobreTotalH1MinPct}%`],
-      ['Compra automática', c.ativada ? `ligada (${c.solPorCompra} SOL, até ${c.maxComprasPorDia}/dia)` : 'desligada'],
+      ['Compra automática', data.lastRun?.autoCompra?.on && data.lastRun?.autoBuy ? `ligada no sinal de boa entrada (até ${data.config?.simulacao?.maxAbertas ?? 2} abertas, ${c.maxComprasPorDia}/dia)` : data.lastRun?.autoCompra?.on ? 'ligada no painel, mas falta a variável AUTO_BUY no GitHub' : 'desligada (liga pelo botão no topo)'],
       ['Venda automática por golpe', data.lastRun?.autoSell ? 'ligada (vende 100% se o contrato mudar para golpe)' : 'desligada'],
       ['Perfil', data.config?.perfil === 'equilibrado' ? 'Equilibrado' : 'Conservador'],
       ['Valor por operação', data.banca?.faixaUsd ? `US$ ${data.banca.faixaUsd} (${data.banca.solPorCompra} SOL) - banca de ${money(data.banca.usd || 0)}` : `${c.solPorCompra} SOL`],

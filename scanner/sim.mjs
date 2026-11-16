@@ -1,8 +1,10 @@
 // Modo simulação: o robô "opera de mentira" com as mesmas regras do plano de trade e mede o resultado.
 // Nenhum dinheiro é usado. Cada operação simulada tem entrada, stop, alvo e custos (taxa + slippage) estimados.
 //
-// Entrada: moeda recém-aprovada, nota mínima, formato não morto/reto, risco/retorno >= mínimo.
-// Saída: alvo, stop, perigo na moeda (vende no preço do momento) ou tempo máximo.
+// Entrada: sinal de "Boa entrada" (a mesma lista que a compra automática real usa).
+// Saída: as mesmas regras do robô de verdade: stop do sinal, stop móvel, +100%, perigo na moeda ou tempo máximo.
+
+import { trailStop } from './signals.mjs';
 
 const pct = (a, b) => (b ? (a / b - 1) * 100 : 0);
 
@@ -21,7 +23,7 @@ export function planFor(t, cfg) {
   return { entry: E, stop, tp, rr };
 }
 
-export function simStep({ state, tokens, newlyApproved, cfg, now, log }) {
+export function simStep({ state, tokens, candidates, cfg, now, log }) {
   const S = cfg.simulacao || {};
   if (S.ligado === false) return;
   const sim = (state.sim = state.sim || { open: [], closed: [], startedAt: now });
@@ -38,8 +40,17 @@ export function simStep({ state, tokens, newlyApproved, cfg, now, log }) {
     const hi = Math.max(px || 0, ...bars.map((x) => x[2]));
     const lo = Math.min(px || Infinity, ...bars.map((x) => x[3]));
     let exit = null, why = null;
-    if (lo <= o.stop) { exit = o.stop * (1 - (S.slippageStopPct ?? 5) / 100); why = 'stop'; }
-    else if (hi >= o.tp) { exit = o.tp; why = 'alvo'; }
+    // stop móvel igual ao robô real (só sobe)
+    const SM = cfg.venda?.stopMovel;
+    if (SM?.ligado && t?.candles?.length) {
+      const tr = trailStop(t.candles, { entryPx: o.entry, entryAt: o.at, peak: Math.max(o.peak || 0, hi) }, SM, o.trail || 0);
+      o.peak = Math.max(o.peak || 0, hi);
+      if (tr?.ativo) o.trail = tr.stop;
+    }
+    const lucroPx = o.entry * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);
+    if (o.trail && lo <= o.trail) { exit = o.trail * (1 - (S.slippageStopPct ?? 5) / 100); why = 'stop móvel'; }
+    else if (lo <= o.stop) { exit = o.stop * (1 - (S.slippageStopPct ?? 5) / 100); why = 'stop'; }
+    else if (hi >= lucroPx) { exit = lucroPx; why = 'alvo'; }
     else if (t?.safety?.level === 'danger' && px) { exit = px * 0.9; why = 'perigo'; }
     else if (now - o.at > (S.horasMaximas ?? 24) * 3600000 && px) { exit = px; why = 'tempo'; }
     else if (!t) { exit = o.entry * 0.5; why = 'sumiu'; }
@@ -59,17 +70,19 @@ export function simStep({ state, tokens, newlyApproved, cfg, now, log }) {
   const todayPnl = todayClosed.reduce((a, x) => a + x.pnlSol, 0);
   const todayOpened = [...sim.open, ...sim.closed].filter((x) => x.at > day).length;
   const lossCap = -(S.perdaMaxDiaVezesBase ?? 3) * base;
-  for (const t of newlyApproved || []) {
+  for (const t of candidates || []) {
     if (sim.open.length >= (S.maxAbertas ?? 2)) break;
     if (todayOpened + sim.open.filter((x) => x.at === now).length >= (cfg.compra?.maxComprasPorDia ?? 5)) break;
     if (todayPnl <= lossCap) { log('SIMULAÇÃO: perda máxima do dia atingida, sem novas entradas'); break; }
     if ((t.score || 0) < (cfg.compra?.scoreMinimo ?? 70)) continue;
     if (t.shape && ['morta', 'reta'].includes(t.shape.tipo)) continue;
     if (sim.open.some((x) => x.mint === t.mint)) continue;
-    const p = planFor(t, cfg);
-    if (!p || p.rr < (S.riscoRetornoMin ?? 2)) continue;
-    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: p.entry, stop: p.stop, tp: p.tp, rr: p.rr, score: t.score, sol: base });
-    log(`SIMULAÇÃO: entrou em ${t.symbol} a ${p.entry} (stop ${pct(p.stop, p.entry).toFixed(0)}%, alvo +${pct(p.tp, p.entry).toFixed(0)}%, 1:${p.rr.toFixed(1)})`);
+    if (sim.closed.some((x) => x.mint === t.mint && x.at > day)) continue; // uma vez por dia por moeda, igual à compra real
+    const g = t.sinal, E = t.priceUsd;
+    if (!(E > 0) || !(g.stop > 0 && g.stop < E)) continue;
+    const tp = E * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);
+    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg });
+    log(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de boa entrada a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
   }
 
   // 3. Resumo

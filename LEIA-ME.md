@@ -203,3 +203,24 @@ Os sinais de fraqueza são:
 - **Recuo do topo:** 10% ou mais. Conta como forte a partir de 15%.
 
 A vigia confere a cada 10 s. Ajuste em `config.json`, `venda.realizar`.
+
+## Compra automática no sinal de boa entrada
+
+O robô compra sozinho quando aparece uma **Boa entrada** no Radar, sem precisar da Phantom.
+
+**Travas:**
+- Compra o valor da faixa da banca em cada operação.
+- No máximo 2 posições abertas e 5 compras por dia.
+- Para no dia se perder 3x o valor por compra.
+- Só compra moedas com nota 70+, risco/retorno 1:2 ou melhor e sem nenhum alerta de perigo.
+- Só considera sinais de no máximo 10 minutos.
+
+**Como ligar:** precisa de três chaves ligadas.
+1. Em `config.json`, `compra.ativada: true`.
+2. No GitHub, a variável `AUTO_BUY` com o valor `true`. Você liga essa uma vez só.
+3. O botão "Compra auto" no topo do painel.
+   - Ele manda um aviso assinado pela sua carteira na Phantom: o memo `faro:compra=on` ou `faro:compra=off`.
+   - Assinar custa só uma taxa de rede mínima e não movimenta dinheiro.
+   - O robô lê o aviso na rodada seguinte e confere se foi a sua carteira que assinou. Assim ninguém consegue ligar no seu lugar.
+
+**Simulação:** ela compra nos mesmos sinais, mas de mentira. Vende pelas mesmas regras do robô de verdade, e o resultado aparece na aba Simulação do Robô.

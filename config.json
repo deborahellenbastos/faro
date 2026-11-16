@@ -25,7 +25,8 @@
     "comprasSobreTotalH1MinPct": 50
   },
   "compra": {
-    "ativada": false,
+    "ativada": true,
+    "sinalValidoMin": 10,
     "solPorCompra": 0.05,
     "maxComprasPorDia": 5,
     "scoreMinimo": 70,

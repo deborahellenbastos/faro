@@ -222,25 +222,49 @@ assert.equal(scamSignals(base0, { rugged: true, lpLockedPct: 100, devPct: 4 }, c
 // moeda comprada já sem liquidez travada não dispara venda
 assert.equal(scamSignals({ lpLockedPct: 0, devPct: 0 }, { lpLockedPct: 0, devPct: 0 }, cfgT).length, 0);
 
-// Simulação: abre com plano (risco/retorno >= 2) e fecha no alvo ou no stop
+// Simulação e compra automática: entram no sinal de boa entrada; saem no +100% ou no stop
 {
   const { simStep } = await import('./sim.mjs');
-  const cfgS = { compra: { solPorCompra: 0.05, scoreMinimo: 70, maxComprasPorDia: 5 }, simulacao: { ligado: true } };
+  const { entryCandidates, readSwitch, buyLimits } = await import('./autobuy.mjs');
+  const cfgS = { compra: { solPorCompra: 0.05, scoreMinimo: 70, maxComprasPorDia: 5 }, simulacao: { ligado: true }, venda: { lucro: { alvoPct: 100 } } };
+  const sig = (at) => ({ tipo: 'entrada', fase: 'entrada', boa: true, stop: 0.8, alvo: 1.6, rr: 3, at, msg: 'ok' });
+  const tk = {
+    A: { mint: 'A', symbol: 'AAA', status: 'aprovada', priceUsd: 1, score: 80, candles: [], sinal: sig(1000) },
+    B: { mint: 'B', symbol: 'BBB', status: 'aprovada', priceUsd: 1, score: 50, candles: [], sinal: sig(1000) },
+    D: { mint: 'D', symbol: 'DDD', status: 'aprovada', priceUsd: 1, score: 90, candles: [], sinal: { ...sig(1000), boa: false, fase: 'zona' } },
+    E: { mint: 'E', symbol: 'EEE', status: 'aprovada', priceUsd: 1, score: 90, candles: [], held: true, sinal: sig(1000) },
+  };
+  assert.deepEqual(entryCandidates(tk, cfgS, 1000).map((t) => t.mint), ['A'], 'só A: B nota baixa, D sem boa entrada, E já é sua');
+  assert.equal(entryCandidates(tk, cfgS, 1000 + 11 * 60000).length, 0, 'sinal velho não compra');
   const st = {}; const logs = [];
-  const tk = { A: { mint: 'A', symbol: 'AAA', priceUsd: 1, score: 80, candles: [] }, B: { mint: 'B', symbol: 'BBB', priceUsd: 1, score: 50, candles: [] } };
-  simStep({ state: st, tokens: tk, newlyApproved: [tk.A, tk.B], cfg: cfgS, now: 1000, log: (m) => logs.push(m) });
-  assert.equal(st.sim.open.length, 1); // B tem nota baixa
-  tk.A.priceUsd = 2.1; // passou do alvo (+100%)
-  simStep({ state: st, tokens: tk, newlyApproved: [], cfg: cfgS, now: 2000, log: (m) => logs.push(m) });
+  simStep({ state: st, tokens: tk, candidates: entryCandidates(tk, cfgS, 1000), cfg: cfgS, now: 1000, log: (m) => logs.push(m) });
+  assert.equal(st.sim.open.length, 1);
+  tk.A.priceUsd = 2.1; // passou do +100%
+  simStep({ state: st, tokens: tk, candidates: [], cfg: cfgS, now: 2000, log: (m) => logs.push(m) });
   assert.equal(st.sim.closed[0].why, 'alvo');
   assert.ok(st.sim.closed[0].pnlPct > 85 && st.sim.closed[0].pnlPct < 100); // descontados os custos
-  tk.C = { mint: 'C', symbol: 'CCC', priceUsd: 1, score: 90, candles: [] };
-  simStep({ state: st, tokens: tk, newlyApproved: [tk.C], cfg: cfgS, now: 3000, log: (m) => logs.push(m) });
+  tk.C = { mint: 'C', symbol: 'CCC', status: 'aprovada', priceUsd: 1, score: 90, candles: [], sinal: sig(3000) };
+  simStep({ state: st, tokens: tk, candidates: entryCandidates(tk, cfgS, 3000), cfg: cfgS, now: 3000, log: (m) => logs.push(m) });
   tk.C.priceUsd = 0.7;
-  simStep({ state: st, tokens: tk, newlyApproved: [], cfg: cfgS, now: 4000, log: (m) => logs.push(m) });
+  simStep({ state: st, tokens: tk, candidates: [], cfg: cfgS, now: 4000, log: (m) => logs.push(m) });
   assert.equal(st.sim.closed[0].why, 'stop');
   assert.ok(st.sim.closed[0].pnlPct < -25);
   assert.equal(st.sim.stats.ops, 2);
+
+  // Interruptor: só vale memo assinado pela própria carteira; o mais recente manda
+  const memos = [{ sig: 'x1', memo: '[18] faro:compra=on', at: 3 }, { sig: 'x2', memo: '[19] faro:compra=off', at: 2 }];
+  assert.equal((await readSwitch(memos, async () => true)).on, true);
+  assert.equal((await readSwitch(memos, async (s) => s !== 'x1')).on, false, 'memo de terceiro é ignorado');
+  assert.equal(await readSwitch([{ sig: 'y', memo: 'oi', at: 1 }], async () => true), null);
+
+  // Travas: 2 abertas no máximo, perda do dia para tudo
+  const now = Date.parse('2026-11-16T18:00:00Z');
+  const stL = { trades: [{ ok: true, auto: true, mint: 'P', at: now - 3600e3 }, { ok: true, auto: true, mint: 'Q', at: now - 1800e3 }], wallet: { ops: [
+    { mint: 'Q', at: now - 1800e3, sol: -0.05 }, { mint: 'Q', at: now - 600e3, sol: 0.02 }] } };
+  const L1 = buyLimits(stL, { P: { held: true }, Q: {} }, cfgS, now);
+  assert.equal(L1.open, 1); assert.equal(L1.room, 1); assert.equal(L1.stopped, false);
+  stL.wallet.ops.push({ mint: 'Q', at: now - 500e3, sol: -0.2 });
+  assert.equal(buyLimits(stL, { P: { held: true }, Q: {} }, cfgS, now).stopped, true);
 }
 
 // Compra desligada por padrão

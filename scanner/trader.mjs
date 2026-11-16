@@ -1,7 +1,8 @@
 // Módulo de compra automática via Jupiter. VEM DESLIGADO.
-// Para funcionar precisa das DUAS travas ligadas:
+// Compra no sinal de "Boa entrada" e só com as TRÊS travas ligadas:
 //   1. config.json -> "compra": { "ativada": true }
 //   2. No GitHub: variável AUTO_BUY = true (Settings > Secrets and variables > Actions > Variables)
+//   3. O interruptor do painel (memo "faro:compra=on" assinado pela sua carteira na Phantom)
 // E dos segredos: SOLANA_PRIVATE_KEY (carteira SÓ do robô), JUPITER_API_KEY, SOLANA_RPC_URL (opcional).
 //
 // Venda automática (golpe no contrato): também VEM DESLIGADA. Precisa de
@@ -110,22 +111,23 @@ export async function createTrader(cfg, log) {
     canTakeProfit,
     canWatch,
     sellAll,
-    async maybeBuy(approved, state, cfg2, log2) {
-      if (!buyOn) return [];
+    // Compra no sinal de boa entrada. limits vem de buyLimits(): posições abertas, compras do dia e perda do dia
+    async maybeBuy(candidates, state, cfg2, log2, limits) {
+      if (!buyOn || !mine) return [];
       const c = cfg2.compra;
-      const dayAgo = Date.now() - 86400000;
-      const today = (state.trades || []).filter((t) => t.ok && t.at > dayAgo).length;
-      const bought = new Set((state.trades || []).filter((t) => t.ok).map((t) => t.mint));
       const out = [];
-      const ranked = approved.filter((t) => (t.score || 0) >= c.scoreMinimo && !bought.has(t.mint)).sort((a, b) => b.score - a.score);
-      for (const t of ranked) {
-        if (today + out.filter((o) => o.ok).length >= c.maxComprasPorDia) { log2('Limite diário de compras atingido'); break; }
+      if (limits.stopped) { log2('Compra automática: perda máxima do dia atingida, sem novas compras hoje'); return out; }
+      let room = limits.room;
+      for (const t of candidates) {
+        if (room <= 0) { log2(`Compra automática: limite atingido (${limits.open} abertas de ${limits.maxOpen}, ${limits.today} compras hoje de ${limits.maxDay})`); break; }
+        if (limits.bought.has(t.mint)) continue;
         try {
           const r = await buy(t.mint);
-          out.push({ at: Date.now(), mint: t.mint, symbol: t.symbol, sol: c.solPorCompra, priceUsd: t.priceUsd, sig: r.sig, ok: true });
-          log2(`COMPROU ${t.symbol}: ${c.solPorCompra} SOL (tx ${r.sig.slice(0, 8)}...)`);
+          room--;
+          out.push({ at: Date.now(), mint: t.mint, symbol: t.symbol, sol: c.solPorCompra, priceUsd: t.priceUsd, sig: r.sig, ok: true, auto: true, sinal: t.sinal?.msg });
+          log2(`COMPROU ${t.symbol} no sinal de boa entrada: ${c.solPorCompra} SOL (tx ${r.sig.slice(0, 8)}...)`);
         } catch (e) {
-          out.push({ at: Date.now(), mint: t.mint, symbol: t.symbol, sol: c.solPorCompra, ok: false, erro: e.message });
+          out.push({ at: Date.now(), mint: t.mint, symbol: t.symbol, sol: c.solPorCompra, ok: false, auto: true, erro: e.message });
           log2(`Compra de ${t.symbol} falhou: ${e.message}`, true);
         }
       }

@@ -108,6 +108,17 @@ async function rpc(method, params) {
   return j.result;
 }
 
+// Memos recentes da carteira (para o interruptor da compra automática) e quem assinou uma transação
+export async function getMemos(owner) {
+  const sigs = await rpc('getSignaturesForAddress', [owner, { limit: 40 }]);
+  return (sigs || []).filter((x) => x.memo).map((x) => ({ sig: x.signature, memo: x.memo, at: (x.blockTime || 0) * 1000, err: x.err }));
+}
+export async function txSigner(sig) {
+  const tx = await rpc('getTransaction', [sig, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0, commitment: 'confirmed' }]);
+  const keys = tx?.transaction?.message?.accountKeys || [];
+  return keys.find((k) => k.signer)?.pubkey || null;
+}
+
 export async function getWalletHoldings(owner) {
   const out = new Map();
   for (const programId of TOKEN_PROGRAMS) {

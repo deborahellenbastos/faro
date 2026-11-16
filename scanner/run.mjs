@@ -1,5 +1,6 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { simStep } from './sim.mjs';
+import { entryCandidates, readSwitch, buyLimits } from './autobuy.mjs';
 import { entrySignal, exitSignal, trailStop } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
@@ -364,16 +365,6 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     if (sig.at === now && (sig.boa || sig.bom || sig.ruim)) log(`SINAL: ${t.symbol} - ${sig.titulo}`);
   }
 
-  // 6. Compra automática (só se estiver ligada no config E no GitHub)
-  if (trader && newlyApproved.length) {
-    try {
-      const trades = await trader.maybeBuy(newlyApproved, state, cfg, log);
-      state.trades.push(...trades);
-    } catch (e) {
-      log(`Módulo de compra falhou: ${e.message}`, true);
-    }
-  }
-
   // 6b. Venda no lucro: posições pequenas (sem ordem limite possível) vendem 100% ao bater o alvo
   if (trader?.canTakeProfit) {
     const L = cfg.venda.lucro;
@@ -430,8 +421,23 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     state.banca = { usd: bancaUsd, faixaUsd: faixa?.usd ?? null, solPorCompra: cfg.compra?.solPorCompra, at: now };
   }
 
-  // 6d. Modo simulação (opera de mentira com o plano de trade e mede o resultado)
-  try { simStep({ state, tokens, newlyApproved, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
+  // 6d. Compra no sinal de boa entrada: interruptor (memo assinado pela sua carteira), simulação e compra real
+  if (wallet && api.getMemos && api.txSigner) {
+    try {
+      const sw = await readSwitch(await api.getMemos(wallet), async (sig) => (await api.txSigner(sig)) === wallet);
+      if (sw && (!state.autoCompra || state.autoCompra.sig !== sw.sig)) log(`Compra automática ${sw.on ? 'LIGADA' : 'DESLIGADA'} pelo painel`);
+      if (sw) state.autoCompra = sw;
+    } catch (e) { log(`Não consegui ler o interruptor da compra automática: ${e.message}`, true); }
+  }
+  const buyList = entryCandidates(tokens, cfg, now);
+  try { simStep({ state, tokens, candidates: buyList, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
+  if (trader?.canBuy && state.autoCompra?.on && buyList.length) {
+    try {
+      const limits = buyLimits(state, tokens, cfg, now);
+      const trades = await trader.maybeBuy(buyList, state, cfg, log, limits);
+      state.trades.push(...trades);
+    } catch (e) { log(`Módulo de compra falhou: ${e.message}`, true); }
+  }
 
   // 7. Limpeza
   const rejected = Object.values(tokens).filter((t) => t.status === 'reprovada').sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));
@@ -460,6 +466,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     newApproved: newlyApproved.map((t) => t.symbol),
     counts,
     autoBuy: !!trader?.canBuy,
+    autoCompra: state.autoCompra ? { on: state.autoCompra.on, at: state.autoCompra.at } : null,
     autoSell: !!trader?.canSell,
     watch: trader?.canWatch ? { quedaDoPicoPct: cfg.venda.vigia.quedaDoPicoPct, quedaLiquidezPct: cfg.venda.vigia.quedaLiquidezPct } : null,
     takeProfit: trader?.canTakeProfit ? { alvoPct: cfg.venda.lucro.alvoPct, ateUsd: cfg.venda.lucro.ateUsd } : null,
