@@ -329,7 +329,7 @@
   .twin { display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-3); align-items: center; padding: 8px 12px; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--panel-2); color: var(--text); text-align: left; font-size: 12px; }
   .twin.on { border-color: var(--line-2); box-shadow: inset 3px 0 0 var(--brand); }
   .twin span { color: var(--muted); } .twin code { color: var(--faint); font-size: 11px; }
-  .linkbtn.plan { margin-top: 6px; color: var(--brand); font-size: 12px; font-weight: 700; }
+  .linkbtn.planlink { margin-top: 6px; color: var(--brand); font-size: 12px; font-weight: 700; }
   .obs-note { display: grid; grid-template-columns: 16px 1fr; gap: 8px; padding: 10px 12px; border-radius: var(--r-2); background: rgba(245,177,76,.08); border: 1px solid rgba(245,177,76,.3); color: var(--muted); font-size: 12px; line-height: 1.45; }
   .obs-note svg { width: 16px; height: 16px; color: #f5b14c; margin-top: 1px; }
   .obs-note b { color: #f5b14c; }
@@ -1100,7 +1100,7 @@
       <div class="pl-calc">
         <span>Banca <input inputmode="decimal" value="${P.R.banca ? String(P.R.banca).replace('.', ',') : ''}" placeholder="${brl(P.banca).slice(1)}" data-banca> US$ - risco por operação
         <input inputmode="decimal" value="${String(P.R.pct).replace('.', ',')}" data-riscopct>%</span>
-        ${P.sizeUsd > 0 ? `<button class="linkbtn plan" data-usesize="${m}" data-usd="${P.sizeUsd.toFixed(2)}">Tamanho sugerido: ${brl(P.sizeUsd)} (usar)</button>` : ''}
+        ${P.sizeUsd > 0 ? `<button class="linkbtn planlink" data-usesize="${m}" data-usd="${P.sizeUsd.toFixed(2)}">Tamanho sugerido: ${brl(P.sizeUsd)} (usar)</button>` : ''}
       </div>
       ${ok ? '' : `<p class="pl-warn">O alvo precisa valer pelo menos 2x o risco. Ajuste o stop ou o alvo${st.planOverride ? '' : `, ou <button class="linkbtn" data-planok="${m}">comprar mesmo assim</button>`}.</p>`}
     </div>`;
@@ -2747,7 +2747,7 @@
               const P = planOf(t, st);
               const val = (t.heldAmount || 0) * (t.priceUsd || 0);
               st.msg.html += val >= 10 && P
-                ? `<br><button class="linkbtn plan" data-mkoco="${esc(t.mint)}" data-tp="${pxFmt(P.tp)}" data-sl="${pxFmt(P.stop)}">Criar alvo ${price(P.tp)} e stop ${price(P.stop)} na Jupiter</button>`
+                ? `<br><button class="linkbtn planlink" data-mkoco="${esc(t.mint)}" data-tp="${pxFmt(P.tp)}" data-sl="${pxFmt(P.stop)}">Criar alvo ${price(P.tp)} e stop ${price(P.stop)} na Jupiter</button>`
                 : `<br><small>Posição abaixo de US$ 10: a Jupiter não aceita ordem. A vigia do robô protege (vende com -40% do pico) e o robô vende no +100%.</small>`;
               st.pStop = st.pTp = ''; st.planOverride = false;
             }
