@@ -262,6 +262,7 @@
   .auto-pop .ap-go { height: 36px; border-radius: var(--r-2); border: 0; font-weight: 800; cursor: pointer; background: var(--green); color: #04150c; }
   .auto-pop .ap-go.off { background: rgba(255,91,91,.14); color: var(--red); border: 1px solid rgba(255,91,91,.4); }
   .auto-pop .ap-warn { color: #f5b14c; }
+  .page-h .auto-pop p { display: block; margin: 0; font-size: 12px; }
   .live.on { color: var(--green); }
   .live.on i { background: var(--green); animation: blink 1.6s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: .3; } }
@@ -2564,7 +2565,7 @@
   }
   function renderAutoPop() {
     const A = autoState(), c = data.config?.compra || {}, S = data.config?.simulacao || {}, st = data.sim?.stats;
-    const per = data.banca?.faixaUsd ? `US$ ${data.banca.faixaUsd}` : `${c.solPorCompra} SOL`;
+    const per = data.banca?.faixaUsd ? `US$ ${Number(data.banca.faixaUsd).toFixed(2).replace('.', ',')}` : `${c.solPorCompra} SOL`;
     $('auto-pop').innerHTML = `<h4>Compra automática no sinal</h4>
       <p>Quando aparecer uma <b>Boa entrada</b> no Radar, o robô compra sozinho, sem Phantom. As proteções de venda continuam valendo.</p>
       <ul><li>${per} por compra (a faixa da sua banca)</li><li>Até ${S.maxAbertas ?? 2} abertas e ${c.maxComprasPorDia ?? 5} compras por dia</li>
