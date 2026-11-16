@@ -40,6 +40,12 @@
       "ligado": true,
       "alvoPct": 100,
       "ateUsd": 10
+    },
+    "vigia": {
+      "ligado": true,
+      "quedaDoPicoPct": 40,
+      "quedaLiquidezPct": 30,
+      "janelaLiquidezMin": 5
     }
   }
 }

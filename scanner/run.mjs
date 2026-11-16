@@ -311,6 +311,22 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     t.safety = mergeSafety(t.safety, [alert, ...t.safety.alerts.filter((x) => x.id !== 'lucro-auto')], now);
   }
 
+  // 6c. O que a vigia rápida fez entre as rodadas
+  let vig = null;
+  try { vig = JSON.parse(await (await import('node:fs/promises')).readFile('/tmp/faro-vigia.json', 'utf8')); } catch {}
+  for (const [mint, a] of Object.entries(vig?.sold || {})) {
+    const t = tokens[mint]; if (!t || !a || t.watchSell?.at === a.at) continue;
+    t.watchSell = a;
+    if (a.ok) log(`Vigia vendeu 100% de ${t.symbol}: ${a.why}${a.outSol ? ` (${a.outSol.toFixed(4)} SOL)` : ''}`);
+  }
+  for (const t of Object.values(tokens)) {
+    const a = t.watchSell; if (!a || !t.safety) continue;
+    const msg = a.skipped ? `Queda forte (${a.why}), mas a posição vale menos de US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender`
+      : a.ok ? `Vigia rápida vendeu 100%${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`
+      : `Vigia rápida tentou vender (${a.why}) e falhou: ${a.erro}. Venda manualmente!`;
+    t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: 'danger', msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
+  }
+
   // 7. Limpeza
   const rejected = Object.values(tokens).filter((t) => t.status === 'reprovada').sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));
   for (const t of rejected.slice(MAX_REJECTED_KEPT)) delete tokens[t.mint];
@@ -338,6 +354,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     counts,
     autoBuy: !!trader?.canBuy,
     autoSell: !!trader?.canSell,
+    watch: trader?.canWatch ? { quedaDoPicoPct: cfg.venda.vigia.quedaDoPicoPct, quedaLiquidezPct: cfg.venda.vigia.quedaLiquidezPct } : null,
     takeProfit: trader?.canTakeProfit ? { alvoPct: cfg.venda.lucro.alvoPct, ateUsd: cfg.venda.lucro.ateUsd } : null,
     wallet: wallet ? `${wallet.slice(0, 4)}...${wallet.slice(-4)}` : null,
     logs: logs.slice(-30),

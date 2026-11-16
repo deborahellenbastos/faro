@@ -120,3 +120,13 @@ Por enquanto o robô só compra. A venda continua manual.
 - Compra e venda pelo painel só aparecem como "confirmada" depois que a blockchain confirma. Se falhar, o painel avisa.
 - O robô roda em sequência por ~55 minutos a cada execução e grava por cima do resultado anterior, para o histórico do repositório não crescer.
 - Valor em dólar de cada compra e venda: usa o preço do SOL no minuto exato da transação. Moedas recebidas ou enviadas (transferência ou ordem limite executada) entram pelo preço de mercado daquele minuto e aparecem como "valor estimado".
+
+## Proteções automáticas da carteira (usam a chave SOLANA_PRIVATE_KEY, sem Phantom)
+
+| Proteção | Quando vende 100% | Frequência | Liga/desliga |
+|---|---|---|---|
+| Vigia rápida | preço cai 40% do pico desde a compra, ou liquidez cai 30% em até 5 min | a cada ~10 s | variável `VIGIA` = `false` desliga |
+| Golpe no contrato | rugada, mint/freeze reativados, liquidez destravada, dev vendeu metade | a cada 5 min | variável `AUTO_SELL` |
+| Lucro (posições < US$ 10) | +100% sobre o investido | a cada 5 min | variável `LUCRO_AUTO` = `false` desliga |
+
+Nenhuma vende se a posição valer menos de US$ 1. Os números ficam no `config.json` (bloco `venda`).

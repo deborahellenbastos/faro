@@ -261,6 +261,14 @@
   .keybox input { height: 32px; padding: 0 10px; border-radius: var(--r-1); border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); outline: none; font-size: 12px; }
   .keybox a { color: var(--brand); }
   .score.prev { opacity: .72; }
+  .emerg { width: 100%; height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--r-2); border: 1px solid rgba(255,91,91,.45); background: rgba(255,91,91,.12); color: var(--red); font-weight: 800; font-size: 13px; }
+  .emerg svg { width: 15px; height: 15px; }
+  .emerg:hover { background: rgba(255,91,91,.2); }
+  .unit { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-weight: 800; font-size: 13px; height: 28px; padding: 0 8px; border-radius: var(--r-1); }
+  .unit svg { width: 13px; height: 13px; color: var(--muted); }
+  .amtwrap { flex: 1; display: flex; flex-direction: column; align-items: flex-end; min-width: 0; }
+  .amtwrap input { width: 100%; }
+  .amthint { color: var(--faint); font-size: 11px; font-weight: 600; min-height: 14px; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -1027,8 +1035,19 @@
   // ---------- Comprar / vender ----------
   const BUY_PRESETS = [0.05, 0.1, 0.25, 0.5, 1];
   const SELL_PRESETS = [10, 25, 50, 75, 100];
+  const USD_PRESETS = [1, 2, 5, 10, 25];
+  const solUsdOf = (t) => LIVE.solUsd || (t?.priceNative > 0 ? t.priceUsd / t.priceNative : 0);
+  // Quantidade em SOL a partir do que foi digitado (em SOL ou em dólar)
+  const amtSol = (t, st) => { const v = Number(String(st.amt).replace(',', '.')) || 0; return st.unit === 'usd' ? (solUsdOf(t) ? v / solUsdOf(t) : 0) : v; };
+  function amtHint(t, st) {
+    const v = Number(String(st.amt).replace(',', '.')) || 0;
+    if (!v) return '';
+    if (st.side === 'sell') return `≈ ${money(v * (t.priceUsd || 0))}`;
+    if (st.unit === 'usd') return `≈ ${solFmt(amtSol(t, st), 4)}`;
+    return solUsdOf(t) ? `≈ ${money(v * solUsdOf(t))}` : '';
+  }
   const SLIP_PRESETS = ['auto', 1, 2, 3, 5, 10];
-  const tradeState = (mint) => (ui.trade[mint] = ui.trade[mint] || { side: 'buy', mode: 'market', amt: '', slip: 'auto', quote: null, msg: null, busy: false, lTrigger: '', lTp: '', lSl: '', lDays: 7 });
+  const tradeState = (mint) => (ui.trade[mint] = ui.trade[mint] || { side: 'buy', mode: 'market', unit: store.get('faro-unit', 'sol'), amt: '', slip: 'auto', quote: null, msg: null, busy: false, lTrigger: '', lTp: '', lSl: '', lDays: 7 });
   const pctPrice = (t, p) => (t.priceUsd ? pxFmt(t.priceUsd * (1 + p / 100)) : '');
 
   function tradeBlock(t) {
@@ -1039,11 +1058,12 @@
     const solBal = data.wallet?.solBalance;
     const bal = buy ? (solBal != null ? solFmt(solBal) : '-') : `${tokFmt(t.heldAmount || 0)} ${esc(t.symbol)}`;
     const m = esc(t.mint);
+    const usdMode = buy && st.unit === 'usd';
     const presets = buy
-      ? BUY_PRESETS.map((v) => `<button data-tp="${v}" data-tmint="${m}" class="${String(v) === String(st.amt) ? 'on' : ''}">${v}</button>`).join('')
+      ? (usdMode ? USD_PRESETS : BUY_PRESETS).map((v) => `<button data-tp="${v}" data-tmint="${m}" class="${String(v) === String(st.amt) ? 'on' : ''}">${usdMode ? '$' + v : v}</button>`).join('')
       : SELL_PRESETS.map((v) => `<button data-tpct="${v}" data-tmint="${m}">${v}%</button>`).join('');
     const amountBox = `<div class="tbox">
-        <div class="tin"><label>${buy ? 'SOL' : esc(t.symbol)}</label><input inputmode="decimal" placeholder="0" value="${esc(st.amt)}" data-tamt="${m}" aria-label="Quantidade"></div>
+        <div class="tin">${buy ? `<button class="unit" data-tunit="${m}" title="Trocar entre SOL e dólar">${usdMode ? 'US$' : 'SOL'}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></svg></button>` : `<label>${esc(t.symbol)}</label>`}<div class="amtwrap"><input inputmode="decimal" placeholder="0" value="${esc(st.amt)}" data-tamt="${m}" aria-label="Quantidade"><small class="amthint" data-thint="${m}">${amtHint(t, st)}</small></div></div>
         <div class="presets">${presets}</div></div>`;
 
     let body = '';
@@ -1096,6 +1116,7 @@
         <button class="${buy ? '' : 'on'}" data-tside="sell" data-tmint="${m}" ${t.held ? '' : 'disabled title="Você ainda não tem essa moeda"'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 12-4 4-4-4M12 8v8"/></svg>Vender</button>
       </div>
       <div class="tbody">
+        ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
         <div class="tbal"><span>Saldo</span><span class="num">${bal}</span></div>
         ${body}
@@ -1736,7 +1757,7 @@
   async function createLimit(t, st) {
     if (!jupKey()) throw new Error('Cole sua chave grátis da Jupiter no campo acima');
     const buy = st.side === 'buy';
-    const amt = Number(String(st.amt).replace(',', '.'));
+    const amt = buy ? amtSol(t, st) : Number(String(st.amt).replace(',', '.'));
     if (!(amt > 0)) throw new Error('Digite a quantidade');
     const lp = (v) => Number(String(v || '').replace(',', '.'));
     const trigger = lp(st.lTrigger), tp = lp(st.lTp), sl = lp(st.lSl);
@@ -2059,7 +2080,7 @@
   }
   async function getQuote(t, st) {
     const buy = st.side === 'buy';
-    const amt = Number(String(st.amt).replace(',', '.'));
+    const amt = buy ? amtSol(t, st) : Number(String(st.amt).replace(',', '.'));
     const auto = st.slip === 'auto';
     const slip = auto ? 5 : Number(String(st.slip).replace(',', '.')); // no automático, 5% é só o teto
     if (!(amt > 0)) throw new Error('Digite uma quantidade');
@@ -2083,12 +2104,26 @@
     const ph = getPhantom();
     const { publicKey } = await ph.connect();
     const sw = await fetch(`${JUP}/swap`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quoteResponse: st.quote.raw, userPublicKey: publicKey.toString(), wrapAndUnwrapSol: true, dynamicComputeUnitLimit: true, dynamicSlippage: st.slip === 'auto', prioritizationFeeLamports: 'auto' }) }).then((r) => r.json());
+      body: JSON.stringify({ quoteResponse: st.quote.raw, userPublicKey: publicKey.toString(), wrapAndUnwrapSol: true, dynamicComputeUnitLimit: true, dynamicSlippage: st.slip === 'auto' || !!st.emergency,
+        prioritizationFeeLamports: st.emergency ? { priorityLevelWithMaxLamports: { maxLamports: 5000000, priorityLevel: 'veryHigh' } } : 'auto' }) }).then((r) => r.json());
     if (!sw?.swapTransaction) throw new Error(sw?.error || 'A Jupiter não montou a transação');
     const { VersionedTransaction } = await loadWeb3();
     const tx = VersionedTransaction.deserialize(Uint8Array.from(atob(sw.swapTransaction), (c) => c.charCodeAt(0)));
     const res = await ph.signAndSendTransaction(tx); // a Phantom mostra a confirmação para você aprovar
     return res.signature;
+  }
+  // Um clique: cota e já abre a Phantom para vender 100% com slippage de até 30% e prioridade alta
+  async function onEmergency(mint) {
+    const t = data.tokens[mint]; const st = tradeState(mint);
+    Object.assign(st, { side: 'sell', mode: 'market', amt: String(t.heldAmount || 0), slip: 30, emergency: true, quote: null, msg: null });
+    try {
+      if (!isDemo() && !getPhantom()) throw new Error('Phantom não encontrada neste navegador');
+      st.busy = true; render();
+      st.quote = await getQuote(t, st);
+    } catch (e) { st.busy = false; st.emergency = false; st.msg = { err: true, html: esc(e.message) }; return render(); }
+    st.busy = false;
+    await onTradeGo(mint);
+    st.emergency = false; st.slip = 'auto'; render();
   }
   async function onTradeGo(mint) {
     const t = data.tokens[mint]; const st = tradeState(mint);
@@ -2136,9 +2171,15 @@
     } finally { st.busy = false; render(); }
   }
   document.addEventListener('click', (e) => {
-    const el = e.target.closest('[data-tside],[data-tp],[data-tpct],[data-tslip],[data-tgo],[data-tcancel]'); if (!el || el.disabled) return;
-    const mint = el.dataset.tmint || el.dataset.tgo || el.dataset.tcancel; const st = tradeState(mint); const t = data.tokens[mint];
+    const el = e.target.closest('[data-tside],[data-tunit],[data-tp],[data-tpct],[data-tslip],[data-tgo],[data-tcancel],[data-temerg]'); if (!el || el.disabled) return;
+    const mint = el.dataset.tmint || el.dataset.tgo || el.dataset.tcancel || el.dataset.tunit || el.dataset.temerg;
+    if (el.dataset.temerg) { onEmergency(mint); return; } const st = tradeState(mint); const t = data.tokens[mint];
     if (el.dataset.tside) { st.side = el.dataset.tside; st.amt = ''; st.quote = null; st.msg = null; }
+    else if (el.dataset.tunit) {
+      // Troca a unidade mantendo o mesmo valor
+      const sol = amtSol(t, st); st.unit = st.unit === 'usd' ? 'sol' : 'usd'; store.set('faro-unit', st.unit);
+      st.amt = sol ? String(st.unit === 'usd' ? +(sol * solUsdOf(t)).toFixed(2) : +sol.toFixed(4)) : ''; st.quote = null; st.msg = null;
+    }
     else if (el.dataset.tp) { st.amt = el.dataset.tp; st.quote = null; st.msg = null; }
     else if (el.dataset.tpct) { st.amt = String(Number(((t.heldAmount || 0) * Number(el.dataset.tpct) / 100).toPrecision(10))); st.quote = null; st.msg = null; }
     else if (el.dataset.tslip) { st.slip = el.dataset.tslip === 'auto' ? 'auto' : Number(el.dataset.tslip); st.quote = null; st.msg = null; }
@@ -2174,7 +2215,7 @@
   document.addEventListener('input', (e) => {
     const lf = e.target.closest('[data-lfield]'); if (lf) { tradeState(lf.dataset.tmint)[lf.dataset.lfield] = lf.value; }
     const a = e.target.closest('[data-tamt]'); const sl = e.target.closest('[data-tslipin]');
-    if (a) { const st = tradeState(a.dataset.tamt); st.amt = a.value; st.quote = null; }
+    if (a) { const st = tradeState(a.dataset.tamt); st.amt = a.value; st.quote = null; const h = document.querySelector(`[data-thint="${a.dataset.tamt}"]`); if (h) h.textContent = amtHint(data.tokens[a.dataset.tamt], st); }
     if (sl) { const st = tradeState(sl.dataset.tslipin); st.slip = sl.value; st.quote = null; }
   });
 

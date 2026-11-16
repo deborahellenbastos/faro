@@ -22,6 +22,7 @@ jobs:
       AUTO_BUY: ${{ vars.AUTO_BUY }}
       AUTO_SELL: ${{ vars.AUTO_SELL }}
       LUCRO_AUTO: ${{ vars.LUCRO_AUTO }}
+      VIGIA: ${{ vars.VIGIA }}
       SOLANA_PRIVATE_KEY: ${{ secrets.SOLANA_PRIVATE_KEY }}
       JUPITER_API_KEY: ${{ secrets.JUPITER_API_KEY }}
       SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
@@ -78,7 +79,8 @@ jobs:
             AGORA=$(date +%s)
             [ $(( INICIO + 300 )) -ge "$FIM" ] && break
             ESPERA=$(( 300 - (AGORA - INICIO) ))
-            [ "$ESPERA" -gt 0 ] && sleep "$ESPERA"
+            # Na espera, a vigia rápida olha suas moedas a cada ~10s (se cair de vez, faz a espera normal)
+            [ "$ESPERA" -gt 0 ] && { timeout $(( ESPERA + 30 )) node scanner/watch.mjs "$ESPERA" || sleep 5; }
           done
 
       # O agendador do GitHub falha com frequência. Ao terminar, o robô agenda a própria continuação;
