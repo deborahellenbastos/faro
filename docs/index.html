@@ -356,6 +356,8 @@
   .r-val { display: grid; justify-items: end; gap: 2px; }
   .plan { display: grid; gap: 8px; padding: 12px; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--bg); }
   .plan.bad { border-color: rgba(245,177,76,.4); }
+  .plan-min { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 700; }
+  .plan-min span { flex: 1; color: var(--text); } .plan-min small { font-size: 11px; color: var(--faint); } .plan-min i { font-style: normal; color: var(--faint); font-size: 16px; }
   .pl-h { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
   .rr { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
   .rr.ok { color: var(--green); background: rgba(16,210,127,.12); } .rr.bad { color: #f5b14c; background: rgba(245,177,76,.12); }
@@ -1261,11 +1263,13 @@
   const pctBr = (v) => `${(v * 100).toFixed(v * 100 < 10 ? 1 : 0).replace('.', ',')}%`;
   function planHtml(t, st, m) {
     const P = planOf(t, st); if (!P) return '';
-    const ok = P.rr >= 2;
+    // Já tem a moeda: o plano fica recolhido e neutro (sem cor nem aviso), só para consulta
+    if (t.held && !st.planOpen) return `<button class="plan plan-min" data-planopen="${m}"><span>Plano da operação</span><small>risco/retorno 1:${P.rr.toFixed(1).replace('.', ',')}</small><i>+</i></button>`;
+    const ok = t.held || P.rr >= 2;
     const row = (label, field, val, chips) => `<div class="pl-row"><label>${label}</label><input inputmode="decimal" value="${esc(st[field] || pxFmt(val))}" data-pfield="${field}" data-tmint="${m}"><small>US$</small>
       <div class="pl-chips">${chips.map(([txt, px]) => `<button data-pset="${field}" data-px="${px}" data-tmint="${m}">${txt}</button>`).join('')}</div></div>`;
-    return `<div class="plan ${ok ? 'ok' : 'bad'}">
-      <div class="pl-h"><b>Plano da operação</b><span class="rr ${ok ? 'ok' : 'bad'}">risco/retorno 1:${P.rr.toFixed(1).replace('.', ',')}${infoBtn('rr', 'rr-plan-' + m)}</span></div>
+    return `<div class="plan ${t.held ? '' : ok ? 'ok' : 'bad'}">
+      <div class="pl-h"><b>Plano da operação</b>${t.held ? `<button class="linkbtn" data-planopen="${m}">recolher</button>` : ''}<span class="rr ${t.held ? '' : ok ? 'ok' : 'bad'}">risco/retorno 1:${P.rr.toFixed(1).replace('.', ',')}${infoBtn('rr', 'rr-plan-' + m)}</span></div>
       ${infoBox('rr', 'rr-plan-' + m)}
       ${row('Stop', 'pStop', P.stop, [['fundo recente', P.sugStop], ['-15%', P.E * 0.85], ['-25%', P.E * 0.75], ['-35%', P.E * 0.65]])}
       ${row('Alvo', 'pTp', P.tp, [['topo anterior', P.sugTp], ['+50%', P.E * 1.5], ['+100%', P.E * 2], ['+200%', P.E * 3]])}
@@ -3466,6 +3470,8 @@
     render();
   });
   document.addEventListener('click', async (e) => {
+    const pop2 = e.target.closest('[data-planopen]');
+    if (pop2) { const st = tradeState(pop2.dataset.planopen); st.planOpen = !st.planOpen; return render(); }
     const sp = e.target.closest('[data-sigplan]');
     if (sp) { const st = tradeState(sp.dataset.sigplan); st.pStop = pxFmt(Number(sp.dataset.stop)); st.pTp = pxFmt(Number(sp.dataset.tp)); st.side = 'buy'; return render(); }
     const ps = e.target.closest('[data-pset]');
