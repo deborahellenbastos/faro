@@ -1829,9 +1829,9 @@
         <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
         <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
         ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
+        <button class="btn btn-sm" data-askclaude="${esc(t.mint)}" title="Abre o Claude com os dados desta moeda e copia a foto do gráfico do Faro para você colar">${ICON.claude}Perguntar ao Claude</button>
         <span style="flex:1"></span>
         ${dexOn() ? '' : `<a class="btn btn-sm" href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}Abrir na Dex</a>`}
-        <button class="btn btn-sm" data-askclaude="${esc(t.mint)}" title="Abre o Claude com os dados desta moeda e copia a foto do gráfico do Faro para você colar">${ICON.claude}Perguntar ao Claude</button>
         <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
       </div>
       <div class="lw-slot" data-lwslot="${esc(t.mint)}"><div class="dexwrap" data-dexslot></div><div class="farowrap" data-faroslot>
