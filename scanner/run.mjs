@@ -113,7 +113,9 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   }
 
   const simOpen = new Set((state.sim?.open || []).map((o) => o.mint));
-  const monitored = (t) => t.held || simOpen.has(t.mint) || t.status === 'carteira' || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
+  const REENTRY_MS = (cfg.compra?.reentradaHoras ?? 3) * 3600000;
+  const reentryOpen = (t) => !!(t.reentry && !t.held && now - t.reentry.at < REENTRY_MS);
+  const monitored = (t) => t.held || simOpen.has(t.mint) || t.status === 'carteira' || reentryOpen(t) || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
   const active = Object.values(tokens).filter((t) => t.status === 'nova' || t.status === 'aguardando' || monitored(t));
 
   // 3. Dados de mercado de todas de uma vez
@@ -364,7 +366,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       ctx.trail = t.trail;
       const x = exitSignal(t.candles, { entryPx: t.position.avgPriceUsd, entryAt }, ctx);
       if (x) sig = { tipo: 'saida', ...x };
-    } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75)) {
+    } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t)) {
       sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };
     }
     if (!sig) { delete t.sinal; continue; }
@@ -407,6 +409,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   for (const [mint, a] of Object.entries(vig?.sold || {})) {
     const t = tokens[mint]; if (!t || !a || t.watchSell?.at === a.at) continue;
     t.watchSell = a;
+    // Saiu no stop (perda, móvel ou queda forte): a moeda segue vigiada para uma possível reentrada no fundo
+    if (a.ok && ['stop-perda', 'stop-movel', 'vigia'].includes(a.kind)) t.reentry = { at: a.at, kind: a.kind, exitPx: t.priceUsd || null };
     if (a.ok) log(`Vigia vendeu 100% de ${t.symbol}: ${a.why}${a.outSol ? ` (${a.outSol.toFixed(4)} SOL)` : ''}`);
   }
   for (const t of Object.values(tokens)) {

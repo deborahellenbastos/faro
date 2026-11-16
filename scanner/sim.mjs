@@ -77,7 +77,9 @@ export function simStep({ state, tokens, candidates, cfg, now, log }) {
     if ((t.score || 0) < (cfg.compra?.scoreMinimo ?? 70)) continue;
     if (t.shape && ['morta', 'reta'].includes(t.shape.tipo)) continue;
     if (sim.open.some((x) => x.mint === t.mint)) continue;
-    if (sim.closed.some((x) => x.mint === t.mint && x.at > day)) continue; // uma vez por dia por moeda, igual à compra real
+    // uma vez por dia por moeda, igual à compra real (mais uma reentrada se saiu no stop)
+    const prevToday = sim.closed.filter((x) => x.mint === t.mint && x.at > day);
+    if (prevToday.length >= 2 || (prevToday.length === 1 && !/stop/.test(prevToday[0].why || ''))) continue;
     const g = t.sinal, E = t.priceUsd;
     if (!(E > 0) || !(g.stop > 0 && g.stop < E)) continue;
     const tp = E * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);

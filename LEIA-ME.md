@@ -252,3 +252,14 @@ Ajuste em `config.json`, `venda.stopPerda`.
 O item "Dev limpo" reprova a moeda, de vez, em dois casos:
 - **O dev já lançou moedas e todas morreram:** nenhuma passou de US$ 30 mil de market cap. Em 16/11, os únicos devs com histórico eram os da SENT e da 6STAR, e as duas foram golpe. Ajuste em `filtros.devAnterioresMcMinUsd`.
 - **É o mesmo dev de um golpe que o Faro já viu:** quando uma moeda aprovada some (liquidez sumiu, rug ou -90%), o robô guarda a carteira do criador e reprova as próximas moedas dele. Em 16/11, o mesmo dev lançou a PASSED e a 6STAR e as duas viraram golpe. Ele ainda aparece em outras 3 moedas.
+
+## Reentrada depois do stop
+
+Quando o robô vende no stop (stop de perda, stop móvel ou queda forte), a moeda continua sendo vigiada por 3 horas. Se ela formar fundo de verdade, o Faro avisa **"Boa reentrada"**. O fundo de verdade usa o mesmo método da boa entrada:
+- segurou na zona de 50% a 61,8%;
+- fechou uma vela verde acima da anterior;
+- tem mais compra que venda.
+
+Além disso, a liquidez precisa estar em pelo menos 70% da de antes (golpe tira a liquidez) e não pode haver alerta de perigo.
+
+Com a compra automática ligada, o robô pode reentrar sozinho uma vez por moeda no dia. A simulação faz o mesmo. Ajuste a janela em `compra.reentradaHoras`.

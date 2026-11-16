@@ -354,6 +354,18 @@ assert.equal(state.lastRun.autoCompra, null);
   assert.match(dev({}, { __badDevs: { DEV1: { symbol: 'PASSED' } } }).detail, /golpe anterior \(PASSED\)/);
 }
 
+// Reentrada: saiu no stop e a moeda segue viva -> volta a ser candidata; sem liquidez (golpe) não
+{
+  const { entryCandidates } = await import('./autobuy.mjs');
+  const cfgR = { compra: { scoreMinimo: 70 }, simulacao: {} };
+  const sig = { tipo: 'entrada', fase: 'entrada', boa: true, stop: 0.8, alvo: 1.6, rr: 3, at: 1000 };
+  const tk = {
+    R: { mint: 'R', symbol: 'REE', status: 'carteira', priceUsd: 1, score: 80, sinal: sig, reentry: { at: 500 }, liquidityUsd: 20000, entryLiquidityUsd: 22000 },
+    G: { mint: 'G', symbol: 'GOL', status: 'carteira', priceUsd: 1, score: 80, sinal: sig, reentry: { at: 500 }, liquidityUsd: 2000, entryLiquidityUsd: 22000 },
+  };
+  assert.deepEqual(entryCandidates(tk, cfgR, 1000).map((t) => t.mint), ['R']);
+}
+
 // O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais
 {
   const norm = (x) => x.replace(/export /g, '').replace(/\s+/g, ' ').trim();

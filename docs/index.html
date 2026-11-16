@@ -988,7 +988,7 @@
     if (/^Compra confirmada/.test(T)) return 'compra';
     if (/^Venda confirmada/.test(T)) return 'venda';
     if (/^Nova no radar/.test(T)) return 'nova';
-    if (/^Boa entrada/.test(T)) return 'entrada';
+    if (/^Boa (re)?entrada/.test(T)) return 'entrada';
     if (/^(Robô vendeu|Não vendida|Venda automática falhou|Vigia)/.test(T)) return 'robo';
     if (/^(Perigo|Atenção) em/.test(T)) return 'alerta';
     if (/^(Saída|Atenção): .+ - /.test(T)) return 'saida';
@@ -1047,7 +1047,7 @@
       const g0 = x.sig0;
       what = g0 ? ntRow('Sinal', esc(g0.msg)) + (g0.zona ? ntRow('Zona de compra', `${price(g0.zona[0])} a ${price(g0.zona[1])}`) : '') + ntRow('Stop e alvo', `${price(g0.stop)} - ${price(g0.alvo)} (risco/retorno 1:${(g0.rr || 0).toFixed(1).replace('.', ',')})`) : `<p>${esc(x.body)}</p>`;
       if (t?.priceUsd) what += ntRow('Preço', `no aviso ${price(S?.px)} - agora ${price(t.priceUsd)}${sinceAviso}`);
-      why = ntRow('Por que é boa entrada', 'A moeda corrigiu até a zona de 50% a 61,8% da última alta, o fundo segurou e fechou uma vela verde com mais compra que venda (o método dos vídeos).');
+      why = /reentrada/.test(x.title) ? ntRow('Por que é boa reentrada', 'Você (ou o robô) saiu no stop. Depois disso a moeda segurou o fundo na zona de 50% a 61,8%, fechou uma vela verde com mais compra que venda e a liquidez continua de pé (não foi golpe). Voltar aqui sai mais barato do que a primeira compra.') : ntRow('Por que é boa entrada', 'A moeda corrigiu até a zona de 50% a 61,8% da última alta, o fundo segurou e fechou uma vela verde com mais compra que venda (o método dos vídeos).');
     } else if (type === 'saida') {
       const g0 = x.sig0;
       what = ntRow('Sinal', esc(g0?.msg || x.body)) + (g0?.stop ? ntRow('Stop e alvo', `${price(g0.stop)} - ${price(g0.alvo)}`) : '') + (t?.priceUsd ? ntRow('Preço', `${price(t.priceUsd)}${sinceAviso}`) : '');
@@ -1216,15 +1216,15 @@
       const sym = t.symbol || t.mint.slice(0, 6);
       if (g.tipo === 'entrada') {
         entrada = true;
-        addInbox(`Boa entrada: ${sym}`, `${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${g.rr.toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k, { kind: 'entrada', sig0: { msg: g.msg, zona: g.zona, stop: g.stop, alvo: g.alvo, rr: g.rr } });
-        toast(`Boa entrada: ${sym}`);
+        addInbox(`Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}`, `${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${g.rr.toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k, { kind: 'entrada', sig0: { msg: g.msg, zona: g.zona, stop: g.stop, alvo: g.alvo, rr: g.rr } });
+        toast(`Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}`);
       } else {
         g.fase === 'realizar' ? (bom = true) : (ruim = true);
         addInbox(`${g.fase === 'realizar' ? 'Saída' : 'Atenção'}: ${sym} - ${g.titulo.toLowerCase()}`, g.msg, t.mint, g.fase === 'realizar' ? 'good' : 'warn', 'sinal-' + k, { kind: 'saida', sig0: { msg: g.msg, stop: g.stop, alvo: g.alvo, fase: g.fase } });
         toast(`${sym}: ${g.titulo.toLowerCase()}`);
       }
       if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') {
-        try { const n = new Notification(g.tipo === 'entrada' ? `Boa entrada: ${sym}` : `${sym}: ${g.titulo}`, { body: g.msg, tag: 'sinal-' + t.mint }); n.onclick = () => { window.focus(); goTo(t.mint); n.close(); }; } catch {}
+        try { const n = new Notification(g.tipo === 'entrada' ? `Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}` : `${sym}: ${g.titulo}`, { body: g.msg, tag: 'sinal-' + t.mint }); n.onclick = () => { window.focus(); goTo(t.mint); n.close(); }; } catch {}
       }
     }
     // Perdida que voltou a valer US$ 1 ou mais: aí vale a pena vender (avisa uma vez; se cair de novo, pode avisar de novo)
@@ -1664,7 +1664,8 @@
       const x = exitSignal(c, { entryPx: t.position.avgPriceUsd, entryAt }, ctx);
       return x ? { tipo: 'saida', ...x } : null;
     }
-    if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75)) return { tipo: 'entrada', ...entrySignal(c, ctx) };
+    const reent = !!(t.reentry && !t.held && Date.now() - t.reentry.at < (data?.config?.compra?.reentradaHoras ?? 3) * 3600000);
+    if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reent) return { tipo: 'entrada', reentrada: reent, ...entrySignal(c, ctx) };
     return null;
   }
   // Stop móvel ao vivo: o do robô, subindo junto com o preço que o painel vê agora
@@ -1741,7 +1742,7 @@
     const use = g.tipo === 'entrada' && g.stop && g.alvo && ['entrada', 'zona', 'perto'].includes(g.fase)
       ? `<button class="linkbtn planlink" data-sigplan="${esc(t.mint)}" data-stop="${g.stop}" data-tp="${g.alvo}">Usar este stop e alvo no plano</button>` : '';
     const iid = 'rr-sig-' + t.mint;
-    return `<section class="panel sig ${cls}"><div class="sig-h"><span>${g.tipo === 'entrada' ? 'Sinal de entrada' : 'Sinal de saída'}</span><b>${esc(g.titulo)}</b></div>
+    return `<section class="panel sig ${cls}"><div class="sig-h"><span>${g.tipo === 'entrada' ? (g.reentrada ? 'Sinal de reentrada' : 'Sinal de entrada') : 'Sinal de saída'}</span><b>${esc(g.titulo)}</b></div>
       <p>${esc(g.msg)}</p>${lv.length ? `<div class="sig-lv">${lv.map(([a, b]) => `<div><span>${a}${a === 'Risco/retorno' ? infoBtn('rr', iid) : ''}</span><b class="num">${b}</b></div>`).join('')}</div>` : ''}${infoBox('rr', iid)}${use}</section>`;
   }
   // Níveis de Fibonacci do último movimento (fundo -> topo), para comprar na correção

@@ -3,13 +3,18 @@
 
 export const SWITCH_RE = /faro:compra=(on|off)/;
 
+// Saiu no stop há pouco e a moeda segue viva: pode reentrar se o fundo se confirmar (uma vez por moeda no dia)
+export const isReentry = (t, cfg, now) => !!(t.reentry && !t.held && now - t.reentry.at < (cfg.compra?.reentradaHoras ?? 3) * 3600000);
+
 // Moedas com sinal de boa entrada que acabou de aparecer, dentro das regras
 export function entryCandidates(tokens, cfg, now) {
   const c = cfg.compra || {};
   const fresh = (c.sinalValidoMin ?? 10) * 60000;
   return Object.values(tokens)
     .filter((t) => t.sinal?.tipo === 'entrada' && t.sinal.boa && now - (t.sinal.at || 0) <= fresh)
-    .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75))
+    .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || isReentry(t, cfg, now))
+    // reentrada: só com a liquidez ainda de pé (golpe tira a liquidez) e sem alerta de perigo
+    .filter((t) => !isReentry(t, cfg, now) || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => !t.held && t.safety?.level !== 'danger' && (t.score || 0) >= (c.scoreMinimo ?? 70))
     .filter((t) => !(t.shape && ['morta', 'reta'].includes(t.shape.tipo)))
     .filter((t) => (t.sinal.rr || 0) >= (cfg.simulacao?.riscoRetornoMin ?? 2))
@@ -52,5 +57,7 @@ export function buyLimits(state, tokens, cfg, now) {
     stopped: lossSol <= capSol,
     room: Math.max(0, Math.min((S.maxAbertas ?? 2) - open, (c.maxComprasPorDia ?? 5) - todayTrades.length)),
     bought: new Set(todayTrades.map((x) => x.mint)),
+    // moedas com uma compra hoje que saíram no stop depois: liberadas para UMA reentrada
+    reentryOk: new Set(todayTrades.filter((x) => todayTrades.filter((y) => y.mint === x.mint).length === 1 && tokens[x.mint]?.reentry?.at > x.at).map((x) => x.mint)),
   };
 }

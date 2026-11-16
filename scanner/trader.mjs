@@ -120,12 +120,12 @@ export async function createTrader(cfg, log) {
       let room = limits.room;
       for (const t of candidates) {
         if (room <= 0) { log2(`Compra automática: limite atingido (${limits.open} abertas de ${limits.maxOpen}, ${limits.today} compras hoje de ${limits.maxDay})`); break; }
-        if (limits.bought.has(t.mint)) continue;
+        if (limits.bought.has(t.mint) && !limits.reentryOk?.has(t.mint)) continue;
         try {
           const r = await buy(t.mint);
           room--;
           out.push({ at: Date.now(), mint: t.mint, symbol: t.symbol, sol: c.solPorCompra, priceUsd: t.priceUsd, sig: r.sig, ok: true, auto: true, sinal: t.sinal?.msg });
-          log2(`COMPROU ${t.symbol} no sinal de boa entrada: ${c.solPorCompra} SOL (tx ${r.sig.slice(0, 8)}...)`);
+          log2(`COMPROU ${t.symbol} no sinal de boa ${t.reentry ? 'reentrada' : 'entrada'}: ${c.solPorCompra} SOL (tx ${r.sig.slice(0, 8)}...)`);
         } catch (e) {
           out.push({ at: Date.now(), mint: t.mint, symbol: t.symbol, sol: c.solPorCompra, ok: false, auto: true, erro: e.message });
           log2(`Compra de ${t.symbol} falhou: ${e.message}`, true);
