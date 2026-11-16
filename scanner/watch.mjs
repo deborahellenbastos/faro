@@ -9,7 +9,7 @@ import path from 'node:path';
 import { decrypt } from './vault.mjs';
 import { createTrader } from './trader.mjs';
 import { getRugReport, getWalletHoldings } from './api.mjs';
-import { summarizeRug, scamSignals } from './analyze.mjs';
+import { summarizeRug, scamSignals, isLpSignal } from './analyze.mjs';
 import { weakSignals, realizeCheck } from './signals.mjs';
 
 const seconds = Math.max(0, Number(process.argv[2]) || 0);
@@ -99,6 +99,7 @@ async function contractCheck(now) {
   }
   if (now - lastRug >= 60000) {
     lastRug = now;
+    const lpSeen = [], rugSig = {};
     for (const t of held) {
       try {
         const sum = summarizeRug(await getRugReport(t.mint));
@@ -108,9 +109,17 @@ async function contractCheck(now) {
         if (!mb.rug) mb.rug = { lpLockedPct: sum.lpLockedPct, devPct: sum.devPct, mint: sum.mintAuthority != null, freeze: sum.freezeAuthority != null };
         const base = t.baseline || mb.rug;
         const sig = scamSignals(base, sum, cfg);
-        if (sig.length) out[t.mint] = [out[t.mint], ...sig].filter(Boolean).join('; ');
+        if (sig.some(isLpSignal)) lpSeen.push(t.mint);
+        if (sig.length) (rugSig[t.mint] = sig);
         await sleep(400);
       } catch (e) { if (e.rateLimited) break; }
+    }
+    // Várias moedas com "liquidez destravada" na mesma leitura = falha do RugCheck, não golpe
+    const glitch = lpSeen.length > 1;
+    if (glitch) log(`RugCheck disse liquidez destravada em ${lpSeen.length} moedas ao mesmo tempo: parece falha dele, ignorado.`);
+    for (const [mint, sig] of Object.entries(rugSig)) {
+      const keep = sig.filter((x) => !isLpSignal(x) || !glitch);
+      if (keep.length) out[mint] = [out[mint], ...keep].filter(Boolean).join('; ');
     }
   }
   return out;
@@ -172,7 +181,13 @@ while (Date.now() < until) {
         const entry = t.position.avgPriceUsd, pk = mem.peak[t.mint];
         trailPx = Math.max(t.trail.stop, Math.min(pk * (1 - (SM.distanciaPct ?? 25) / 100), pk * 0.88), entry * (1 + (SM.minimoTravadoPct ?? 5) / 100));
       }
-      if (scam[t.mint]) await sell(t, `golpe no contrato: ${scam[t.mint]}`, 'golpe', px);
+      // LP destravada só vende se a liquidez estiver saindo de verdade (15%+ na janela); os outros sinais de golpe vendem direto
+      let golpe = scam[t.mint];
+      if (golpe && /^liquidez destravada/.test(golpe) && !golpe.includes(';') && liqDrop < confLiq) {
+        if (!mem.lpIgn?.[t.mint]) { (mem.lpIgn = mem.lpIgn || {})[t.mint] = now; log(`${t.symbol}: RugCheck diz liquidez destravada, mas a liquidez no mercado não caiu (${liqDrop.toFixed(0)}%). Segurando.`); }
+        golpe = null;
+      }
+      if (golpe) await sell(t, `golpe no contrato: ${golpe}`, 'golpe', px);
       else if (trailPx && px < trailPx) await sell(t, `stop móvel: caiu abaixo de US$ ${trailPx.toPrecision(4)} (garantindo +${((trailPx / t.position.avgPriceUsd - 1) * 100).toFixed(0)}%)`, 'stop-movel', px);
       else if (realizeOn && gain != null && gain >= 50 && gain < (L.alvoPct ?? 100) && (() => {
         const weak = weakSignals({ candles: t.candles, entryAt: t.position?.lastBuyAt || t.heldSince || 0, buys5: Number(p?.txns?.m5?.buys) || 0, sells5: Number(p?.txns?.m5?.sells) || 0, vol5: Number(p?.volume?.m5), volH1: Number(p?.volume?.h1), fromPeak });

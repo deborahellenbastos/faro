@@ -294,6 +294,9 @@ export function baselineFrom(sum) {
 
 // Sinais de golpe no contrato que MUDARAM depois da compra (o que já era assim na compra não conta).
 // É isso que dispara a venda automática de 100%.
+// "Liquidez destravada" sozinha não basta para vender: o RugCheck às vezes devolve 0% para várias moedas ao mesmo tempo
+// (falha dele). Só conta se a liquidez caiu de verdade no mercado.
+export const isLpSignal = (s) => /^liquidez destravada/.test(s);
 export function scamSignals(base, sum, cfg) {
   if (!base || !sum) return [];
   const f = cfg.filtros;

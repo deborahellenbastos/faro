@@ -1,7 +1,7 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { simStep } from './sim.mjs';
 import { entrySignal, exitSignal, trailStop } from './signals.mjs';
-import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
+import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
 const RECHECK_MIN = 5;      // moedas da carteira: rechecagem de segurança toda rodada (5 min)
@@ -113,6 +113,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   const rugQueue = [];
   const recheckQueue = [];
   const marketNow = new Map();
+  let lpFlips = 0;
   for (const t of active) {
     const m = summarizeMarket(market.get(t.mint), now);
     t.lastChecked = now;
@@ -191,11 +192,20 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (!sum) continue;
       if (!t.baseline) t.baseline = baselineFrom(sum);
       t._rugAlerts = rugAlerts(t.baseline, sum, cfg);
+      // LP "destravada" com a liquidez estável no mercado: provavelmente falha do RugCheck, vira só atenção
+      { const ld = t.entryLiquidityUsd > 0 ? (1 - m.liquidityUsd / t.entryLiquidityUsd) * 100 : 0;
+        if (ld < 15) t._rugAlerts = t._rugAlerts.map((a) => (a.id === 'lp' ? { ...a, level: 'warn', msg: `${a.msg} (a liquidez no mercado não caiu: pode ser falha do RugCheck)` } : a)); }
       t.checks = runChecks(m, sum, cfg);
       t.safety = mergeSafety(t.safety, [...t._rugAlerts, ...(t._mktAlerts || [])], now);
       if (t.safety.level !== 'ok') log(`ALERTA ${t.symbol}: ${t.safety.alerts.map((a) => a.msg).join(' | ')}`);
       // Venda automática de 100% quando o contrato muda para golpe (só com tudo ligado)
-      const scam = t.held ? scamSignals(t.baseline, sum, cfg) : [];
+      let scam = t.held ? scamSignals(t.baseline, sum, cfg) : [];
+      // LP destravada: só vale com a liquidez caindo 15%+ e se não for várias moedas ao mesmo tempo (falha do RugCheck)
+      if (scam.some(isLpSignal)) {
+        lpFlips++;
+        const liqDrop = t.entryLiquidityUsd > 0 ? (1 - m.liquidityUsd / t.entryLiquidityUsd) * 100 : 0;
+        if (liqDrop < 15 || lpFlips > 1) { log(`${t.symbol}: RugCheck diz liquidez destravada, mas a liquidez no mercado não caiu (${liqDrop.toFixed(0)}%)${lpFlips > 1 ? ' e aconteceu com várias moedas juntas' : ''}. Ignorado.`); scam = scam.filter((x) => !isLpSignal(x)); }
+      }
       // Só vale vender se sobrar pelo menos o valor mínimo (senão as taxas comem tudo)
       const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
       // Operação pequena (investiu ou vale menos de US$ 1): não vende sozinho, a taxa não compensa e ela pode ter um bump
