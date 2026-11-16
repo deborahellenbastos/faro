@@ -1778,8 +1778,8 @@
           <button data-tool="t" class="${CH.tool === 't' ? 'on' : ''}" title="Linha de tendência (2 cliques)">${TOOL_ICON.t}</button>
           <button data-tool="r" class="${CH.tool === 'r' ? 'on' : ''}" title="Régua de porcentagem (2 cliques)">${TOOL_ICON.r}</button>
           <i></i>
-          <button data-fibtoggle class="${store.get('faro-fib', true) ? 'on' : ''}" title="Mostrar níveis de Fibonacci do último movimento">${TOOL_ICON.fib}</button>
-          <button data-metastoggle class="${store.get('faro-metas', false) ? 'on' : ''}" title="Mostrar as metas do robô: +30% liga o stop móvel, +50% e +80% realiza se a alta perder força">${TOOL_ICON.metas}</button>
+          <button data-fibtoggle class="${store.get('faro-fib', true) ? 'on' : ''}" title="Fibonacci: níveis de 38,2%, 50% e 61,8% da última alta (zona de compra)">${TOOL_ICON.fib}</button>
+          <button data-metastoggle class="${store.get('faro-metas', false) ? 'on' : ''}" title="Metas do robô (só nas moedas que você tem): +30% liga o stop móvel, +60% o stop segue o topo, +50% e +80% realiza se a alta perder força">${TOOL_ICON.metas}</button>
           <button data-chartreset title="Voltar o gráfico para a posição normal">${TOOL_ICON.reset}</button>
           <button data-tool="trash" title="Apagar os traços desta moeda">${TOOL_ICON.trash}</button>
         </div>
@@ -2511,9 +2511,10 @@
     const nv = e.target.closest('[data-cnav]'); if (nv) chartNav(nv.dataset.cnav);
     if (e.target.closest('[data-chartreset]')) resetChart();
     const fb = e.target.closest('[data-fibtoggle]');
-    if (fb) { const on = !store.get('faro-fib', true); store.set('faro-fib', on); fb.classList.toggle('on', on); const t = data?.tokens?.[CH.mint]; if (t) decorate(t); }
+    if (fb) { const on = !store.get('faro-fib', true); store.set('faro-fib', on); fb.classList.toggle('on', on); const t = data?.tokens?.[CH.mint]; if (t) decorate(t);
+      toast(on ? (t && !swingMove(t) ? 'Fibonacci ligado, mas esta moeda ainda não teve uma alta de 20%+ para medir' : 'Fibonacci ligado: níveis de 38,2%, 50% e 61,8% da última alta') : 'Fibonacci desligado'); }
     const mt = e.target.closest('[data-metastoggle]');
-    if (mt) { const on = !store.get('faro-metas', false); store.set('faro-metas', on); mt.classList.toggle('on', on); const t = data?.tokens?.[CH.mint]; if (t) decorate(t); toast(on ? 'Metas do robô no gráfico' : 'Metas do robô escondidas'); }
+    if (mt) { const on = !store.get('faro-metas', false); store.set('faro-metas', on); mt.classList.toggle('on', on); const t = data?.tokens?.[CH.mint]; if (t) decorate(t); toast(on ? (t?.held ? 'Metas do robô no gráfico' : 'Metas do robô ligadas: aparecem só nas moedas que você tem') : 'Metas do robô escondidas'); }
   });
   // Variação desde a sua entrada (e desde a saída, se já vendeu), atualizada com o preço ao vivo
   function metaOf(t) {
