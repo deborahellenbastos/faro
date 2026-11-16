@@ -233,4 +233,4 @@ Alguns devs compram a moeda no lançamento espalhando a compra em várias cartei
 - Venderam juntas às 15:06.
 - O top 10 mostrava só 23% e o RugCheck não viu insiders.
 
-O robô agora mede o maior grupo de carteiras com fatias quase iguais (até 1,3x uma da outra). Ele reprova no item "Holders" quando acha 7 ou mais carteiras assim, somando 10% ou mais. Ajuste em `filtros.bundleCarteirasMin` e `filtros.bundlePctMin`.
+O robô mede o maior grupo de carteiras com fatias de 0,8% ou mais e quase iguais (até 1,3x uma da outra). Carteiras menores que 0,8% não contam, porque é normal ter várias pequenas parecidas na cauda dos holders. Ele reprova no item "Holders" quando acha 7 ou mais carteiras assim, somando 10% ou mais. Ajuste em `filtros.bundleCarteirasMin` e `filtros.bundlePctMin`.

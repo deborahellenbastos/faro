@@ -105,7 +105,9 @@ export function summarizeRug(r) {
   const top10Pct = holders.slice(0, 10).reduce((s, h) => s + h.pct, 0);
   // Bundle: muitas carteiras com fatias quase iguais (o dev compra no lançamento espalhado em várias carteiras
   // pequenas para não aparecer no top 10, e depois vende todas juntas). Maior grupo com fatias a até 1,3x uma da outra.
-  const sizes = holders.slice(0, 25).map((h) => h.pct).filter((p) => p >= 0.5).sort((a, b) => a - b);
+  // Só fatias de 0,8%+ contam: bundle costuma vir em pedaços de 1% a 3%; várias carteiras pequenas (0,5% a 0,7%)
+  // com tamanhos parecidos são normais na cauda dos holders (caso ROCCO, 16/11)
+  const sizes = holders.slice(0, 25).map((h) => h.pct).filter((p) => p >= 0.8).sort((a, b) => a - b);
   let twinCount = 0, twinPct = 0;
   for (let i = 0, j = 0; j < sizes.length; j++) {
     while (sizes[j] > sizes[i] * 1.3) i++;

@@ -336,6 +336,9 @@ assert.equal(state.lastRun.autoCompra, null);
   assert.ok(b.twinCount >= 7 && b.twinPct >= 10, `bundle detectado (${b.twinCount} carteiras, ${b.twinPct.toFixed(1)}%)`);
   const normal = summarizeRug(rep([6, 4.1, 3.2, 2.4, 1.9, 1.5, 1.1, 0.9, 0.8, 0.7, 0.6, 0.55]));
   assert.ok(normal.twinCount < 7, `distribuição normal não é bundle (${normal.twinCount})`);
+  // ROCCO (16/11): 17 carteiras pequenas, ~0,66% cada (11,2% juntas) = cauda normal de holders, não bundle
+  const rocco = summarizeRug(rep([5, 3, 2.2, ...Array.from({ length: 17 }, (_, i) => 0.58 + (i % 5) * 0.035)]));
+  assert.ok(rocco.twinCount < 7, `cauda de holders pequenos não é bundle (${rocco.twinCount})`);
 }
 
 // O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais
