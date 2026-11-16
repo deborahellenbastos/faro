@@ -50,8 +50,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       for (const t of Object.values(tokens)) if (t.held && !heldSet.has(t.mint)) { t.held = false; t.soldAt = now; }
       log(`Carteira: ${held.length} moedas encontradas`);
       // Compras e vendas (para calcular preço médio e resultado)
-      // v2: cálculo novo (taxa de conta e preço do SOL por compra) -> relê o histórico uma vez
-      state.wallet = state.wallet && state.wallet.address === wallet && state.wallet.v === 2 ? state.wallet : { address: wallet, ops: [], lastSig: null, v: 2 };
+      // v3: custo = valor da troca em si, igual à Phantom (sem taxas de rede e de criação de conta) -> relê o histórico uma vez
+      state.wallet = state.wallet && state.wallet.address === wallet && state.wallet.v === 3 ? state.wallet : { address: wallet, ops: [], lastSig: null, v: 3 };
       if (api.getSolBalance) { try { state.wallet.solBalance = await api.getSolBalance(wallet); } catch {} }
       if (api.getWalletOps) {
         try {

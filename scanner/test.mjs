@@ -195,6 +195,21 @@ assert.equal(uops[0].stable, -30);
 // Preço do SOL do minuto exato gravado em cada transação da carteira
 assert.ok(state.wallet.ops.every((o) => o.px === 1 && o.solUsd === 150));
 
+// Custo igual ao da Phantom: só o SOL que entrou na troca (taxas de rede e de contas ficam de fora)
+const jupTx = { blockTime: 1700000000, transaction: { message: { accountKeys: ['ME', 'TMP', 'ATA'], instructions: [] } }, meta: { fee: 145000,
+  preBalances: [20000000, 0, 0], postBalances: [5047527, 0, 1513840],
+  preTokenBalances: [], postTokenBalances: [{ accountIndex: 2, owner: 'ME', mint: 'TOK', uiTokenAmount: { uiAmount: 5214.8 } }],
+  innerInstructions: [{ instructions: [
+    { program: 'spl-token', parsed: { type: 'initializeAccount3', info: { account: 'TMP', mint: 'So11111111111111111111111111111111111111112', owner: 'ME' } } },
+    { program: 'spl-token', parsed: { type: 'transferChecked', info: { source: 'TMP', destination: 'POOL', mint: 'So11111111111111111111111111111111111111112', tokenAmount: { amount: '11837005' } } } },
+    { program: 'spl-token', parsed: { type: 'transferChecked', info: { source: 'TMP', destination: 'FEE1', mint: 'So11111111111111111111111111111111111111112', tokenAmount: { amount: '2926' } } } },
+    { program: 'spl-token', parsed: { type: 'transfer', info: { source: 'TMP', destination: 'FEE2', amount: '101502' } } },
+    { program: 'spl-token', parsed: { type: 'transferChecked', info: { source: 'POOLTOK', destination: 'ATA', mint: 'TOK', tokenAmount: { amount: '5214804845' } } } },
+  ] }] } };
+const jops = parseOps(jupTx, 'ME', 'j1');
+assert.equal(jops.length, 1);
+assert.ok(Math.abs(jops[0].sol - -0.011941433) < 1e-12);
+
 // Compra desligada por padrão
 assert.equal(state.lastRun.autoBuy, false);
 assert.equal(cfg.compra.ativada, false);

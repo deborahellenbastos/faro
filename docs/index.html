@@ -386,8 +386,10 @@
   /* =========================================================
      Camadas: gráfico grande, gaveta do robô, toast
      ========================================================= */
-  .lw-slot iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-  .chart-box.is-dex .lw-slot { height: max(var(--chart-h), 420px); }
+  .lw-slot iframe { position: absolute; inset: 0; width: 100%; height: calc(100% + 40px); border: 0; }
+  .chart-box.is-dex .lw-slot { height: 440px; border-bottom: 1px solid var(--line); border-radius: var(--r-2); }
+  .list-sub { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .list-sub small { color: var(--faint); font-weight: 700; }
   .chart-box:not(.max) .cmax-only { display: none !important; }
   .cmax-sym { font-size: 16px; font-weight: 800; }
   .chart-box.max { position: fixed; inset: 0; z-index: 60; margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-4); background: var(--bg); display: flex; flex-direction: column; }
@@ -703,6 +705,10 @@
   }
 
   const walletOn = () => !!data?.lastRun?.wallet;
+  // Encerradas: vendi tudo, ou ainda tenho mas perdeu 95% ou mais (rug)
+  const isSold = (t) => !!t.closedOp && !t.held;
+  const isLost = (t) => !!(t.held && t.position?.known && t.position.openPnlPct <= -95);
+  const isClosed = (t) => isSold(t) || isLost(t);
   function isMine(t) { return !!(t.held || (!walletOn() && manualMine.has(t.mint))); }
 
   // Compara com o que você já viu e dispara sons/avisos só para o que é novo
@@ -907,10 +913,11 @@
         <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
       </div>
       <div class="lw-slot" data-lwslot="${esc(t.mint)}">${dex ? `<iframe src="${esc(chartUrl(t))}" title="Gráfico DexScreener" allow="clipboard-write" referrerpolicy="no-referrer-when-downgrade"></iframe>` : ''}</div>
-      <div class="mini-grip" data-grip title="Arraste para mudar a altura do gráfico"><i></i></div>
+      ${dex ? '' : '<div class="mini-grip" data-grip title="Arraste para mudar a altura do gráfico"><i></i></div>'}
     </div>`;
   }
 
+  const TFL = { m5: '5 min', h1: '1h', h6: '6h', h24: '24h' };
   function marketStats(t) {
     const P = t.periods || {};
     const cur = P[tfOf(t.mint)] || { buys: 0, sells: 0, vol: 0 };
@@ -923,8 +930,8 @@
         <div class="tile"><span>Holders</span><b class="num">${t.rug?.totalHolders != null ? int(t.rug.totalHolders) : '-'}</b></div>
       </div>
       <div class="flow">
-        <div class="fl"><span>Transações</span><b class="num">${int(tot)}</b></div>
-        <div class="fl"><span>Volume</span><b class="num">${usd(cur.vol)}</b></div>
+        <div class="fl" title="Negociações de todo mundo nessa moeda, no período escolhido acima"><span>Transações em ${TFL[tfOf(t.mint)]}</span><b class="num">${int(tot)}</b></div>
+        <div class="fl" title="Volume de todo mundo nessa moeda, no período escolhido acima"><span>Volume em ${TFL[tfOf(t.mint)]}</span><b class="num">${usd(cur.vol)}</b></div>
         <div class="fl-bar"><div class="bs num"><span>${int(cur.buys)} compras</span><span>${int(cur.sells)} vendas</span></div>
           <div class="bar"><i class="b" style="width:${bp}%"></i><i class="s" style="width:${100 - bp}%"></i></div></div>
       </div>`;
@@ -953,11 +960,27 @@
   // ---------- Minha operação (modelo da Phantom) ----------
   function opBlock(t) {
     const p = t.position;
+    if (isSold(t) && p?.known) {
+      const res = (p.receivedUsd || 0) - (p.spentUsd || 0);
+      return `<section class="panel op"><div class="op-h"><b>Operação encerrada</b><span>${p.buys} ${p.buys === 1 ? 'compra' : 'compras'} - ${p.sells} ${p.sells === 1 ? 'venda' : 'vendas'}</span></div>
+        <div class="op-top">
+          <div><div class="op-val num">${money(p.receivedUsd)}</div><div class="op-qty">recebido nas vendas</div></div>
+          <div class="op-res"><div class="op-pnl num ${cls(res)}">${signedMoney(res)}</div><div class="op-pct num"><i class="tri ${res >= 0 ? 'up' : 'down'}"></i>${pct(p.spentUsd ? (res / p.spentUsd) * 100 : 0)}</div></div>
+        </div>
+        <hr class="op-sep">
+        <div class="op-rows">
+          <span>Montante investido</span><b class="num">${money(p.spentUsd)}</b>
+          <span>Recebido</span><b class="num">${money(p.receivedUsd)}</b>
+          <span>Preço de entrada</span><b class="num">${price(p.avgPriceUsd)}</b>
+        </div>
+        ${historyBlock(t)}
+      </section>`;
+    }
     if (!t.held) return `<section class="panel op"><div class="op-h"><b>Minha operação</b></div>
       <p class="op-empty">Marcada manualmente. Coloque o endereço da sua carteira no <b>config.json</b> para ver quanto comprou, preço médio e resultado.</p>
       <div style="margin-top:12px"><button class="btn" data-mine="${esc(t.mint)}">Desmarcar</button></div></section>`;
     const valueUsd = p?.valueUsd ?? null;
-    const top = `<div class="op-h"><b>Minha operação</b>${p?.known ? `<span>${p.buys} ${p.buys === 1 ? 'compra' : 'compras'}${p.sells ? ` - ${p.sells} ${p.sells === 1 ? 'venda' : 'vendas'}` : ''}</span>` : ''}</div>
+    const top = `<div class="op-h"><b>Minha operação${isLost(t) ? ' <span class="pill muted" style="margin-left:6px">Perdida</span>' : ''}</b>${p?.known ? `<span>${p.buys} ${p.buys === 1 ? 'compra' : 'compras'}${p.sells ? ` - ${p.sells} ${p.sells === 1 ? 'venda' : 'vendas'}` : ''}</span>` : ''}</div>
       <div class="op-top">
         <div><div class="op-val num">${valueUsd != null ? money(valueUsd) : '-'}</div><div class="op-qty num">${tokFmt(t.heldAmount)} ${esc(t.symbol)}</div></div>
         ${p?.known ? `<div class="op-res"><div class="op-pnl num ${cls(p.openPnlUsd)}">${signedMoney(p.openPnlUsd)}</div>
@@ -1082,8 +1105,13 @@
     if (ui.tab === 'minhas') {
       const p = t.position;
       const l = levelOf(t);
-      main = `<b>${esc(t.symbol)} ${l !== 'ok' ? `<i class="sdot ${l}" title="${l === 'danger' ? 'Perigo' : 'Atenção'}"></i>` : ''}</b><small class="num">${t.held ? `${tokFmt(t.heldAmount)} ${esc(t.symbol)}` : 'marcada por você'}</small>`;
+      if (isSold(t)) {
+        main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>Vendida ${t.history?.[0] ? ago(t.history[0].at) : ''}</small>`;
+        side = `<b class="num ${cls(p?.pnlUsd)}">${signedMoney(p?.pnlUsd || 0)}</b><small class="num ${cls(p?.pnlPct)}">${pct(p?.pnlPct)}</small>`;
+      } else {
+      main = `<b>${esc(t.symbol)} ${l !== 'ok' && !isLost(t) ? `<i class="sdot ${l}" title="${l === 'danger' ? 'Perigo' : 'Atenção'}"></i>` : ''}</b><small class="num">${isLost(t) ? 'Perdida - ' : ''}${t.held ? `${tokFmt(t.heldAmount)} ${esc(t.symbol)}` : 'marcada por você'}</small>`;
       side = `<b class="num">${p?.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p?.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}`;
+      }
     } else if (ui.tab === 'aprovada') {
       const ch = Number(t.changePct) || 0;
       main = `<b>${esc(t.symbol)}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}</small>`;
@@ -1097,7 +1125,7 @@
 
   // ---------- Detalhe ----------
   function detailHtml(t) {
-    const mine = isMine(t);
+    const mine = isMine(t) || isSold(t);
     const P = t.periods || {};
     const tf = tfOf(t.mint);
     const chg = Number(P[tf]?.chg) || 0;
@@ -1364,8 +1392,14 @@
     for (let i = 0; i < mints.length; i += 30) {
       const chunk = mints.slice(i, i + 30);
       const pairs = await fetch(`https://api.dexscreener.com/tokens/v1/solana/${chunk.join(',')}`).then((r) => (r.ok ? r.json() : [])).catch(() => []);
-      const best = {};
-      for (const pr of pairs || []) { const m = pr?.baseToken?.address; if (!m || !chunk.includes(m)) continue; if (!best[m] || (pr?.liquidity?.usd || 0) > (best[m]?.liquidity?.usd || 0)) best[m] = pr; }
+      const best = {}, sum = {};
+      for (const pr of pairs || []) {
+        const m = pr?.baseToken?.address; if (!m || !chunk.includes(m)) continue;
+        if (!best[m] || (pr?.liquidity?.usd || 0) > (best[m]?.liquidity?.usd || 0)) best[m] = pr;
+        // A moeda pode ter vários pares: compras, vendas e volume somam todos
+        const a = (sum[m] = sum[m] || {});
+        for (const k of ['m5', 'h1', 'h6', 'h24']) { const x = (a[k] = a[k] || { buys: 0, sells: 0, vol: 0 }); x.buys += Number(pr?.txns?.[k]?.buys) || 0; x.sells += Number(pr?.txns?.[k]?.sells) || 0; x.vol += Number(pr?.volume?.[k]) || 0; }
+      }
       for (const [m, pr] of Object.entries(best)) {
         const t = data.tokens[m]; if (!t) continue;
         const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -1374,8 +1408,8 @@
         if (!t.pairAddress) Object.assign(t, { pairAddress: pr.pairAddress, pairUrl: pr.url, dexId: pr.dexId });
         t.liquidityUsd = num(pr?.liquidity?.usd);
         t.boosts = num(pr?.boosts?.active) || t.boosts;
-        t.periods = Object.fromEntries(['m5', 'h1', 'h6', 'h24'].map((k) => [k, { chg: num(pr?.priceChange?.[k]), buys: num(pr?.txns?.[k]?.buys), sells: num(pr?.txns?.[k]?.sells), vol: num(pr?.volume?.[k]) }]));
-        if (isMine(t)) watchLiquidity(t);
+        t.periods = Object.fromEntries(['m5', 'h1', 'h6', 'h24'].map((k) => [k, { chg: num(pr?.priceChange?.[k]), buys: sum[m][k].buys, sells: sum[m][k].sells, vol: sum[m][k].vol }]));
+        if (isMine(t) && !isLost(t)) watchLiquidity(t);
         recalcLive(t); tickBar(t); changed = true;
       }
     }
@@ -1418,7 +1452,7 @@
   //  Carteira ao vivo: lê suas transações direto da blockchain
   // =========================================================
   const RPC_URL = store.get('faro-rpc', '') || 'https://solana-rpc.publicnode.com';
-  const WAL = { ws: null, ops: store.get('faro-liveops', []), bal: {}, sol: null, seen: new Set(), busy: new Set(), retry: 1000 };
+  const WAL = { ws: null, ops: store.get('faro-liveops3', []), bal: {}, sol: null, seen: new Set(), busy: new Set(), retry: 1000 };
   async function rpcCall(method, params) {
     const r = await fetch(RPC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
     const j = await r.json();
@@ -1453,9 +1487,33 @@
     const mint = deltas[0][0];
     if (!owned(meta.preTokenBalances, mint) && owned(meta.postTokenBalances, mint)) sol += 0.00203928;
     if (owned(meta.preTokenBalances, mint) && !owned(meta.postTokenBalances, mint)) sol -= 0.00203928;
+    if (i === 0) sol += Number(meta.fee || 0) / 1e9;
+    const sw = swapSol(tx, owner);
+    if (sw != null && Math.sign(sw) === -Math.sign(deltas[0][1])) sol = sw;
     if (Math.abs(stable) > 0.005 && LIVE.solUsd) sol += stable / LIVE.solUsd;
     out.ops.push({ sig, at, mint, tokens: deltas[0][1], sol, ...(LIVE.solUsd ? { solUsd: LIVE.solUsd } : {}) });
     return out;
+  }
+  // Valor da troca em si, igual à Phantom (mesma leitura do robô)
+  function swapSol(tx, owner) {
+    const WSOL = 'So11111111111111111111111111111111111111112';
+    const meta = tx.meta || {};
+    const keys = (tx.transaction?.message?.accountKeys || []).map((k) => (typeof k === 'string' ? k : k.pubkey));
+    const mine = new Set();
+    for (const b of [...(meta.preTokenBalances || []), ...(meta.postTokenBalances || [])]) if (b.owner === owner && b.mint === WSOL && keys[b.accountIndex]) mine.add(keys[b.accountIndex]);
+    const all = [...(tx.transaction?.message?.instructions || []), ...(meta.innerInstructions || []).flatMap((x) => x.instructions || [])];
+    for (const ins of all) { const p = ins.parsed; if (p && /^initializeAccount/.test(p.type || '') && p.info?.mint === WSOL && p.info?.owner === owner) mine.add(p.info.account); }
+    if (!mine.size) return null;
+    let net = 0, moved = false;
+    for (const ins of all) {
+      const p = ins.parsed;
+      if (!p || ins.program !== 'spl-token' || (p.type !== 'transfer' && p.type !== 'transferChecked')) continue;
+      const amt = Number(p.info?.amount ?? p.info?.tokenAmount?.amount);
+      if (!(amt > 0)) continue;
+      if (mine.has(p.info.source)) { net -= amt; moved = true; }
+      if (mine.has(p.info.destination)) { net += amt; moved = true; }
+    }
+    return moved && net !== 0 ? net / 1e9 : null;
   }
   // Mesma conta que o robô faz (scanner/analyze.mjs)
   function positionCalc(ops, heldAmount, priceNative, priceUsd) {
@@ -1495,7 +1553,7 @@
     const robotAt = data.wallet.updatedAt || 0;
     const robotSigs = new Set((data.wallet.ops || []).map((o) => o.sig));
     WAL.ops = WAL.ops.filter((o) => !robotSigs.has(o.sig) && Date.now() - o.at < 3 * 86400000);
-    store.set('faro-liveops', WAL.ops);
+    store.set('faro-liveops3', WAL.ops);
     if (WAL.sol && WAL.sol.at > robotAt) data.wallet.solBalance = WAL.sol.v;
     const touched = new Set(WAL.ops.map((o) => o.mint));
     for (const [mint, b] of Object.entries(WAL.bal)) if (b.at > robotAt) touched.add(mint);
@@ -1506,6 +1564,19 @@
       if (b && b.at > robotAt) { t.heldAmount = b.amount; if (b.amount > 0 && !t.held) t.heldSince = Date.now(); t.held = b.amount > 0; }
       const ops = [...(data.wallet.ops || []).filter((o) => o.mint === mint), ...WAL.ops.filter((o) => o.mint === mint)].sort((a, b2) => a.at - b2.at);
       if (t.held) t.position = positionCalc(ops, t.heldAmount || 0, t.priceNative, t.priceUsd);
+      t.history = ops.slice(-50).reverse().map((o) => ({ sig: o.sig, at: o.at, tokens: o.tokens, sol: o.sol, ...(o.est ? { est: 1 } : {}) }));
+    }
+    // Moedas que você já vendeu por completo: guardam o resultado da operação
+    const byMint = {};
+    for (const o of [...(data.wallet.ops || []), ...WAL.ops]) (byMint[o.mint] = byMint[o.mint] || []).push(o);
+    for (const [mint, ops] of Object.entries(byMint)) {
+      let t = data.tokens[mint];
+      if (t?.held) { t.closedOp = false; continue; }
+      if (!ops.some((o) => o.tokens > 0 && o.sol < 0)) continue;
+      if (!t) t = data.tokens[mint] = { mint, firstSeen: ops[0].at, status: 'carteira', source: 'sua carteira' };
+      ops.sort((a, b2) => a.at - b2.at);
+      t.closedOp = true;
+      t.position = positionCalc(ops, 0, t.priceNative, t.priceUsd);
       t.history = ops.slice(-50).reverse().map((o) => ({ sig: o.sig, at: o.at, tokens: o.tokens, sol: o.sol, ...(o.est ? { est: 1 } : {}) }));
     }
     for (const t of Object.values(data.tokens)) applyLiveAlerts(t);
@@ -1705,13 +1776,15 @@
     const by = (s) => all.filter((t) => t.status === s && !isMine(t));
     const approved = all.filter((t) => t.status === 'aprovada');
     const order = { danger: 0, warn: 1, ok: 2 };
-    const mine = all.filter(isMine).sort((a, b) => order[levelOf(a)] - order[levelOf(b)] || (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
+    const held = all.filter(isMine);
+    const mine = held.filter((t) => !isLost(t)).sort((a, b) => order[levelOf(a)] - order[levelOf(b)] || (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
+    const closed = [...held.filter(isLost), ...all.filter(isSold)].sort((a, b) => (b.history?.[0]?.at || 0) - (a.history?.[0]?.at || 0));
     const danger = mine.filter((t) => levelOf(t) === 'danger').length;
-    const lists = { minhas: mine, aprovada: by('aprovada'), aguardando: by('aguardando'), reprovada: by('reprovada') };
+    const lists = { minhas: [...mine, ...closed], aprovada: by('aprovada'), aguardando: by('aguardando'), reprovada: by('reprovada') };
 
     // Navegação
     document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === ui.tab));
-    document.querySelectorAll('[data-count]').forEach((e) => { e.textContent = lists[e.dataset.count].length || ''; });
+    document.querySelectorAll('[data-count]').forEach((e) => { e.textContent = (e.dataset.count === 'minhas' ? mine.length : lists[e.dataset.count].length) || ''; });
     document.querySelectorAll('[data-dot]').forEach((e) => { e.hidden = !danger; });
     document.title = (unread ? `(${unread}) ` : '') + (danger ? `⚠ ${danger} em perigo - Faro` : 'Faro');
     $('page-title').textContent = TITLES[ui.tab][0];
@@ -1725,16 +1798,16 @@
     // Resumo
     const stat = (label, value, sub = '', extra = '') => `<div class="stat ${extra}"><span>${label}</span><b class="num">${value}</b>${sub ? `<small class="num">${sub}</small>` : ''}</div>`;
     if (ui.tab === 'minhas') {
-      const ps = mine.map((t) => t.position).filter((p) => p && p.known);
-      const value = mine.reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
+      const ps = [...mine, ...closed].map((t) => t.position).filter((p) => p && p.known);
+      const value = held.reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
       const spent = ps.reduce((a, p) => a + (p.spentUsd || 0), 0);
       const pnl = ps.reduce((a, p) => a + (p.pnlUsd || 0), 0);
       const solUsd = ps.find((p) => p.solUsd)?.solUsd;
       const solBal = data.wallet?.solBalance;
       $('summary').innerHTML = [
-        stat('Patrimônio em moedas', money(value), `${mine.length} ${mine.length === 1 ? 'moeda' : 'moedas'}`, 'hero'),
+        stat('Patrimônio em moedas', money(value), `${mine.length} em aberto${closed.length ? ` - ${closed.length} ${closed.length === 1 ? 'encerrada' : 'encerradas'}` : ''}`, 'hero'),
         stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, spent ? pct((pnl / spent) * 100) : ''),
-        stat('Investido', money(spent), 'compras - vendas inclusas'),
+        stat('Investido', money(spent), 'em aberto e encerradas'),
         stat('Saldo em SOL', solBal != null ? solFmt(solBal) : '-', solBal != null && solUsd ? `aprox. ${money(solBal * solUsd)}` : 'para novas compras'),
       ].join('');
     } else {
@@ -1760,7 +1833,7 @@
     const q = ui.q.trim().toLowerCase();
     if (q) items = items.filter((t) => [t.symbol, t.name, t.mint].some((v) => String(v || '').toLowerCase().includes(q)));
 
-    $('list-title').innerHTML = `${{ minhas: 'Na carteira', aprovada: 'No radar', aguardando: 'Em observação', reprovada: 'Reprovadas' }[ui.tab]}<small>${items.length}</small>`;
+    $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em observação', reprovada: 'Reprovadas' }[ui.tab]}<small>${items.length}</small>`;
     const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
     ui.page = Math.min(ui.page, pages);
     const slice = items.slice((ui.page - 1) * PAGE_SIZE, ui.page * PAGE_SIZE);
@@ -1770,7 +1843,17 @@
       minhas: ['Nenhuma moeda sua ainda', 'Coloque o endereço público da Phantom no config.json. O robô descobre o que você comprou e passa a vigiar aqui.'],
       aprovada: ['Radar limpo por enquanto', 'Os filtros estão rígidos de propósito. Melhor nenhuma do que uma ruim.'],
     }[ui.tab] || ['Nada por aqui', ''];
-    $('list').innerHTML = slice.length ? slice.map((t) => rowHtml(t, t.mint === sel)).join('')
+    const sub = (label, n) => `<div class="list-sub">${label}<small>${n}</small></div>`;
+    const rows = slice.map((t, i) => {
+      let head = '';
+      if (ui.tab === 'minhas' && !q) {
+        const c = isClosed(t), prev = slice[i - 1];
+        if (!c && i === 0) head = sub('Em aberto', mine.length);
+        if (c && (!prev || !isClosed(prev))) head = sub('Encerradas', closed.length);
+      }
+      return head + rowHtml(t, t.mint === sel);
+    }).join('');
+    $('list').innerHTML = slice.length ? rows
       : `<div class="empty">${ICON.radar}<b>${q ? 'Nada encontrado' : empty[0]}</b>${q ? 'Tente outro nome ou endereço.' : empty[1]}</div>`;
     $('pager').hidden = items.length <= PAGE_SIZE;
     $('page').textContent = `${ui.page} de ${pages}`;

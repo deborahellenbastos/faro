@@ -157,6 +157,29 @@ async function getTx(signature) {
   }
 }
 
+// Quanto SOL entrou ou saiu da TROCA em si (o mesmo número que a Phantom usa como custo):
+// soma o que passou pela sua conta de SOL embrulhado, sem taxa de rede, gorjeta nem criação de contas.
+export function swapSol(tx, owner) {
+  const WSOL = 'So11111111111111111111111111111111111111112';
+  const meta = tx.meta || {};
+  const keys = (tx.transaction?.message?.accountKeys || []).map((k) => (typeof k === 'string' ? k : k.pubkey));
+  const mine = new Set();
+  for (const b of [...(meta.preTokenBalances || []), ...(meta.postTokenBalances || [])]) if (b.owner === owner && b.mint === WSOL && keys[b.accountIndex]) mine.add(keys[b.accountIndex]);
+  const all = [...(tx.transaction?.message?.instructions || []), ...(meta.innerInstructions || []).flatMap((x) => x.instructions || [])];
+  for (const ins of all) { const p = ins.parsed; if (p && /^initializeAccount/.test(p.type || '') && p.info?.mint === WSOL && p.info?.owner === owner) mine.add(p.info.account); }
+  if (!mine.size) return null;
+  let net = 0, moved = false;
+  for (const ins of all) {
+    const p = ins.parsed;
+    if (!p || ins.program !== 'spl-token' || (p.type !== 'transfer' && p.type !== 'transferChecked')) continue;
+    const amt = Number(p.info?.amount ?? p.info?.tokenAmount?.amount);
+    if (!(amt > 0)) continue;
+    if (mine.has(p.info.source)) { net -= amt; moved = true; }
+    if (mine.has(p.info.destination)) { net += amt; moved = true; }
+  }
+  return moved && net !== 0 ? net / 1e9 : null;
+}
+
 export function parseOps(tx, owner, sig) {
   const meta = tx.meta || {};
   const keys = (tx.transaction?.message?.accountKeys || []).map((k) => (typeof k === 'string' ? k : k.pubkey));
@@ -186,6 +209,9 @@ export function parseOps(tx, owner, sig) {
   const mint = deltas[0][0];
   if (!owned(meta.preTokenBalances, mint) && owned(meta.postTokenBalances, mint)) sol += RENT; // abriu a conta
   if (owned(meta.preTokenBalances, mint) && !owned(meta.postTokenBalances, mint)) sol -= RENT; // fechou a conta
+  if (i === 0) sol += Number(meta.fee || 0) / 1e9; // taxa de rede não é custo da moeda
+  const sw = swapSol(tx, owner);
+  if (sw != null && Math.sign(sw) === -Math.sign(deltas[0][1])) sol = sw; // valor exato da troca, quando dá para ler
   const op = { sig, at: (tx.blockTime || 0) * 1000, mint, tokens: deltas[0][1], sol };
   if (Math.abs(stable) > 0.005) op.stable = stable; // vira SOL equivalente quando soubermos o preço do SOL daquele minuto
   return [op];
