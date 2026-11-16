@@ -994,7 +994,7 @@
       // vendas do robô aparecem mesmo depois que a moeda saiu da carteira
       const robo = (t.safety?.alerts || []).filter((a) => ROBO_IDS.has(a.id) && !seenAl.has(`${t.mint}:${a.id}`));
       for (const a of robo) events.push({ kind: 'robo', t, alerts: [a] });
-      if (!isMine(t)) continue;
+      if (!isMine(t) || isLost(t) || (t.position?.known && !(t.position.valueUsd >= 1))) continue;
       const fresh = (t.safety?.alerts || []).filter((a) => !ROBO_IDS.has(a.id) && !seenAl.has(`${t.mint}:${a.id}`));
       if (fresh.length) events.push({ kind: fresh.some((a) => a.level === 'danger') ? 'perigo' : 'atencao', t, alerts: fresh });
     }
@@ -1031,6 +1031,8 @@
     for (const t of Object.values(data.tokens)) {
       const g = liveSig(t) || t.sinal; if (!g) continue;
       const mine = isMine(t);
+      // Moeda perdida ou que vale menos de US$ 1: não adianta avisar saída (ver "recuperou" abaixo)
+      if (mine && g.tipo === 'saida' && (isLost(t) || !(t.position?.valueUsd >= 1))) continue;
       const hit = g.tipo === 'entrada' ? g.fase === 'entrada' && !mine && levelOf(t) !== 'danger'
         : mine && ['realizar', 'sair', 'proteger', 'exaustao'].includes(g.fase);
       if (!hit) continue;
@@ -1050,6 +1052,18 @@
       if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') {
         try { const n = new Notification(g.tipo === 'entrada' ? `Boa entrada: ${sym}` : `${sym}: ${g.titulo}`, { body: g.msg, tag: 'sinal-' + t.mint }); n.onclick = () => { window.focus(); goTo(t.mint); n.close(); }; } catch {}
       }
+    }
+    // Perdida que voltou a valer US$ 1 ou mais: aí vale a pena vender (avisa uma vez; se cair de novo, pode avisar de novo)
+    for (const t of Object.values(data.tokens)) {
+      if (!t.held || !t.position?.known) continue;
+      const v = t.position.valueUsd || 0, k = `${t.mint}:recupera`, lost = t.position.openPnlPct <= -90;
+      if (lost && !SIGSEEN.has(`${t.mint}:perdida`)) { SIGSEEN.add(`${t.mint}:perdida`); store.set('faro-sinais-vistos', [...SIGSEEN].slice(-400)); }
+      if (v < 0.8) { if (SIGSEEN.delete(k)) store.set('faro-sinais-vistos', [...SIGSEEN].slice(-400)); continue; }
+      if (!SIGSEEN.has(`${t.mint}:perdida`) || v < 1 || SIGSEEN.has(k)) continue;
+      SIGSEEN.add(k); bom = true;
+      const sym = t.symbol || t.mint.slice(0, 6);
+      addInbox(`Recuperou: ${sym}`, `Sua posição perdida voltou a valer ${money(v)}. Pode valer a pena vender agora.`, t.mint, 'good', 'sinal-' + k);
+      toast(`${sym} voltou a valer ${money(v)}`);
     }
     if (entrada || ruim || bom) { store.set('faro-sinais-vistos', [...SIGSEEN].slice(-400)); play(ruim ? 'problema' : entrada ? 'entrada' : 'boa'); }
   }
