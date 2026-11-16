@@ -117,8 +117,9 @@ async function contractCheck(now) {
 }
 
 async function sell(t, why, kind, px) {
-  const worth = (t.heldAmount || 0) * px;
-  if (worth < minUsd) { mem.sold[t.mint] = { skipped: true, at: Date.now(), why, worth, kind }; log(`${t.symbol}: ${why}, mas vale só US$ ${worth.toFixed(2)}. Não vendi.`); return; }
+  // Operação pequena (investiu ou vale menos de US$ 1): não vende sozinho, a taxa não compensa e ela pode ter um bump
+  const worth = (t.heldAmount || 0) * px, cost = t.position?.known ? t.position.costOpenUsd || 0 : 0;
+  if (worth < minUsd || (cost > 0 && cost < minUsd)) { mem.sold[t.mint] = { skipped: true, at: Date.now(), why, worth, kind }; log(`${t.symbol}: ${why}, mas a operação é pequena (investido US$ ${cost.toFixed(2)}, vale US$ ${worth.toFixed(2)}). Não vendi.`); return; }
   log(`${t.symbol}: ${why}. Vendendo 100%...`);
   try {
     const s = await trader.sellAll(t.mint);

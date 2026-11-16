@@ -198,9 +198,10 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       const scam = t.held ? scamSignals(t.baseline, sum, cfg) : [];
       // Só vale vender se sobrar pelo menos o valor mínimo (senão as taxas comem tudo)
       const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
-      const worth = (t.heldAmount || 0) * (m.priceUsd || 0);
+      // Operação pequena (investiu ou vale menos de US$ 1): não vende sozinho, a taxa não compensa e ela pode ter um bump
+      const worth = Math.min((t.heldAmount || 0) * (m.priceUsd || 0), t.position?.known && t.position.costOpenUsd > 0 ? t.position.costOpenUsd : Infinity);
       if (scam.length && trader?.canSell && !(t.autoSell?.ok) && worth < minUsd) {
-        if (!t.autoSell?.skipped) log(`GOLPE em ${t.symbol}, mas a posição vale só US$ ${worth.toFixed(2)} (mínimo US$ ${minUsd}). Não vendi.`);
+        if (!t.autoSell?.skipped) log(`GOLPE em ${t.symbol}, mas a operação é de só US$ ${worth.toFixed(2)} (mínimo US$ ${minUsd}). Não vendi.`);
         t.autoSell = { ok: false, skipped: true, at: now, why: scam.join('; '), worth };
       }
       if (scam.length && trader?.canSell && !(t.autoSell?.ok) && worth >= minUsd && (t.autoSell?.tries || 0) < 3) {
@@ -218,7 +219,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (t.autoSell) {
         const a = t.autoSell;
         const alert = a.skipped
-          ? { id: 'auto-venda', level: 'info', at: a.at, msg: `Golpe no contrato (${a.why}), mas a posição vale menos de US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender` }
+          ? { id: 'auto-venda', level: 'info', at: a.at, msg: `Golpe no contrato (${a.why}), mas a operação é menor que US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender` }
           : a.ok
           ? { id: 'auto-venda', level: 'danger', at: a.at, msg: `Robô vendeu 100% automaticamente${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`, sig: a.sig }
           : { id: 'auto-venda', level: 'danger', at: a.at, msg: `Tentei vender 100% (${a.why}) e falhou: ${a.erro}. Venda manualmente!` };
@@ -361,7 +362,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     for (const t of Object.values(tokens)) {
       const p = t.position;
       if (!t.held || !p?.known || t.takeProfit?.ok || (t.takeProfit?.tries || 0) >= 3) continue;
-      if (!(p.costOpenUsd > 0) || p.costOpenUsd >= L.ateUsd || !(p.openPnlPct >= L.alvoPct)) continue;
+      if (!(p.costOpenUsd > 0) || p.costOpenUsd < (cfg.venda?.valorMinimoUsd ?? 1) || p.costOpenUsd >= L.ateUsd || !(p.openPnlPct >= L.alvoPct)) continue;
       log(`LUCRO em ${t.symbol}: +${p.openPnlPct.toFixed(0)}% (investido US$ ${p.costOpenUsd.toFixed(2)}). Vendendo 100%...`);
       try {
         const r = await trader.sellAll(t.mint);
@@ -392,7 +393,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   }
   for (const t of Object.values(tokens)) {
     const a = t.watchSell; if (!a || !t.safety) continue;
-    const msg = a.skipped ? `Queda forte (${a.why}), mas a posição vale menos de US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender`
+    const msg = a.skipped ? `${a.kind === 'golpe' ? 'Golpe' : 'Sinal de venda'} (${a.why}), mas a operação é menor que US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender`
       : a.ok ? `Robô vendeu 100%${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`
       : `Vigia rápida tentou vender (${a.why}) e falhou: ${a.erro}. Venda manualmente!`;
     // Golpe no contrato = perigo; queda de liquidez = atenção; queda de preço ou lucro = só aviso (a moeda pode seguir viva)

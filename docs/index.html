@@ -958,7 +958,7 @@
 
   // Compara com o que você já viu e dispara sons/avisos só para o que é novo
   const ROBO_IDS = new Set(['vigia', 'auto-venda', 'lucro-auto']);
-  const roboTitle = (msg) => /não compensa/.test(msg) ? 'Não vendida (vale menos de US$ 1)' : /falh/i.test(msg) ? 'Venda automática falhou' : 'Robô vendeu';
+  const roboTitle = (msg) => /não compensa/.test(msg) ? 'Não vendida (operação menor que US$ 1)' : /falh/i.test(msg) ? 'Venda automática falhou' : 'Robô vendeu';
   // Limpa avisos repetidos de versões anteriores: mesma moeda e mesmo texto ficam uma vez só (o mais antigo)
   (() => {
     const seenK = new Set(); const out = [];
@@ -1465,10 +1465,12 @@
     const h = trendHealth(c, { entryAt }, { px: t.priceUsd, buys5: P5.buys, sells5: P5.sells, buys1h: P1.buys, sells1h: P1.sells });
     const tr = liveTrail(t, c, entryAt), SM = data?.config?.venda?.stopMovel;
     const rows = [];
-    if (tr?.ativo) rows.push(['ok', 'Stop móvel ligado', `Se cair até ${price(tr.stop)}, o robô vende e você garante <b>+${Math.round(tr.travadoPct)}%</b>. Ele sobe junto se ela subir e nunca desce.`]);
+    const small = (t.position.costOpenUsd > 0 && t.position.costOpenUsd < (data?.config?.venda?.valorMinimoUsd ?? 1)) || (t.position.valueUsd || 0) < (data?.config?.venda?.valorMinimoUsd ?? 1);
+    if (small) rows.push(['wait', 'Operação pequena', 'Você investiu (ou ela vale) menos de US$ 1: o robô não vende sozinho, porque a taxa não compensa e ela ainda pode ter um bump. A venda fica com você.']);
+    if (small) {} else if (tr?.ativo) rows.push(['ok', 'Stop móvel ligado', `Se cair até ${price(tr.stop)}, o robô vende e você garante <b>+${Math.round(tr.travadoPct)}%</b>. Ele sobe junto se ela subir e nunca desce.`]);
     else if (SM?.ligado && tr) rows.push(['wait', 'Stop móvel', `Liga sozinho quando ela chegar a +${SM.ativarPct}% (em ${price(tr.ativarPx)}). Aí o lucro fica protegido.`]);
     const RZ = data?.config?.venda?.realizar, gain = t.position.openPnlPct;
-    if (RZ?.ligado && gain != null) {
+    if (RZ?.ligado && gain != null && !small) {
       const weak = weakSignals({ candles: c, entryAt, buys5: P5.buys, sells5: P5.sells, vol5: P5.vol, volH1: P1.vol, fromPeak: h.fromTop });
       const r = realizeCheck(gain, weak, RZ), f = r.faixa;
       const lista = weak.length ? ` Agora: ${weak.map((w) => w.msg).join(', ')}.` : ' Agora: nenhum sinal de fraqueza.';
@@ -2126,7 +2128,7 @@
       // Meta: +100% (ou o alvo configurado) sobre a entrada. Em posição pequena é onde o robô vende sozinho
       const tp = metaOf(t);
       if (t.held && tp) add(tp.px, '#10d27f', tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
-      if (t.held) { const tr = liveTrail(t, candlesOf(t), posStart(t)); if (tr?.ativo) add(tr.stop, '#f5b14c', `stop móvel +${Math.round(tr.travadoPct)}%`, 1, 2); }
+      if (t.held && t.position.costOpenUsd >= (data?.config?.venda?.valorMinimoUsd ?? 1)) { const tr = liveTrail(t, candlesOf(t), posStart(t)); if (tr?.ativo) add(tr.stop, '#f5b14c', `stop móvel +${Math.round(tr.travadoPct)}%`, 1, 2); }
       // Saída: preço médio das suas vendas
       const sells = (t.history || []).filter((o) => o.tokens < 0);
       const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
