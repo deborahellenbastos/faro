@@ -1040,6 +1040,13 @@
       const mine = isMine(t);
       // Moeda perdida ou que vale menos de US$ 1: não adianta avisar saída (ver "recuperou" abaixo)
       if (mine && g.tipo === 'saida' && (isLost(t) || !(t.position?.valueUsd >= 1))) continue;
+      // Acabou de vender (você ou o robô): o sinal de saída já não vale, não avisa depois do fato
+      if (g.tipo === 'saida') {
+        const recent = Date.now() - 15 * 60000;
+        const sold = [...(data.wallet?.ops || []), ...WAL.ops].some((o) => o.mint === t.mint && o.tokens < 0 && o.at > recent)
+          || [t.watchSell, t.autoSell, t.takeProfit].some((x) => x?.ok && x.at > recent);
+        if (sold || !(t.heldAmount > 0)) continue;
+      }
       const hit = g.tipo === 'entrada' ? g.fase === 'entrada' && !mine && levelOf(t) !== 'danger'
         : mine && ['realizar', 'sair', 'proteger', 'exaustao'].includes(g.fase);
       if (!hit) continue;
@@ -2658,6 +2665,7 @@
     }
     for (const t of Object.values(data.tokens)) applyLiveAlerts(t);
   }
+  const SND = new Set(); // transações que já tocaram som
   async function handleSig(sig, quiet) {
     const owner = data?.wallet?.address;
     if (!owner || WAL.seen.has(sig) || WAL.busy.has(sig)) return null;
@@ -2685,6 +2693,7 @@
         addInbox(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${t?.symbol || o.mint.slice(0, 6)}`, `${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''} por ${solFmt(Math.abs(o.sol), 4)}`, o.mint, 'info', 'tx-' + o.sig);
         if (t && CH.mint === o.mint && chartSrc === 'faro') decorate(t);
       }
+      if (r.ops.length && !quiet && !SND.has(sig)) { SND.add(sig); play('boa'); }
       liveRender();
       if (r.ops.length) pollLive();
       return { ops: r.ops };
@@ -3304,6 +3313,8 @@
           if (res === 'failed') { st.msg = { err: true, html: `<b>A ${buy ? 'compra' : 'venda'} falhou na blockchain</b> (quase sempre o preço andou além do slippage). Nada foi trocado; só a taxa de rede foi cobrada. ${link}` }; play('problema'); }
           else if (res === 'timeout') st.msg = { err: true, html: `Ainda sem confirmação depois de 1 minuto. Confira antes de tentar de novo: ${link}` };
           else {
+            // Som e aviso na hora da confirmação (o detalhe da troca chega logo depois)
+            play('boa'); toast(`${buy ? 'Compra' : 'Venda'} de ${t.symbol} confirmada`); SND.add(sig);
             const done = await handleSig(sig, true);
             pollWallet();
             let o = done?.ops?.[0];
@@ -3317,7 +3328,6 @@
                 : `<br><small>Posição abaixo de US$ 10: a Jupiter não aceita ordem. A vigia do robô protege (vende com -40% do pico) e o robô vende no +100%.</small>`;
               st.pStop = st.pTp = ''; st.planOverride = false;
             }
-            toast(`${buy ? 'Compra' : 'Venda'} de ${t.symbol} confirmada`);
           }
         }
       }
