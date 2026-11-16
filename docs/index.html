@@ -2116,6 +2116,13 @@
       if (!list.length && !t.chartPool && !retried) { retried = true; const alt = await altPool(t); if (alt) { t.chartPool = alt; url = candleUrl(); i--; continue; } }
       // Nenhum pool com velas no GeckoTerminal (ex.: DOUG/TTWO): monta o gráfico com o preço que o robô guarda a cada 5 min + o preço ao vivo
       if (!list.length) { t.noGecko = Date.now(); return histBars(t, iv); }
+      // Velas paradas há mais de 30 min (ex.: o pool antigo da pump.fun, de antes da migração): não servem
+      const newest = Math.max(...list.map((c) => c[0]));
+      if (Date.now() / 1000 - newest > 1800) {
+        if (t.chartPool) t.chartPool = null;
+        const hb = histBars(t, iv);
+        if (hb.length) { t.noGecko = Date.now(); return hb; }
+      }
       const bars = list.map((c) => ({ time: c[0], open: +c[1], high: +c[2], low: +c[3], close: +c[4], value: +c[5] })).sort((a, b) => a.time - b.time);
       CANDLE_CACHE.set(`${t.mint}|${iv}`, { bars, at: Date.now() });
       while (CANDLE_CACHE.size > 24) CANDLE_CACHE.delete(CANDLE_CACHE.keys().next().value);
