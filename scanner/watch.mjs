@@ -49,6 +49,15 @@ const liqWin = (V.janelaLiquidezMin ?? 5) * 60000;
 const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
 const SM = cfg.venda?.stopMovel || {};
 const trailOn = SM.ligado === true;
+const SP = cfg.venda?.stopPerda || {};
+const lossOn = SP.ligado === true;
+const lossPct = SP.pct ?? 25;
+// Confirmação: guarda quando o preço furou e só libera a venda depois de N segundos seguidos abaixo
+function confirmBelow(t, now, secs, label) {
+  mem.below = mem.below || {};
+  if (!mem.below[t.mint]) { mem.below[t.mint] = now; log(`${t.symbol}: abaixo do ${label}, confirmando por ${secs}s antes de vender...`); }
+  return now - mem.below[t.mint] >= secs * 1000;
+}
 const RZ = cfg.venda?.realizar || {};
 const realizeOn = RZ.ligado === true && process.env.LUCRO_AUTO !== 'false';
 
@@ -183,7 +192,9 @@ while (Date.now() < until) {
         const follow = (pk / entry - 1) * 100 >= (SM.seguirAPartirPct ?? 60) ? Math.min(pk * (1 - (SM.distanciaPct ?? 25) / 100), pk * 0.88) : 0;
         trailPx = Math.max(t.trail.stop, follow, entry * (1 + (SM.minimoTravadoPct ?? 5) / 100));
       }
-      if (mem.below?.[t.mint] && !(trailPx && px < trailPx)) delete mem.below[t.mint]; // voltou acima do stop: zera a confirmação
+      const cost0 = t.position?.known ? t.position.costOpenUsd : 0;
+      const gain0 = cost0 > 0 ? ((t.heldAmount * px) / cost0 - 1) * 100 : null;
+      if (mem.below?.[t.mint] && !(trailPx && px < trailPx) && !(lossOn && gain0 != null && gain0 <= -lossPct)) delete mem.below[t.mint]; // voltou acima: zera a confirmação
       // LP destravada só vende se a liquidez estiver saindo de verdade (15%+ na janela); os outros sinais de golpe vendem direto
       let golpe = scam[t.mint];
       if (golpe && /^liquidez destravada/.test(golpe) && !golpe.includes(';') && liqDrop < confLiq) {
@@ -191,9 +202,13 @@ while (Date.now() < until) {
         golpe = null;
       }
       if (golpe) await sell(t, `golpe no contrato: ${golpe}`, 'golpe', px);
-      // Filtro de pavio: só vende se ficar abaixo do stop por confirmarSegundos seguidos
-      else if (trailPx && px < trailPx && !(() => { mem.below = mem.below || {}; mem.below[t.mint] = mem.below[t.mint] || now; const ok = now - mem.below[t.mint] >= (SM.confirmarSegundos ?? 60) * 1000; if (!ok && mem.below[t.mint] === now) log(`${t.symbol}: abaixo do stop móvel, confirmando por ${SM.confirmarSegundos ?? 60}s antes de vender...`); return ok; })()) { /* aguardando confirmação */ }
+      // Filtro de pavio: só vende se ficar abaixo do stop por confirmarSegundos seguidos.
+      // Se já passou 10% abaixo do stop, não espera (queda de verdade, cada segundo conta)
+      else if (trailPx && px < trailPx && px >= trailPx * 0.9 && !confirmBelow(t, now, SM.confirmarSegundos ?? 30, 'stop móvel')) { /* aguardando confirmação */ }
       else if (trailPx && px < trailPx) await sell(t, `stop móvel: caiu abaixo de US$ ${trailPx.toPrecision(4)} (garantindo +${((trailPx / t.position.avgPriceUsd - 1) * 100).toFixed(0)}%)`, 'stop-movel', px);
+      // Stop de perda: a posição ainda no prejuízo caiu stopPerda% desde a entrada (antes não existia: só o -40% do topo)
+      else if (lossOn && gain != null && gain <= -lossPct && gain > -(lossPct + 15) && !confirmBelow(t, now, SP.confirmarSegundos ?? 30, 'stop de perda')) { /* aguardando confirmação */ }
+      else if (lossOn && gain != null && gain <= -lossPct) await sell(t, `stop de perda: caiu ${Math.abs(gain).toFixed(0)}% desde a entrada (limite -${lossPct}%)`, 'stop-perda', px);
       else if (realizeOn && gain != null && gain >= 50 && gain < (L.alvoPct ?? 100) && (() => {
         const weak = weakSignals({ candles: t.candles, entryAt: t.position?.lastBuyAt || t.heldSince || 0, buys5: Number(p?.txns?.m5?.buys) || 0, sells5: Number(p?.txns?.m5?.sells) || 0, vol5: Number(p?.volume?.m5), volH1: Number(p?.volume?.h1), fromPeak });
         const r = realizeCheck(gain, weak, RZ); t._rz = r.sell ? `lucro de +${gain.toFixed(0)}% e a alta perdendo força: ${weak.map((w) => w.msg).join(', ')}` : null; return r.sell;

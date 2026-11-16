@@ -966,7 +966,7 @@
   }
   // ---------- Detalhe da notificação (modal): motivo da venda e o resultado ----------
   const SELL_SRC = store.get('faro-sell-src', {});
-  const ROBO_KIND = { golpe: 'golpe no contrato', vigia: 'queda forte', lucro: 'meta de lucro', 'stop-movel': 'stop móvel', realizar: 'realização (a alta perdeu força)' };
+  const ROBO_KIND = { golpe: 'golpe no contrato', vigia: 'queda forte', lucro: 'meta de lucro', 'stop-movel': 'stop móvel', 'stop-perda': 'stop de perda', realizar: 'realização (a alta perdeu força)' };
   function sellReason(x) {
     const t = data?.tokens?.[x.mint];
     for (const a of [t?.watchSell, t?.autoSell, t?.takeProfit]) if (a?.sig && a.sig === x.sig) return { who: 'O robô vendeu', why: `${ROBO_KIND[a.kind] || 'proteção automática'}: ${a.why || ''}` };
@@ -1003,7 +1003,7 @@
     const v = t.position?.valueUsd || 0, V = data?.config?.venda || {};
     if (v < (V.valorMinimoUsd ?? 1)) return `Ela vale ${money(v)}, menos de US$ 1: o robô não vende sozinho (a taxa não compensa). A decisão é sua.`;
     const tr = t.trail?.ativo ? `stop móvel ligado em ${price(t.trail.stop)} (garante +${Math.round(t.trail.travadoPct)}%)` : `stop móvel liga em +${V.stopMovel?.ativarPct ?? 30}%`;
-    return `A vigia está de olho a cada 10 s: vende sozinho em golpe confirmado, queda forte com confirmação, ${tr}, e realiza em +50%/+80% se a alta perder força.`;
+    return `A vigia está de olho a cada 10 s: vende sozinho em golpe confirmado, -${V.stopPerda?.pct ?? 25}% desde a entrada (stop de perda), queda forte com confirmação, ${tr}, e realiza em +50%/+80% se a alta perder força.`;
   }
   // Bloco "Na sua carteira": quanto isso pesa no seu dinheiro, antes (no aviso) e agora
   function walletBlock(x, t) {
@@ -2442,7 +2442,11 @@
         if (V.stopMovel?.ligado) { add(E * (1 + (V.stopMovel.ativarPct ?? 30) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.ativarPct ?? 30}% liga stop móvel`, 3, 1); add(E * (1 + (V.stopMovel.seguirAPartirPct ?? 60) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.seguirAPartirPct ?? 60}% stop segue o topo`, 3, 1); }
         if (V.realizar?.ligado) for (const f of V.realizar.faixas || []) add(E * (1 + f.lucroPct / 100), 'rgba(16,210,127,.65)', `+${f.lucroPct}% ${f.sinais <= 1 ? 'vende no 1º sinal' : `vende com ${f.sinais} sinais`}`, 3, 1);
       }
-      if (t.held && (t.position.valueUsd || 0) >= (data?.config?.venda?.valorMinimoUsd ?? 1)) { const tr = liveTrail(t, candlesOf(t), posStart(t)); if (tr?.ativo) add(tr.stop, '#f5b14c', `stop móvel +${Math.round(tr.travadoPct)}%`, 1, 2); }
+      if (t.held && (t.position.valueUsd || 0) >= (data?.config?.venda?.valorMinimoUsd ?? 1)) {
+        const tr = liveTrail(t, candlesOf(t), posStart(t));
+        if (tr?.ativo) add(tr.stop, '#f5b14c', `stop móvel +${Math.round(tr.travadoPct)}%`, 1, 2);
+        else if (data?.config?.venda?.stopPerda?.ligado) { const sp = data.config.venda.stopPerda.pct ?? 25; add(t.position.avgPriceUsd * (1 - sp / 100), '#ff5b5b', `stop -${sp}% (robô vende)`, 1, 1); }
+      }
       // Saída: preço médio das suas vendas
       const sells = (t.history || []).filter((o) => o.tokens < 0);
       const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
@@ -3422,6 +3426,7 @@
       ['Faixas', (c.faixas || []).map((f) => `${f.bancaMinUsd ? 'banca US$ ' + f.bancaMinUsd + '+' : 'até US$ ' + ((c.faixas.find((x) => x.bancaMinUsd > 0) || {}).bancaMinUsd || '')}: US$ ${f.usd}`).join(' - ')],
       ['Simulação', data.config?.simulacao?.ligado ? `ligada (${c.solPorCompra} SOL de mentira por operação, até ${data.config.simulacao.maxAbertas} abertas)` : 'desligada'],
       ['Realizar o lucro', data.config?.venda?.realizar?.ligado && data.lastRun?.watch ? `ligado (com +${(data.config.venda.realizar.faixas || [])[0]?.lucroPct ?? 50}% vende se 2 sinais de fraqueza; com +${(data.config.venda.realizar.faixas || [])[1]?.lucroPct ?? 80}%, no primeiro sinal forte; senão segura até +100%)` : 'desligado'],
+      ['Stop de perda', data.config?.venda?.stopPerda?.ligado && data.lastRun?.watch ? `ligado (vende se cair ${data.config.venda.stopPerda.pct}% desde a entrada, confirmando por ${data.config.venda.stopPerda.confirmarSegundos}s)` : 'desligado'],
       ['Stop móvel', data.config?.venda?.stopMovel?.ligado && data.lastRun?.watch ? `ligado (a partir de +${data.config.venda.stopMovel.ativarPct}%: o stop sobe junto e garante pelo menos +${data.config.venda.stopMovel.minimoTravadoPct}%)` : 'desligado'],
       ['Venda no lucro', data.lastRun?.takeProfit ? `ligada (posições abaixo de US$ ${data.lastRun.takeProfit.ateUsd}: vende 100% com +${data.lastRun.takeProfit.alvoPct}%)` : 'desligada'],
     ];

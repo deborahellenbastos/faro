@@ -63,7 +63,8 @@
       "ateUsd": 10
     },
     "realizar": { "ligado": true, "faixas": [ { "lucroPct": 50, "sinais": 2 }, { "lucroPct": 80, "sinais": 1 } ] },
-    "stopMovel": { "ligado": true, "ativarPct": 30, "seguirAPartirPct": 60, "distanciaPct": 25, "minimoTravadoPct": 5, "confirmarSegundos": 60 },
+    "stopMovel": { "ligado": true, "ativarPct": 30, "seguirAPartirPct": 60, "distanciaPct": 25, "minimoTravadoPct": 5, "confirmarSegundos": 30 },
+    "stopPerda": { "ligado": true, "pct": 25, "confirmarSegundos": 30 },
     "vigia": {
       "ligado": true,
       "quedaDoPicoPct": 40,

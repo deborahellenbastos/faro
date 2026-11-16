@@ -178,7 +178,7 @@ O stop móvel protege o lucro de uma moeda que você tem e que está subindo.
 - **Quando liga:** sozinho, quando a moeda chega a +30% desde a sua compra.
 - **De +30% a +60%:** o stop fica logo acima da sua entrada (+5%). Ele só vende se a moeda devolver quase toda a alta, porque memecoin corrige 20% a 30% no meio da subida.
 - **Acima de +60%:** o stop passa a seguir o topo. Fica no último fundo da subida, ou 25% abaixo do topo, o que estiver mais alto.
-- **Filtro de pavio:** só vende se o preço ficar abaixo do stop por 60 s seguidos.
+- **Filtro de pavio:** só vende se o preço ficar abaixo do stop por 30 s seguidos. Se já furou 10% abaixo do stop, vende na hora.
   - Nunca fica a menos de 12% do topo, porque memecoin oscila.
   - Sempre garante pelo menos +5% de lucro.
 - **Como anda:** sobe junto com o preço e nunca desce.
@@ -234,3 +234,15 @@ Alguns devs compram a moeda no lançamento espalhando a compra em várias cartei
 - O top 10 mostrava só 23% e o RugCheck não viu insiders.
 
 O robô mede o maior grupo de carteiras com fatias de 0,8% ou mais e quase iguais (até 1,3x uma da outra). Carteiras menores que 0,8% não contam, porque é normal ter várias pequenas parecidas na cauda dos holders. Ele reprova no item "Holders" quando acha 7 ou mais carteiras assim, somando 10% ou mais. Ajuste em `filtros.bundleCarteirasMin` e `filtros.bundlePctMin`.
+
+## Stop de perda
+
+Se a posição cair **25% desde a sua entrada**, a vigia vende sozinha:
+- Ela confirma por 30 s antes de vender. Se a queda já passou de 40%, vende na hora.
+- No gráfico aparece a linha vermelha "stop -25% (robô vende)".
+
+Antes só existia o "-40% do topo com confirmação". Por isso a SENT (16/11) foi de -25% a -35% sem venda nenhuma, até o despejo de -73%.
+
+Não protege de golpe que derruba 99% num único minuto, como a VI e a GTAHUB. Nesses casos não dá tempo de vender.
+
+Ajuste em `config.json`, `venda.stopPerda`.
