@@ -281,6 +281,9 @@
   .risk-lock { display: grid; justify-items: center; text-align: center; gap: 6px; padding: var(--sp-5) var(--sp-4); color: var(--muted); font-size: 13px; }
   .risk-lock svg { width: 26px; height: 26px; color: var(--red); }
   .risk-lock b { color: var(--text); font-size: 15px; }
+  .lw-host { position: relative; }
+  .ruler-tip { position: absolute; z-index: 5; pointer-events: none; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; color: #0b0d10; white-space: nowrap; }
+  .ruler-tip.up { background: #10d27f; } .ruler-tip.down { background: #ff5b5b; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -910,6 +913,7 @@
     cursor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 4 7 17 2.5-7.5L21 11z"/></svg>',
     h: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18"/><circle cx="7" cy="12" r="1.6" fill="currentColor"/></svg>',
     t: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19 20 5"/><circle cx="4" cy="19" r="1.8" fill="currentColor"/><circle cx="20" cy="5" r="1.8" fill="currentColor"/></svg>',
+    r: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/><path d="M17 12h4M3 12h4"/></svg>',
     trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
   };
   const chartUrl = (t) => {
@@ -925,6 +929,7 @@
           <button data-tool="cursor" class="${CH.tool === 'cursor' ? 'on' : ''}" title="Mover e dar zoom">${TOOL_ICON.cursor}</button>
           <button data-tool="h" class="${CH.tool === 'h' ? 'on' : ''}" title="Linha horizontal (1 clique)">${TOOL_ICON.h}</button>
           <button data-tool="t" class="${CH.tool === 't' ? 'on' : ''}" title="Linha de tendência (2 cliques)">${TOOL_ICON.t}</button>
+          <button data-tool="r" class="${CH.tool === 'r' ? 'on' : ''}" title="Régua de porcentagem (2 cliques)">${TOOL_ICON.r}</button>
           <button data-tool="trash" title="Apagar os traços desta moeda">${TOOL_ICON.trash}</button>
         </div>
         <span class="chart-hint" id="chart-hint">Arraste para mover, role para dar zoom</span>`;
@@ -1245,7 +1250,9 @@
   const pxFmt = (p) => { p = Number(p) || 0; if (p === 0) return '0'; if (p >= 1) return p.toFixed(4); const z = Math.max(0, -Math.floor(Math.log10(p)) - 1); return p.toFixed(Math.min(z + 4, 12)); };
   const drawStore = () => store.get('faro-draw', {});
   function saveDraw(mint, d) { const all = drawStore(); all[mint] = d; store.set('faro-draw', all); }
-  const getDraw = (mint) => ({ h: [], t: [], ...(drawStore()[mint] || {}) });
+  const getDraw = (mint) => ({ h: [], t: [], r: [], ...(drawStore()[mint] || {}) });
+  const fmtSpan = (sec) => { sec = Math.abs(sec); const m = Math.round(sec / 60); return m < 60 ? `${m} min` : m < 1440 ? `${(m / 60).toFixed(m < 600 ? 1 : 0).replace('.', ',')} h` : `${(m / 1440).toFixed(1).replace('.', ',')} d`; };
+  const rulerText = (p1, p2, sec) => { const c = (p2 / p1 - 1) * 100; return `${c >= 0 ? '+' : ''}${c.toFixed(c > -10 && c < 10 ? 2 : 1).replace('.', ',')}% em ${fmtSpan(sec)}`; };
   const ivalSec = () => (IVALS.find((x) => x[0] === CH.interval) || IVALS[1])[3];
 
   async function buildChart() {
@@ -1266,6 +1273,13 @@
     CH.vol = CH.chart.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
     CH.chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     CH.chart.subscribeClick(onChartClick);
+    CH.chart.subscribeCrosshairMove((param) => {
+      if (CH.tool !== 'r' || !CH.pending || !param.point) return rulerTip(null);
+      const price = CH.candle.coordinateToPrice(param.point.y);
+      const time = Number(param.time ?? CH.chart.timeScale().coordinateToTime(param.point.x)) - TZ;
+      if (!(price > 0) || !Number.isFinite(time)) return;
+      rulerTip(param.point, rulerText(CH.pending[1], price, time - CH.pending[0]), price >= CH.pending[1]);
+    });
   }
 
   function candlesFromRobot(t) {
@@ -1315,6 +1329,15 @@
       ls.setData([{ time: a, value: p1 }, { time: b, value: p2 }]);
       CH.trends.push(ls);
     }
+    for (const [t1, p1, t2, p2] of d.r) {
+      const up = p2 >= p1; const color = up ? '#10d27f' : '#ff5b5b';
+      const ls = CH.chart.addLineSeries({ color, lineWidth: 2, lineStyle: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceFormat: { type: 'custom', formatter: pxFmt, minMove: 1e-12 } });
+      const [a, pa, b, pb] = t1 <= t2 ? [t1, p1, t2, p2] : [t2, p2, t1, p1];
+      const ta = a + TZ, tb = Math.max(b, a + 1) + TZ;
+      ls.setData([{ time: ta, value: pa }, { time: tb, value: pb }]);
+      ls.setMarkers([{ time: t2 >= t1 ? tb : ta, position: up ? 'aboveBar' : 'belowBar', color, shape: 'circle', text: rulerText(p1, p2, t2 - t1) }]);
+      CH.trends.push(ls);
+    }
     const sec = ivalSec();
     const first = CH.bars[0]?.time || 0;
     const marks = (t.history || []).filter((o) => o.tokens && o.at / 1000 >= first).map((o) => {
@@ -1360,28 +1383,38 @@
     if (!(price > 0)) return;
     const d = getDraw(CH.mint);
     if (CH.tool === 'h') { d.h.push(price); saveDraw(CH.mint, d); setTool('cursor'); toast('Linha marcada'); }
-    else if (CH.tool === 't') {
+    else if (CH.tool === 't' || CH.tool === 'r') {
       let time = param.time ?? CH.chart.timeScale().coordinateToTime(param.point.x);
       if (time == null) return;
       time = Number(time) - TZ;
       if (!CH.pending) { CH.pending = [time, price]; $('chart-hint') && ($('chart-hint').textContent = 'Agora clique no ponto final'); return; }
-      const [t1, p1] = CH.pending; CH.pending = null;
-      const seg = t1 <= time ? [t1, p1, time, price] : [time, price, t1, p1];
-      d.t.push(seg); saveDraw(CH.mint, d); setTool('cursor'); toast('Tendência marcada');
+      const [t1, p1] = CH.pending; CH.pending = null; rulerTip(null);
+      if (CH.tool === 'r') { d.r.push([t1, p1, time, price]); saveDraw(CH.mint, d); toast(rulerText(p1, price, time - t1)); setTool('cursor'); }
+      else {
+        const seg = t1 <= time ? [t1, p1, time, price] : [time, price, t1, p1];
+        d.t.push(seg); saveDraw(CH.mint, d); setTool('cursor'); toast('Tendência marcada');
+      }
     }
     decorate(data.tokens[CH.mint]);
+  }
+  function rulerTip(pt, text, up) {
+    let el = CH.host?.querySelector('.ruler-tip');
+    if (!pt) { if (el) el.hidden = true; return; }
+    if (!el) { el = document.createElement('div'); el.className = 'ruler-tip'; CH.host.appendChild(el); }
+    el.hidden = false; el.textContent = text; el.className = 'ruler-tip ' + (up ? 'up' : 'down');
+    el.style.left = Math.min(pt.x + 14, CH.host.clientWidth - 150) + 'px'; el.style.top = Math.max(pt.y - 34, 4) + 'px';
   }
   function setTool(tool) {
     CH.tool = tool; CH.pending = null;
     if (CH.chart) CH.chart.applyOptions({ handleScroll: tool === 'cursor', handleScale: tool === 'cursor' });
     document.querySelectorAll('[data-tool]').forEach((b) => b.classList.toggle('on', b.dataset.tool === tool));
     const hint = $('chart-hint');
-    if (hint) hint.textContent = tool === 'h' ? 'Clique no preço para marcar a linha' : tool === 't' ? 'Clique no ponto inicial e depois no final' : 'Arraste para mover, role para dar zoom';
+    if (hint) hint.textContent = tool === 'h' ? 'Clique no preço para marcar a linha' : tool === 't' || tool === 'r' ? 'Clique no ponto inicial e depois no final' : 'Arraste para mover, role para dar zoom';
   }
   document.addEventListener('click', (e) => {
     const tb = e.target.closest('[data-tool]');
     if (tb) {
-      if (tb.dataset.tool === 'trash') { if (CH.mint) { saveDraw(CH.mint, { h: [], t: [] }); decorate(data.tokens[CH.mint]); toast('Traços apagados'); } return; }
+      if (tb.dataset.tool === 'trash') { if (CH.mint) { saveDraw(CH.mint, { h: [], t: [], r: [] }); decorate(data.tokens[CH.mint]); toast('Traços apagados'); } return; }
       setTool(tb.dataset.tool); return;
     }
     const iv = e.target.closest('[data-ival]');
