@@ -385,6 +385,13 @@
   .new-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #60a5fa; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(96,165,250,.18); }
   .mini-tag.new { color: #60a5fa; background: rgba(96,165,250,.14); }
   .mini-tag.bad { color: #ff5b5b; background: rgba(255,91,91,.12); }
+  .ntm { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 16px; }
+  .ntm[hidden] { display: none; }
+  .ntm-card { width: 440px; max-width: 100%; background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r-3); padding: var(--sp-5); display: grid; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .ntm-h { display: flex; align-items: center; gap: 8px; } .ntm-h b { flex: 1; font-size: 16px; }
+  .ntm-at { color: var(--faint); font-size: 12px; margin-top: -6px; } .ntm-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .ntm-rows { display: grid; gap: 10px; } .ntm-rows div { display: grid; gap: 2px; } .ntm-rows span { color: var(--faint); font-size: 11px; } .ntm-rows b { font-size: 13px; font-weight: 600; line-height: 1.45; }
+  .ntm-go { height: 38px; border-radius: var(--r-2); border: 1px solid var(--line-2); background: var(--panel-3); color: var(--text); font-weight: 700; cursor: pointer; }
   .info-btn { border: 0; background: none; padding: 0 0 0 4px; color: var(--faint); cursor: pointer; vertical-align: -2px; line-height: 0; display: inline-block; }
   .info-btn:hover, .info-btn.on { color: var(--text); } .rr .info-btn { color: inherit; }
   .info-box { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-2); padding: 10px 12px; color: var(--muted); font-size: 12px; line-height: 1.55; }
@@ -760,6 +767,7 @@
 
   <!-- Gaveta do robô: filtros, sons e última rodada -->
   <!-- Central de notificações -->
+  <div class="ntm" id="ntm" hidden></div>
   <div class="drawer" id="inbox" role="dialog" aria-modal="true" aria-label="Central de notificações">
     <div class="drawer-panel">
       <div class="drawer-head">
@@ -917,10 +925,10 @@
   // ---------- Notificações do sistema (computador) ----------
   // ---------- Central de notificações: tudo que tocou som ou avisou fica guardado aqui ----------
   const INBOX = { list: store.get('faro-inbox', []), page: 1 };
-  function addInbox(title, body, mint, level, id) {
+  function addInbox(title, body, mint, level, id, extra) {
     const key = id || `${title}|${body}`;
     if (INBOX.list.some((x) => x.key === key && Date.now() - x.at < 10 * 60000)) return;
-    INBOX.list.unshift({ key, title, body, mint, level, at: Date.now(), read: false });
+    INBOX.list.unshift({ key, title, body, mint, level, at: Date.now(), read: false, ...(extra || {}) });
     INBOX.list = INBOX.list.slice(0, 200);
     store.set('faro-inbox', INBOX.list); renderInbox();
   }
@@ -939,6 +947,44 @@
       </button>`).join('') + (pages > 1 ? `<div class="hpager"><button data-ntpage="-1" ${INBOX.page <= 1 ? 'disabled' : ''}>&larr;</button><span>${INBOX.page} de ${pages}</span><button data-ntpage="1" ${INBOX.page >= pages ? 'disabled' : ''}>&rarr;</button></div>` : '')
       : `<div class="empty">${BELL_ICON}<b>Nada por aqui</b>Quando tocar um som ou aparecer um aviso, ele fica guardado nesta lista.</div>`;
   }
+  // ---------- Detalhe da notificação (modal): motivo da venda e o resultado ----------
+  const SELL_SRC = store.get('faro-sell-src', {});
+  const ROBO_KIND = { golpe: 'golpe no contrato', vigia: 'queda forte', lucro: 'meta de lucro', 'stop-movel': 'stop móvel', realizar: 'realização (a alta perdeu força)' };
+  function sellReason(x) {
+    const t = data?.tokens?.[x.mint];
+    for (const a of [t?.watchSell, t?.autoSell, t?.takeProfit]) if (a?.sig && a.sig === x.sig) return { who: 'O robô vendeu', why: `${ROBO_KIND[a.kind] || 'proteção automática'}: ${a.why || ''}` };
+    if (SELL_SRC[x.sig] === 'emergencia') return { who: 'Você vendeu pelo Faro', why: 'Venda de emergência (100%, slippage largo).' };
+    if (SELL_SRC[x.sig] === 'faro') return { who: 'Você vendeu pelo Faro', why: 'Venda manual no bloco de venda.' };
+    const robotAt = data?.wallet?.updatedAt || 0;
+    if ((x.txAt || x.at) > robotAt) return { who: 'Ainda conferindo', why: 'Foi feita fora do painel (Phantom) ou pelo robô. Se foi o robô, o motivo aparece aqui em até 5 min, na próxima rodada.' };
+    return { who: 'Você vendeu fora do Faro', why: 'Venda feita direto na Phantom (ou outro app), sem passar pelo painel nem pelo robô.' };
+  }
+  function openNt(x) {
+    const when = new Date(x.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Sao_Paulo' });
+    let body = `<p>${esc(x.body || '')}</p>`;
+    if (x.kind === 'venda') {
+      const R = sellReason(x), usdv = x.solUsd ? ` (aprox. ${money(Math.abs(x.sol) * x.solUsd)})` : '';
+      body = `<div class="ntm-rows">
+        <div><span>Quantidade</span><b>${tokFmt(Math.abs(x.tokens))} ${esc(x.sym || '')} por ${solFmt(Math.abs(x.sol), 4)}${usdv}</b></div>
+        ${x.res ? `<div><span>Resultado da operação</span><b class="${cls(x.res.pnl)}">${signedMoney(x.res.pnl)} (${pct(x.res.pct)})</b></div>` : ''}
+        <div><span>${esc(R.who)}</span><b>${esc(R.why)}</b></div>
+        ${x.sinal ? `<div><span>No momento da venda</span><b>${esc(x.sinal)}</b></div>` : ''}
+      </div>${x.sig ? `<a class="linkbtn" href="https://solscan.io/tx/${esc(x.sig)}" target="_blank" rel="noopener">Ver a transação no Solscan</a>` : ''}`;
+    } else if (x.kind === 'compra') {
+      body = `<div class="ntm-rows"><div><span>Quantidade</span><b>${tokFmt(Math.abs(x.tokens))} ${esc(x.sym || '')} por ${solFmt(Math.abs(x.sol), 4)}</b></div></div>${x.sig ? `<a class="linkbtn" href="https://solscan.io/tx/${esc(x.sig)}" target="_blank" rel="noopener">Ver a transação no Solscan</a>` : ''}`;
+    }
+    const m = $('ntm');
+    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>${esc(x.title)}</b><button class="icon-btn" data-ntmclose aria-label="Fechar">&times;</button></div>
+      <small class="ntm-at">${when}</small>${body}
+      ${x.mint && data?.tokens?.[x.mint] ? `<button class="ntm-go" data-ntmgo="${esc(x.mint)}">Abrir a moeda</button>` : ''}</div>`;
+    m.hidden = false;
+  }
+  document.addEventListener('click', (e) => {
+    const m = $('ntm'); if (!m || m.hidden) return;
+    if (e.target.closest('[data-ntmclose]') || e.target === m) { m.hidden = true; return; }
+    const go = e.target.closest('[data-ntmgo]'); if (go) { m.hidden = true; closeInbox(); goTo(go.dataset.ntmgo); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('ntm') && !$('ntm').hidden) { $('ntm').hidden = true; e.stopPropagation(); } }, true);
   const BELL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
   const openInbox = () => { $('inbox').classList.add('show'); document.body.style.overflow = 'hidden'; INBOX.page = 1; renderInbox(); setTimeout(() => { INBOX.list.forEach((x) => (x.read = true)); store.set('faro-inbox', INBOX.list); renderInbox(); }, 1500); };
   const closeInbox = () => { $('inbox').classList.remove('show'); document.body.style.overflow = ''; };
@@ -948,7 +994,7 @@
     if (e.target.closest('#inbox-clear')) { INBOX.list = []; store.set('faro-inbox', []); return renderInbox(); }
     const pg = e.target.closest('[data-ntpage]'); if (pg) { INBOX.page += Number(pg.dataset.ntpage); return renderInbox(); }
     const it = e.target.closest('[data-nt]');
-    if (it) { const x = INBOX.list[Number(it.dataset.nt)]; if (x?.mint && data?.tokens?.[x.mint]) { closeInbox(); goTo(x.mint); } }
+    if (it) { const x = INBOX.list[Number(it.dataset.nt)]; if (x) openNt(x); }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('inbox').classList.contains('show')) closeInbox(); });
 
@@ -2802,7 +2848,11 @@
           toast(`${t?.symbol || ''}: a ordem de venda não cobre a compra nova`);
           addInbox(`Ordem de venda desatualizada: ${t?.symbol || o.mint.slice(0, 6)}`, msg, o.mint, 'warn', 'ord-' + o.sig);
         }
-        addInbox(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${t?.symbol || o.mint.slice(0, 6)}`, `${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''} por ${solFmt(Math.abs(o.sol), 4)}`, o.mint, 'info', 'tx-' + o.sig);
+        const sold = o.tokens < 0;
+        const r0 = sold && t ? (isSold(t) ? closedResult(t) : null) : null;
+        const g0 = sold && t ? (() => { try { return liveSig(t); } catch { return null; } })() : null;
+        addInbox(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${t?.symbol || o.mint.slice(0, 6)}`, `${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''} por ${solFmt(Math.abs(o.sol), 4)}${sold ? ' - toque para ver o motivo' : ''}`, o.mint, 'info', 'tx-' + o.sig,
+          { sig: o.sig, kind: sold ? 'venda' : 'compra', tokens: o.tokens, sol: o.sol, solUsd: LIVE.solUsd || null, sym: t?.symbol, txAt: o.at, res: r0 ? { pnl: r0.pnl, pct: r0.pct, spent: r0.spent } : null, sinal: g0 ? `${g0.tipo === 'saida' ? 'Sinal de saída' : 'Sinal de entrada'}: ${g0.titulo}` : null });
         if (t && CH.mint === o.mint && chartSrc === 'faro') decorate(t);
       }
       if (r.ops.length && !quiet && !SND.has(sig)) { SND.add(sig); play('boa'); }
@@ -3414,6 +3464,7 @@
           }
         }
         const sig = await execute(t, st);
+        if (st.side === 'sell' && sig && sig !== 'DEMO') { SELL_SRC[sig] = st.emergency ? 'emergencia' : 'faro'; store.set('faro-sell-src', SELL_SRC); }
         const buy = st.side === 'buy';
         st.quote = null; st.amt = '';
         st.msg = sig === 'DEMO'
