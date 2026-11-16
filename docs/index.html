@@ -1232,7 +1232,8 @@
       addInbox(`Recuperou: ${sym}`, `Sua posição perdida voltou a valer ${money(v)}. Pode valer a pena vender agora.`, t.mint, 'good', 'sinal-' + k);
       toast(`${sym} voltou a valer ${money(v)}`);
     }
-    if (entrada || ruim || bom) { store.set('faro-sinais-vistos', [...SIGSEEN].slice(-400)); play(ruim ? 'problema' : entrada ? 'entrada' : 'boa'); }
+    if (entrada || ruim || bom) { store.set('faro-sinais-vistos', [...SIGSEEN].slice(-400)); play(ruim ? 'problema' : entrada ? 'entrada' : 'boa');
+      const tt = data.tokens[CH.mint]; if (tt && CH.chart && chartSrc === 'faro') decorate(tt); }
   }
   setInterval(() => { if (!document.hidden) checkSignals(); }, 10000);
 
@@ -2424,6 +2425,18 @@
       const col = a.level === 'danger' ? '#ff5b5b' : a.level === 'warn' ? '#f5b14c' : '#8c939f';
       marks.push({ time: Math.floor(a.at / 1000 / sec) * sec + TZ, position: 'aboveBar', color: col, shape: 'circle', text: `! ${SIG[a.id] || 'alerta'}` });
     }
+    // E = boa entrada / S = sinal de saída (os mesmos avisos da central), no candle em que apareceram
+    { const seenK = new Set();
+      const sigs = INBOX.list.filter((x) => x.mint === t.mint && (ntType(x) === 'entrada' || ntType(x) === 'saida')).map((x) => ({ at: x.at, tipo: ntType(x), bom: /^Saída/.test(x.title) }));
+      if (t.sinal?.at && (t.sinal.boa || t.sinal.bom || t.sinal.ruim)) sigs.push({ at: t.sinal.at, tipo: t.sinal.tipo === 'entrada' ? 'entrada' : 'saida', bom: !!t.sinal.bom });
+      for (const g of sigs) {
+        if (g.at / 1000 < first) continue;
+        const time = Math.floor(g.at / 1000 / sec) * sec + TZ, k = `${g.tipo}:${time}`;
+        if (seenK.has(k)) continue; seenK.add(k);
+        marks.push(g.tipo === 'entrada'
+          ? { time, position: 'belowBar', color: '#10d27f', shape: 'circle', text: 'E' }
+          : { time, position: 'aboveBar', color: g.bom ? '#10d27f' : '#f5b14c', shape: 'circle', text: 'S' });
+      } }
     // R = momento em que a moeda entrou no radar (mesma cor da linha "radar")
     if (t.approvedAt && t.approvedAt / 1000 >= first) marks.push({ time: Math.floor(t.approvedAt / 1000 / sec) * sec + TZ, position: 'aboveBar', color: '#a78bfa', shape: 'arrowDown', text: 'R' });
     marks.sort((a, b) => a.time - b.time);
