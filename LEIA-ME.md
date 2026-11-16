@@ -170,3 +170,17 @@ O Faro avisa quando é uma boa hora de entrar ou sair. Ele usa as velas de 5 min
   - Na central de notificações e como notificação do computador. A boa entrada tem um som só dela (dois toques agudos duplos). O robô também calcula a cada rodada, então o sinal já está pronto quando você abre o painel.
 - **Não compra nem vende sozinho.** Você decide.
 - **Para mudar a lógica:** ela fica em `scanner/signals.mjs`. O painel tem uma cópia entre `<sinais>` e `</fim-sinais>`, e o teste confere que as duas estão iguais.
+
+## Stop móvel
+
+O stop móvel protege o lucro de uma moeda que você tem e que está subindo.
+
+- **Quando liga:** sozinho, quando a moeda chega a +30% desde a sua compra.
+- **Onde fica o stop:** no último fundo da subida, ou 25% abaixo do topo, o que estiver mais alto.
+  - Nunca fica a menos de 12% do topo, porque memecoin oscila.
+  - Sempre garante pelo menos +5% de lucro.
+- **Como anda:** sobe junto com o preço e nunca desce.
+- **Quem vende:** a vigia, a cada 10 s, com a chave do robô (sem Phantom). Se a posição valer menos de US$ 1, ela não vende.
+- **No gráfico:** aparece a linha laranja "stop móvel +X%".
+- **No quadro "Como está a alta":** mostra o stop, se os fundos estão subindo, se tem mais compra que venda e a distância do topo.
+- **Para ajustar:** em `config.json`, `venda.stopMovel`.

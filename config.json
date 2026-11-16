@@ -59,6 +59,7 @@
       "alvoPct": 100,
       "ateUsd": 10
     },
+    "stopMovel": { "ligado": true, "ativarPct": 30, "distanciaPct": 25, "minimoTravadoPct": 5 },
     "vigia": {
       "ligado": true,
       "quedaDoPicoPct": 40,

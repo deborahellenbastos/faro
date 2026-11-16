@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce } from './run.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
-import { entrySignal, exitSignal } from './signals.mjs';
+import { entrySignal, exitSignal, trailStop } from './signals.mjs';
 
 const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
 const now = Date.UTC(2026, 10, 15, 21, 0, 0);
@@ -263,6 +263,21 @@ assert.equal(cfg.compra.ativada, false);
   assert.equal(exitSignal(c, { entryPx: 1.45, entryAt: at }, { px: 2.1 }).fase, 'realizar');
   assert.equal(exitSignal(c, { entryPx: 1.45, entryAt: at }, { px: 1.0 }).fase, 'sair');
   assert.equal(exitSignal(c, { entryPx: 1.45, entryAt: at }, { px: 1.6 }).fase, 'segurar');
+}
+
+// Stop móvel: desligado antes de +30%, depois trava lucro e nunca desce
+{
+  const T0 = Date.now() - 40 * 300000; const c = [];
+  const push = (o, h, l, cl) => c.push([T0 + c.length * 300000, o, h, l, cl, 100]);
+  push(1, 1.02, 0.98, 1); push(1, 1.1, 0.99, 1.08);
+  assert.equal(trailStop(c, { entryPx: 1, entryAt: T0 }).ativo, false);
+  const seq = [1.15, 1.1, 1.25, 1.2, 1.18, 1.35, 1.3, 1.45, 1.4, 1.38, 1.5];
+  for (const v of seq) push(v - 0.03, v + 0.03, v - 0.05, v);
+  const tr = trailStop(c, { entryPx: 1, entryAt: T0 }, { ativarPct: 30, distanciaPct: 25, minimoTravadoPct: 5 });
+  assert.ok(tr.ativo && tr.stop >= 1.05 && tr.stop <= 1.53 * 0.88 + 1e-9, 'stop entre +5% e 12% abaixo do topo');
+  const lower = trailStop(c.slice(0, 6), { entryPx: 1, entryAt: T0 }, {}, tr.stop);
+  assert.ok(lower.stop >= tr.stop, 'nunca desce');
+  assert.equal(exitSignal(c, { entryPx: 1, entryAt: T0 }, { px: tr.stop * 0.98, trail: tr }).fase, 'sair');
 }
 
 // O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais

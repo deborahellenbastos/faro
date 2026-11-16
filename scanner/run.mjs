@@ -1,6 +1,6 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { simStep } from './sim.mjs';
-import { entrySignal, exitSignal } from './signals.mjs';
+import { entrySignal, exitSignal, trailStop } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
@@ -325,7 +325,15 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       // início da posição aberta = primeira compra depois da última vez que zerou
       let net = 0, start = null;
       for (const o of opsOf(t.mint)) { if (net <= 0 && o.tokens > 0) start = o.at; net += o.tokens; if (net <= 0) start = null; }
-      const x = exitSignal(t.candles, { entryPx: t.position.avgPriceUsd, entryAt: start || t.heldSince || now }, ctx);
+      const entryAt = start || t.heldSince || now;
+      const SM = cfg.venda?.stopMovel;
+      if (SM?.ligado) {
+        const prevStop = t.trail?.entryAt === entryAt ? t.trail.stop : 0;
+        const tr = trailStop(t.candles, { entryPx: t.position.avgPriceUsd, entryAt, peak: Math.max(t.trail?.entryAt === entryAt ? t.trail.peak || 0 : 0, t.priceUsd || 0) }, SM, prevStop);
+        if (tr) { if (tr.ativo && !(prevStop > 0)) log(`STOP MÓVEL ligado em ${t.symbol}: garante +${tr.travadoPct.toFixed(0)}%`); t.trail = { ...tr, entryAt }; }
+      } else delete t.trail;
+      ctx.trail = t.trail;
+      const x = exitSignal(t.candles, { entryPx: t.position.avgPriceUsd, entryAt }, ctx);
       if (x) sig = { tipo: 'saida', ...x };
     } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75)) {
       sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };

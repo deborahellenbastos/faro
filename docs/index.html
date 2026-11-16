@@ -371,6 +371,12 @@
   .info-btn:hover, .info-btn.on { color: var(--text); } .rr .info-btn { color: inherit; }
   .info-box { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-2); padding: 10px 12px; color: var(--muted); font-size: 12px; line-height: 1.55; }
   .info-box b { color: var(--text); }
+  .health { padding: var(--sp-4); display: grid; gap: 10px; }
+  .health .sec-title { margin: 0; }
+  .hl { display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: start; }
+  .hl i { font-style: normal; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+  .hl.ok i { color: var(--green); background: rgba(16,210,127,.14); } .hl.wait i { color: var(--muted); background: var(--panel-3); } .hl.warn i { color: #f5b14c; background: rgba(245,177,76,.14); }
+  .hl b { font-size: 12px; } .hl p { margin: 2px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; } .hl p b { color: var(--green); }
   .sig { padding: var(--sp-4); display: grid; gap: 8px; border-left: 3px solid var(--line-2); }
   .sig.good { border-left-color: var(--green); } .sig.warn { border-left-color: #f5b14c; } .sig.bad { border-left-color: #ff5b5b; }
   .sig-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -998,7 +1004,7 @@
     // Um som por atualização: problema numa moeda sua tem prioridade (venda no lucro toca o som bom)
     const loud = events.filter((e) => !(e.kind === 'robo' && /não compensa/.test(e.alerts[0].msg)));
     if (!loud.length) return;
-    const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto'));
+    const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto' && !/stop móvel/.test(e.alerts[0].msg)));
     play(bad ? 'problema' : 'boa');
     for (const e of events) {
       if (e.kind === 'nova') {
@@ -1294,7 +1300,47 @@
     return { ...base, fase: 'zona', titulo: 'Na zona de compra', msg: !held ? `Está ${where}, mas ainda fazendo fundos mais baixos. Espere segurar.` : `Está ${where}. Espere uma vela verde fechar acima da anterior, com compra.`, boa: false };
   }
 
-  // pos: { entryPx, entryAt (ms) }; ctx: { px, buys5, sells5, safety }
+  // Stop móvel: depois de subir ativarPct desde a compra, o stop sobe junto e nunca desce.
+  // Fica no último fundo da subida (ou a distanciaPct abaixo do topo, o que for mais alto),
+  // nunca colado demais no topo (memecoin oscila) e garantindo pelo menos minimoTravadoPct de lucro.
+  // pos: { entryPx, entryAt, peak? }; prev = stop da rodada anterior (só sobe)
+  function trailStop(c, pos, o = {}, prev = 0) {
+    if (!(pos?.entryPx > 0)) return null;
+    const ativar = o.ativarPct ?? 30, dist = o.distanciaPct ?? 25, minLock = o.minimoTravadoPct ?? 5;
+    const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
+    const peak = Math.max(pos.entryPx, pos.peak || 0, ...since.map((x) => x[2]));
+    const peakGain = (peak / pos.entryPx - 1) * 100;
+    if (peakGain < ativar && !(prev > 0)) return { ativo: false, peak, ativarPx: pos.entryPx * (1 + ativar / 100), falta: ativar - peakGain };
+    let pivot = 0;
+    for (let i = 2; i < since.length - 2; i++) {
+      const l = since[i][3];
+      if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) pivot = l;
+    }
+    const byPct = peak * (1 - dist / 100);
+    let stop = Math.max(pivot * 0.97, byPct);
+    stop = Math.min(stop, peak * 0.88);
+    stop = Math.max(stop, pos.entryPx * (1 + minLock / 100), prev || 0);
+    return { ativo: true, stop, peak, travadoPct: (stop / pos.entryPx - 1) * 100 };
+  }
+
+  // Como está a alta de uma moeda que você tem: fundos subindo, compra x venda, distância do topo
+  function trendHealth(c, pos, ctx = {}) {
+    const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
+    const px = ctx.px > 0 ? ctx.px : since.length ? since[since.length - 1][4] : 0;
+    const lows = [];
+    for (let i = 2; i < since.length - 2; i++) {
+      const l = since[i][3];
+      if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) lows.push(l);
+    }
+    const last3 = lows.slice(-3);
+    const rising = last3.length >= 2 && last3.every((l, i) => i === 0 || l > last3[i - 1]);
+    const peak = Math.max(px, ...since.map((x) => x[2]));
+    const fromTop = peak > 0 ? (1 - px / peak) * 100 : 0;
+    const ratio = (b, s) => (b + s > 0 ? (b / (b + s)) * 100 : null);
+    return { lows: last3, rising, fromTop, buy5: ratio(ctx.buys5 || 0, ctx.sells5 || 0), buy1h: ratio(ctx.buys1h || 0, ctx.sells1h || 0) };
+  }
+
+  // pos: { entryPx, entryAt (ms) }; ctx: { px, buys5, sells5, safety, trail }
   function exitSignal(c, pos, ctx = {}) {
     if (!Array.isArray(c) || c.length < 6 || !(pos?.entryPx > 0)) return null;
     const n = c.length;
@@ -1310,6 +1356,8 @@
     const gain = (px / pos.entryPx - 1) * 100, peakGain = (peak / pos.entryPx - 1) * 100;
     const base = { stop, alvo, gain, peakGain, key: `${pos.entryAt}` };
     if (ctx.safety === 'danger') return { ...base, fase: 'sair', titulo: 'Sair', msg: 'Apareceu sinal de perigo na moeda.', ruim: true };
+    if (ctx.trail?.ativo) { base.stop = ctx.trail.stop; base.trail = ctx.trail; }
+    if (ctx.trail?.ativo && px < ctx.trail.stop) return { ...base, fase: 'sair', titulo: 'Bateu o stop móvel', msg: `Caiu abaixo do stop móvel. Vendendo aí você garante +${Math.round(ctx.trail.travadoPct)}%.`, ruim: true };
     if (px < stop) return { ...base, fase: 'sair', titulo: 'Perdeu o fundo', msg: 'O preço passou do stop do plano (abaixo do fundo da correção). Pelo plano, é hora de sair.', ruim: true };
     if (px >= alvo * 0.97) return { ...base, fase: 'realizar', titulo: 'Chegou no alvo', msg: 'Bateu no topo anterior. Bom ponto para vender tudo ou parte e garantir o lucro.', bom: true };
     if (peakGain >= 30 && gain <= peakGain * 0.5) return { ...base, fase: 'proteger', titulo: 'Devolvendo o lucro', msg: `Chegou a +${pctTxt(peakGain)} e devolveu metade ou mais. Proteja o que sobrou.`, ruim: true };
@@ -1317,7 +1365,7 @@
     const wicks = last3.filter((x) => (x[2] - Math.max(x[1], x[4])) > Math.abs(x[4] - x[1]) * 1.5).length;
     const sells = ctx.buys5 != null && ctx.sells5 > ctx.buys5 * 1.5;
     if (gain >= 40 && wicks >= 2 && sells) return { ...base, fase: 'exaustao', titulo: 'Sinais de exaustão', msg: 'Velas com pavio longo em cima e mais venda que compra. Considere realizar parte.', ruim: true };
-    return { ...base, fase: 'segurar', titulo: 'Dentro do plano', msg: 'Nada a fazer: o preço está entre o stop e o alvo.' };
+    return { ...base, fase: 'segurar', titulo: 'Dentro do plano', msg: ctx.trail?.ativo ? `Nada a fazer. O stop móvel já garante +${Math.round(ctx.trail.travadoPct)}% e sobe junto se ela subir.` : 'Nada a fazer: o preço está entre o stop e o alvo.' };
   }
   // </fim-sinais>
 
@@ -1334,6 +1382,33 @@
 
   // Sinal ao vivo: velas do robô (5 min) ou as do gráfico aberto, com o preço de agora
   function liveSig(t) {
+    const c = candlesOf(t);
+    if (c.length < 6) return null;
+    const p5 = t.periods?.m5 || {};
+    const ctx = { px: t.priceUsd, buys5: p5.buys, sells5: p5.sells, safety: levelOf(t), shape: t.shape?.tipo, rrMin: data?.config?.simulacao?.riscoRetornoMin || 2 };
+    if (t.held && t.position?.known && t.position.avgPriceUsd > 0) {
+      let net = 0, start = null;
+      for (const o of [...(t.history || [])].reverse()) { if (!o.tokens) continue; if (net <= 0 && o.tokens > 0) start = o.at; net += o.tokens; if (net <= 0) start = null; }
+      const entryAt = start || t.heldSince || Date.now();
+      ctx.trail = liveTrail(t, c, entryAt);
+      const x = exitSignal(c, { entryPx: t.position.avgPriceUsd, entryAt }, ctx);
+      return x ? { tipo: 'saida', ...x } : null;
+    }
+    if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75)) return { tipo: 'entrada', ...entrySignal(c, ctx) };
+    return null;
+  }
+  // Stop móvel ao vivo: o do robô, subindo junto com o preço que o painel vê agora
+  function liveTrail(t, c, entryAt) {
+    const SM = data?.config?.venda?.stopMovel; if (!SM?.ligado) return null;
+    const same = t.trail?.entryAt === entryAt;
+    return trailStop(c, { entryPx: t.position.avgPriceUsd, entryAt, peak: Math.max(same ? t.trail.peak || 0 : 0, t.priceUsd || 0) }, SM, same ? t.trail.stop || 0 : 0);
+  }
+  function posStart(t) {
+    let net = 0, start = null;
+    for (const o of [...(t.history || [])].reverse()) { if (!o.tokens) continue; if (net <= 0 && o.tokens > 0) start = o.at; net += o.tokens; if (net <= 0) start = null; }
+    return start || t.heldSince || Date.now();
+  }
+  function candlesOf(t) {
     let c = t.candles || [];
     if (CH.mint === t.mint && CH.bars.length > 20 && ivalSec() <= 300) {
       const m = new Map();
@@ -1344,17 +1419,29 @@
       }
       const agg = [...m.values()]; if (agg.length >= 12) c = agg;
     }
-    if (c.length < 6) return null;
-    const p5 = t.periods?.m5 || {};
-    const ctx = { px: t.priceUsd, buys5: p5.buys, sells5: p5.sells, safety: levelOf(t), shape: t.shape?.tipo, rrMin: data?.config?.simulacao?.riscoRetornoMin || 2 };
-    if (t.held && t.position?.known && t.position.avgPriceUsd > 0) {
-      let net = 0, start = null;
-      for (const o of [...(t.history || [])].reverse()) { if (!o.tokens) continue; if (net <= 0 && o.tokens > 0) start = o.at; net += o.tokens; if (net <= 0) start = null; }
-      const x = exitSignal(c, { entryPx: t.position.avgPriceUsd, entryAt: start || t.heldSince || Date.now() }, ctx);
-      return x ? { tipo: 'saida', ...x } : null;
-    }
-    if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75)) return { tipo: 'entrada', ...entrySignal(c, ctx) };
-    return null;
+    return c;
+  }
+  // "Como está a alta": o que olhar numa moeda que só sobe, para saber se ela está saudável
+  function healthHtml(t) {
+    if (!t.held || !t.position?.known || !(t.position.avgPriceUsd > 0) || isLost(t)) return '';
+    const c = candlesOf(t); if (c.length < 6) return '';
+    const entryAt = posStart(t), E = t.position.avgPriceUsd;
+    const P5 = t.periods?.m5 || {}, P1 = t.periods?.h1 || {};
+    const h = trendHealth(c, { entryAt }, { px: t.priceUsd, buys5: P5.buys, sells5: P5.sells, buys1h: P1.buys, sells1h: P1.sells });
+    const tr = liveTrail(t, c, entryAt), SM = data?.config?.venda?.stopMovel;
+    const rows = [];
+    if (tr?.ativo) rows.push(['ok', 'Stop móvel ligado', `Se cair até ${price(tr.stop)}, o robô vende e você garante <b>+${Math.round(tr.travadoPct)}%</b>. Ele sobe junto se ela subir e nunca desce.`]);
+    else if (SM?.ligado && tr) rows.push(['wait', 'Stop móvel', `Liga sozinho quando ela chegar a +${SM.ativarPct}% (em ${price(tr.ativarPx)}). Aí o lucro fica protegido.`]);
+    rows.push(h.lows.length < 2 ? ['wait', 'Fundos', 'Ainda pouco gráfico desde a compra para ver os fundos.']
+      : h.rising ? ['ok', 'Fundos subindo', `Os ${h.lows.length} últimos fundos foram cada um mais alto que o anterior. É o desenho de uma alta saudável.`]
+      : ['warn', 'Fez um fundo mais baixo', 'O último fundo ficou abaixo do anterior. Não é motivo para vender, mas a alta perdeu força.']);
+    if (h.buy1h != null) rows.push(h.buy1h >= 50 ? ['ok', 'Mais compra que venda', `${Math.round(h.buy1h)}% das transações da última hora foram compras${h.buy5 != null ? ` (${Math.round(h.buy5)}% nos últimos 5 min)` : ''}.`]
+      : ['warn', 'Mais venda que compra', `Só ${Math.round(h.buy1h)}% das transações da última hora foram compras.`]);
+    rows.push(h.fromTop < 15 ? ['ok', 'Perto do topo', `Está ${Math.round(h.fromTop)}% abaixo do topo. Correções de 15% a 30% são normais numa alta.`]
+      : h.fromTop < 35 ? ['wait', 'Corrigindo', `Está ${Math.round(h.fromTop)}% abaixo do topo. Correção normal enquanto os fundos seguirem subindo.`]
+      : ['warn', 'Correção funda', `Está ${Math.round(h.fromTop)}% abaixo do topo.`]);
+    const ico = { ok: '✓', wait: '-', warn: '!' };
+    return `<section class="panel health"><h3 class="sec-title">Como está a alta</h3>${rows.map(([k, a, b]) => `<div class="hl ${k}"><i>${ico[k]}</i><div><b>${a}</b><p>${b}</p></div></div>`).join('')}</section>`;
   }
   const SIG_CLS = { entrada: 'good', realizar: 'good', zona: 'warn', perto: 'warn', proteger: 'warn', exaustao: 'warn', quebrou: 'bad', sair: 'bad', perigo: 'bad', evitar: 'bad' };
   function sigTag(t) {
@@ -1877,7 +1964,7 @@
     const trade = mine ? tradeBlock(t)
       : t.status === 'aprovada' ? tradeBlock(t)
       : t.status === 'aguardando' && (t.score || 0) >= 75 && levelOf(t) !== 'danger' ? tradeBlock(t) : '';
-    const side = trade ? sinalHtml(t) + trade + (mine ? opBlock(t) : '') : (mine ? opBlock(t) : '');
+    const side = trade ? sinalHtml(t) + (mine ? healthHtml(t) : '') + trade + (mine ? opBlock(t) : '') : (mine ? opBlock(t) : '');
     const tw = twinInfo(t);
     const twinBox = tw ? `<section class="panel d-card twins"><h3 class="sec-title">Moedas com o mesmo nome</h3><p class="sp-note">${tw.best ? 'Esta é a mais forte (mais liquidez) entre as que têm esse nome.' : 'Existe outra com esse nome e mais liquidez. Cópias (vamps) costumam ser a versão mais fraca: confira qual é a original antes de comprar.'}</p>
       ${tw.all.map((x) => `<button class="twin ${x.mint === t.mint ? 'on' : ''}" data-goto="${esc(x.mint)}"><b>${esc(x.symbol)}</b><span>liquidez ${usd(x.liquidityUsd)} - ${x.rug?.totalHolders ? int(x.rug.totalHolders) + ' holders' : 'holders ?'} - ${{ aprovada: 'no radar', aguardando: 'observando', reprovada: 'reprovada', carteira: 'na carteira' }[x.status] || x.status}</span><code>${esc(x.mint.slice(0, 4) + '...' + x.mint.slice(-4))}</code></button>`).join('')}</section>` : '';
@@ -1995,6 +2082,7 @@
       // Meta: +100% (ou o alvo configurado) sobre a entrada. Em posição pequena é onde o robô vende sozinho
       const tp = metaOf(t);
       if (t.held && tp) add(tp.px, '#10d27f', tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
+      if (t.held) { const tr = liveTrail(t, candlesOf(t), posStart(t)); if (tr?.ativo) add(tr.stop, '#f5b14c', `stop móvel +${Math.round(tr.travadoPct)}%`, 1, 2); }
       // Saída: preço médio das suas vendas
       const sells = (t.history || []).filter((o) => o.tokens < 0);
       const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
@@ -2876,6 +2964,7 @@
       ['Valor por operação', data.banca?.faixaUsd ? `US$ ${data.banca.faixaUsd} (${data.banca.solPorCompra} SOL) - banca de ${money(data.banca.usd || 0)}` : `${c.solPorCompra} SOL`],
       ['Faixas', (c.faixas || []).map((f) => `${f.bancaMinUsd ? 'banca US$ ' + f.bancaMinUsd + '+' : 'até US$ ' + ((c.faixas.find((x) => x.bancaMinUsd > 0) || {}).bancaMinUsd || '')}: US$ ${f.usd}`).join(' - ')],
       ['Simulação', data.config?.simulacao?.ligado ? `ligada (${c.solPorCompra} SOL de mentira por operação, até ${data.config.simulacao.maxAbertas} abertas)` : 'desligada'],
+      ['Stop móvel', data.config?.venda?.stopMovel?.ligado && data.lastRun?.watch ? `ligado (a partir de +${data.config.venda.stopMovel.ativarPct}%: o stop sobe junto e garante pelo menos +${data.config.venda.stopMovel.minimoTravadoPct}%)` : 'desligado'],
       ['Venda no lucro', data.lastRun?.takeProfit ? `ligada (posições abaixo de US$ ${data.lastRun.takeProfit.ateUsd}: vende 100% com +${data.lastRun.takeProfit.alvoPct}%)` : 'desligada'],
     ];
     $('cfg').innerHTML = rows.map(([k, v]) => `<span>${esc(k)}</span><span class="num">${esc(v)}</span>`).join('');

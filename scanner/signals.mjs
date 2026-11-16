@@ -58,7 +58,47 @@ export function entrySignal(c, ctx = {}) {
   return { ...base, fase: 'zona', titulo: 'Na zona de compra', msg: !held ? `Está ${where}, mas ainda fazendo fundos mais baixos. Espere segurar.` : `Está ${where}. Espere uma vela verde fechar acima da anterior, com compra.`, boa: false };
 }
 
-// pos: { entryPx, entryAt (ms) }; ctx: { px, buys5, sells5, safety }
+// Stop móvel: depois de subir ativarPct desde a compra, o stop sobe junto e nunca desce.
+// Fica no último fundo da subida (ou a distanciaPct abaixo do topo, o que for mais alto),
+// nunca colado demais no topo (memecoin oscila) e garantindo pelo menos minimoTravadoPct de lucro.
+// pos: { entryPx, entryAt, peak? }; prev = stop da rodada anterior (só sobe)
+export function trailStop(c, pos, o = {}, prev = 0) {
+  if (!(pos?.entryPx > 0)) return null;
+  const ativar = o.ativarPct ?? 30, dist = o.distanciaPct ?? 25, minLock = o.minimoTravadoPct ?? 5;
+  const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
+  const peak = Math.max(pos.entryPx, pos.peak || 0, ...since.map((x) => x[2]));
+  const peakGain = (peak / pos.entryPx - 1) * 100;
+  if (peakGain < ativar && !(prev > 0)) return { ativo: false, peak, ativarPx: pos.entryPx * (1 + ativar / 100), falta: ativar - peakGain };
+  let pivot = 0;
+  for (let i = 2; i < since.length - 2; i++) {
+    const l = since[i][3];
+    if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) pivot = l;
+  }
+  const byPct = peak * (1 - dist / 100);
+  let stop = Math.max(pivot * 0.97, byPct);
+  stop = Math.min(stop, peak * 0.88);
+  stop = Math.max(stop, pos.entryPx * (1 + minLock / 100), prev || 0);
+  return { ativo: true, stop, peak, travadoPct: (stop / pos.entryPx - 1) * 100 };
+}
+
+// Como está a alta de uma moeda que você tem: fundos subindo, compra x venda, distância do topo
+export function trendHealth(c, pos, ctx = {}) {
+  const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
+  const px = ctx.px > 0 ? ctx.px : since.length ? since[since.length - 1][4] : 0;
+  const lows = [];
+  for (let i = 2; i < since.length - 2; i++) {
+    const l = since[i][3];
+    if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) lows.push(l);
+  }
+  const last3 = lows.slice(-3);
+  const rising = last3.length >= 2 && last3.every((l, i) => i === 0 || l > last3[i - 1]);
+  const peak = Math.max(px, ...since.map((x) => x[2]));
+  const fromTop = peak > 0 ? (1 - px / peak) * 100 : 0;
+  const ratio = (b, s) => (b + s > 0 ? (b / (b + s)) * 100 : null);
+  return { lows: last3, rising, fromTop, buy5: ratio(ctx.buys5 || 0, ctx.sells5 || 0), buy1h: ratio(ctx.buys1h || 0, ctx.sells1h || 0) };
+}
+
+// pos: { entryPx, entryAt (ms) }; ctx: { px, buys5, sells5, safety, trail }
 export function exitSignal(c, pos, ctx = {}) {
   if (!Array.isArray(c) || c.length < 6 || !(pos?.entryPx > 0)) return null;
   const n = c.length;
@@ -74,6 +114,8 @@ export function exitSignal(c, pos, ctx = {}) {
   const gain = (px / pos.entryPx - 1) * 100, peakGain = (peak / pos.entryPx - 1) * 100;
   const base = { stop, alvo, gain, peakGain, key: `${pos.entryAt}` };
   if (ctx.safety === 'danger') return { ...base, fase: 'sair', titulo: 'Sair', msg: 'Apareceu sinal de perigo na moeda.', ruim: true };
+  if (ctx.trail?.ativo) { base.stop = ctx.trail.stop; base.trail = ctx.trail; }
+  if (ctx.trail?.ativo && px < ctx.trail.stop) return { ...base, fase: 'sair', titulo: 'Bateu o stop móvel', msg: `Caiu abaixo do stop móvel. Vendendo aí você garante +${Math.round(ctx.trail.travadoPct)}%.`, ruim: true };
   if (px < stop) return { ...base, fase: 'sair', titulo: 'Perdeu o fundo', msg: 'O preço passou do stop do plano (abaixo do fundo da correção). Pelo plano, é hora de sair.', ruim: true };
   if (px >= alvo * 0.97) return { ...base, fase: 'realizar', titulo: 'Chegou no alvo', msg: 'Bateu no topo anterior. Bom ponto para vender tudo ou parte e garantir o lucro.', bom: true };
   if (peakGain >= 30 && gain <= peakGain * 0.5) return { ...base, fase: 'proteger', titulo: 'Devolvendo o lucro', msg: `Chegou a +${pctTxt(peakGain)} e devolveu metade ou mais. Proteja o que sobrou.`, ruim: true };
@@ -81,5 +123,5 @@ export function exitSignal(c, pos, ctx = {}) {
   const wicks = last3.filter((x) => (x[2] - Math.max(x[1], x[4])) > Math.abs(x[4] - x[1]) * 1.5).length;
   const sells = ctx.buys5 != null && ctx.sells5 > ctx.buys5 * 1.5;
   if (gain >= 40 && wicks >= 2 && sells) return { ...base, fase: 'exaustao', titulo: 'Sinais de exaustão', msg: 'Velas com pavio longo em cima e mais venda que compra. Considere realizar parte.', ruim: true };
-  return { ...base, fase: 'segurar', titulo: 'Dentro do plano', msg: 'Nada a fazer: o preço está entre o stop e o alvo.' };
+  return { ...base, fase: 'segurar', titulo: 'Dentro do plano', msg: ctx.trail?.ativo ? `Nada a fazer. O stop móvel já garante +${Math.round(ctx.trail.travadoPct)}% e sobe junto se ela subir.` : 'Nada a fazer: o preço está entre o stop e o alvo.' };
 }
