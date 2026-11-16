@@ -112,6 +112,10 @@
 
   /* Resumo */
   .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); }
+  .wallet-strip { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); align-items: baseline; padding: 10px var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-2); background: var(--panel); margin-top: var(--sp-3); }
+  .wallet-strip[hidden] { display: none; }
+  .wallet-strip span { display: flex; align-items: baseline; gap: 6px; }
+  .wallet-strip small { color: var(--muted); font-size: 11px; } .wallet-strip b { font-size: 13px; } .wallet-strip em { font-style: normal; color: var(--faint); font-size: 11px; }
   .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-3); padding: var(--sp-4) var(--sp-5); min-width: 0; }
   .stat > span { display: block; font-size: 12px; color: var(--muted); font-weight: 500; }
   .stat b { display: block; margin-top: 6px; font-size: 22px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -711,6 +715,7 @@
     </header>
 
     <section class="summary" id="summary"></section>
+    <div class="wallet-strip" id="wallet-strip" hidden></div>
 
     <div class="workspace">
       <section class="panel list-panel">
@@ -1839,6 +1844,17 @@
   const BUY_PRESETS = [0.05, 0.1, 0.25, 0.5, 1];
   const SELL_PRESETS = [10, 25, 50, 75, 100];
   const USD_PRESETS = [1, 2, 5, 10, 25];
+  // SOL disponível + valor das moedas abertas (em dólar), e quantas compras do valor por operação cabem
+  function walletTotals() {
+    const sol = data?.wallet?.solBalance;
+    const anyT = Object.values(data?.tokens || {}).find((t) => t.priceNative > 0 && t.priceUsd > 0);
+    const px = LIVE.solUsd || (anyT ? anyT.priceUsd / anyT.priceNative : 0);
+    const coins = Object.values(data?.tokens || {}).filter((t) => isMine(t) && !isLost(t)).reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
+    if (sol == null || !px) return { sol, coins, solUsd: null, total: null, buys: null };
+    const perSol = data.banca?.solPorCompra || data.config?.compra?.solPorCompra || 0;
+    const reserve = 0.01; // deixa um pouco de SOL para as taxas de rede
+    return { sol, coins, solUsd: sol * px, total: sol * px + coins, perBuy: perSol * px, buys: perSol > 0 ? Math.max(0, Math.floor((sol - reserve) / perSol)) : null };
+  }
   const solUsdOf = (t) => LIVE.solUsd || (t?.priceNative > 0 ? t.priceUsd / t.priceNative : 0);
   // Quantidade em SOL a partir do que foi digitado (em SOL ou em dólar)
   const amtSol = (t, st) => { const v = Number(String(st.amt).replace(',', '.')) || 0; return st.unit === 'usd' ? (solUsdOf(t) ? v / solUsdOf(t) : 0) : v; };
@@ -2906,13 +2922,12 @@
       const value = held.reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
       const spent = ps.reduce((a, p) => a + (p.spentUsd || 0), 0) + shut.reduce((a, r) => a + r.spent, 0);
       const pnl = ps.reduce((a, p) => a + (p.pnlUsd || 0), 0) + shut.reduce((a, r) => a + r.pnl, 0);
-      const solUsd = ps.find((p) => p.solUsd)?.solUsd;
-      const solBal = data.wallet?.solBalance;
+      const W = walletTotals();
       $('summary').innerHTML = [
-        stat('Patrimônio em moedas', money(value), `${mine.length} em aberto${closed.length ? ` - ${closed.length} ${closed.length === 1 ? 'encerrada' : 'encerradas'}` : ''}`, 'hero'),
-        stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, spent ? pct((pnl / spent) * 100) : ''),
-        stat('Investido', money(spent), 'em aberto e encerradas'),
-        stat('Saldo em SOL', solBal != null ? solFmt(solBal, 4) : '-', solBal != null && (LIVE.solUsd || solUsd) ? `aprox. ${money(solBal * (LIVE.solUsd || solUsd))}` : 'para novas compras'),
+        stat('Total na carteira', W.total != null ? money(W.total) : '-', W.total != null ? `${money(W.solUsd)} para comprar - ${money(W.coins)} em moedas` : 'somando SOL e moedas', 'hero'),
+        stat('Disponível para comprar', W.sol != null ? solFmt(W.sol, 4) : '-', W.solUsd != null ? `aprox. ${money(W.solUsd)}${W.buys != null ? ` - dá para ${W.buys} ${W.buys === 1 ? 'compra' : 'compras'}` : ''}` : 'saldo em SOL'),
+        stat('Em moedas agora', money(value), `${mine.length} em aberto${closed.length ? ` - ${closed.length} ${closed.length === 1 ? 'encerrada' : 'encerradas'}` : ''}`),
+        stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, spent ? `${pct((pnl / spent) * 100)} sobre ${money(spent)} investidos` : ''),
       ].join('');
     } else {
       const recent = approved.filter((t) => t.approvedAt > day);
@@ -2927,6 +2942,14 @@
         stat('Melhor do radar', best ? `<a class="stat-link" data-goto="${esc(best.mint)}">${esc(best.symbol)}</a>` : '-', best ? `máxima ${pct(best.maxChangePct)} - agora ${pct(best.changePct)}` : 'nenhuma no radar agora'),
       ].join('');
     }
+
+    // Carteira resumida nas outras abas: quanto tenho para gastar
+    { const ws = $('wallet-strip'), W = walletTotals();
+      ws.hidden = ui.tab === 'minhas' || W.sol == null;
+      if (!ws.hidden) ws.innerHTML = `<span><small>Disponível para comprar</small><b class="num">${money(W.solUsd)}</b><em class="num">${solFmt(W.sol, 4)}</em></span>
+        <span><small>Em moedas</small><b class="num">${money(W.coins)}</b></span>
+        <span><small>Total na carteira</small><b class="num">${money(W.total)}</b></span>
+        ${W.buys != null ? `<span><small>Valor por operação</small><b class="num">${money(W.perBuy)}</b><em>dá para ${W.buys} ${W.buys === 1 ? 'compra' : 'compras'}</em></span>` : ''}`; }
 
     // Lista (busca, ordem e paginação)
     let items = lists[ui.tab];
