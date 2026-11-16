@@ -269,6 +269,15 @@
   .amtwrap { flex: 1; display: flex; flex-direction: column; align-items: flex-end; min-width: 0; }
   .amtwrap input { width: 100%; }
   .amthint { color: var(--faint); font-size: 11px; font-weight: 600; min-height: 14px; }
+  .sp-note { margin: 0 0 var(--sp-3); color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .sp-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3); }
+  .sp { display: grid; gap: 4px; }
+  .sp-h { display: flex; justify-content: space-between; font-size: 13px; }
+  .sp-h span { color: var(--muted); font-weight: 700; }
+  .sp-bar { height: 6px; border-radius: 3px; background: var(--panel-3); overflow: hidden; }
+  .sp-bar i { display: block; height: 100%; border-radius: 3px; }
+  .sp-bar i.g { background: var(--green); } .sp-bar i.m { background: #f5b14c; } .sp-bar i.w { background: var(--red); }
+  .sp small { color: var(--faint); font-size: 11px; line-height: 1.4; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -960,6 +969,20 @@
     return `<section class="panel d-card"><details class="checks"${open ? ' open' : ''}><summary><span>Análise de segurança<small>${okCount} de ${t.checks.length} ok</small></span>${ICON.chev}</summary><div class="check-list">${rows}</div></details></section>`;
   }
 
+  // Por que essa nota: cada critério com os pontos que ganhou
+  function scoreHtml(t) {
+    const parts = t.scoreParts; if (!parts?.length || t.score == null) return '';
+    const rows = parts.map((x) => {
+      const f = x.max ? x.pts / x.max : 0;
+      return `<div class="sp"><div class="sp-h"><b>${esc(x.label)}</b><span class="num">${x.pts}/${x.max}</span></div>
+        <div class="sp-bar"><i class="${f >= 0.7 ? 'g' : f >= 0.4 ? 'm' : 'w'}" style="width:${Math.round(f * 100)}%"></i></div><small>${esc(x.why)}</small></div>`;
+    }).join('');
+    const weak = [...parts].sort((a, b) => a.pts / a.max - b.pts / b.max).slice(0, 2).map((x) => x.label.toLowerCase());
+    return `<section class="panel d-card"><details class="checks"><summary><span>Por que nota ${t.score}<small>${t.score >= 75 ? 'forte' : t.score >= 55 ? 'média' : 'fraca'} - mais fraca em ${weak.join(' e ')}</small></span>${ICON.chev}</summary>
+      <p class="sp-note">A nota mede a <b>força</b> da moeda (compras, volume, holders). Quem decide se ela entra no radar são os <b>filtros de segurança</b> abaixo: uma moeda pode ser segura e ainda ter nota média.</p>
+      <div class="sp-list">${rows}</div></details></section>`;
+  }
+
   function alertsHtml(t) {
     const al = t.safety?.alerts || [];
     if (!al.length) return '';
@@ -1189,7 +1212,7 @@
       </div>` : '';
     const ops = mine ? `<div class="op-grid ${ui.hist[t.mint]?.open ? 'hist-open' : ''}">${opBlock(t)}${tradeBlock(t)}</div>`
       : t.status === 'aprovada' ? tradeBlock(t) : '';
-    return head + perf + ops + (mine ? alertsHtml(t) : '') + checksHtml(t, t.status !== 'aprovada');
+    return head + perf + ops + (mine ? alertsHtml(t) : '') + scoreHtml(t) + checksHtml(t, t.status !== 'aprovada');
   }
 
   // =========================================================
@@ -1261,7 +1284,13 @@
     for (const s2 of CH.trends) { try { CH.chart.removeSeries(s2); } catch {} }
     CH.lines = []; CH.trends = [];
     const add = (price, color, title, style = 2, width = 1) => { if (price > 0) CH.lines.push(CH.candle.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title })); };
-    if (t.position?.known) add(t.position.avgPriceUsd, '#a78bfa', 'preço médio', 2, 2);
+    if (t.position?.known) {
+      add(t.position.avgPriceUsd, '#a78bfa', (t.position.buys || 1) > 1 ? 'entrada (média)' : 'entrada', 2, 2);
+      // Saída: preço médio das suas vendas
+      const sells = (t.history || []).filter((o) => o.tokens < 0);
+      const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
+      if (soldTok > 0 && t.position.receivedUsd > 0) add(t.position.receivedUsd / soldTok, '#f472b6', sells.length > 1 ? 'saída (média)' : 'saída', 2, 2);
+    }
     else if (t.entryPriceUsd) add(t.entryPriceUsd, '#a78bfa', 'alerta', 2, 1);
     for (const o of LIM.orders[t.mint] || []) {
       if (o.tpPriceUsd) add(Number(o.tpPriceUsd), '#10d27f', 'alvo', 1, 1);

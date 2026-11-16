@@ -1,5 +1,5 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
-import { summarizeMarket, prefilter, analyze, scoreToken, scamSignals, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
+import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, scamSignals, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
 const RECHECK_MIN = 5;      // moedas da carteira: rechecagem de segurança toda rodada (5 min)
@@ -159,6 +159,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     const pre = prefilter(m, cfg);
     // Nota prévia: com o que já se sabe (mercado + RugCheck, se já houver). Ordena a lista "Observando".
     t.score = scoreToken(m, t.rug);
+    t.scoreParts = scoreParts(m, t.rug);
     t.pending = pre.length;
     if (pre.length) { t.status = 'aguardando'; t.reasons = pre; t.checks = null; continue; }
     rugQueue.push({ t, m });
@@ -245,6 +246,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     t.checks = res.checks;
     t.reasons = res.reasons;
     t.score = res.score;
+    t.scoreParts = res.scoreParts;
     t.rug = res.rug;
     t.pending = res.reasons.length;
     if (res.status === 'reprovada') t.rejectedAt = now;

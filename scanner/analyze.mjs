@@ -207,6 +207,25 @@ export function scoreToken(m, rug) {
   return Math.round(s);
 }
 
+// A mesma nota, peça por peça (o painel mostra "por que essa nota")
+export function scoreParts(m, rug) {
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const n = (v) => (Number.isFinite(v) ? v : 0);
+  rug = rug || {};
+  const pct = (v) => `${Math.round(n(v))}%`;
+  const usd = (v) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `$${(v / 1e3).toFixed(0)}k` : `$${Math.round(n(v))}`);
+  const p = (label, max, frac, why) => ({ label, max, pts: Math.round(n(frac) * max), why });
+  return [
+    p('Força de compra', 20, clamp((m.buyRatioH1 - 50) / 25), `${pct(m.buyRatioH1)} das negociações da última hora foram compras (75%+ = nota cheia)`),
+    p('Giro de volume', 15, clamp(m.volumeH1 / Math.max(1, m.liquidityUsd) / 1.5), `volume de ${usd(m.volumeH1)} na hora para ${usd(m.liquidityUsd)} de liquidez (1,5x = nota cheia)`),
+    p('Tendência', 10, clamp(m.priceChangeH1 / 50), `preço ${m.priceChangeH1 >= 0 ? '+' : ''}${Math.round(n(m.priceChangeH1))}% na última hora (+50% = nota cheia)`),
+    p('Holders', 15, rug.totalHolders ? clamp(Math.log10(rug.totalHolders) / 3.5) : 0.3, rug.totalHolders ? `${rug.totalHolders} carteiras (~3.000 = nota cheia)` : 'ainda sem dados do RugCheck'),
+    p('Tamanho da liquidez', 10, clamp(Math.log10(Math.max(1, m.liquidityUsd)) / 6), `${usd(m.liquidityUsd)} (US$ 1M = nota cheia)`),
+    p('Segurança (RugCheck)', 15, rug.scoreNormalised != null ? clamp(1 - rug.scoreNormalised / 100) : 0.5, rug.scoreNormalised != null ? `risco ${rug.scoreNormalised}/100 no RugCheck (0 = nota cheia)` : 'ainda sem dados do RugCheck'),
+    p('Distribuição', 15, rug.top10Pct != null ? clamp(1 - rug.top10Pct / 40) : 0.5, rug.top10Pct != null ? `top 10 carteiras com ${pct(rug.top10Pct)} (quanto menos, melhor)` : 'ainda sem dados do RugCheck'),
+  ];
+}
+
 // Junta tudo e decide o status
 export function analyze(m, rugReport, cfg) {
   const rug = summarizeRug(rugReport);
@@ -221,6 +240,7 @@ export function analyze(m, rugReport, cfg) {
     checks,
     reasons: failed.map((c) => `${c.label.replace(/^\d\.\s*/, '')}: ${c.detail}`),
     score: scoreToken(m, rug),
+    scoreParts: scoreParts(m, rug),
     summary: rug,
     rug: {
       scoreNormalised: rug.scoreNormalised,
