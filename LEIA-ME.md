@@ -298,3 +298,9 @@ O stop fica abaixo da pausa, e o alvo em 2,5x o risco.
 Por enquanto só a simulação usa esse sinal. Aparece com a etiqueta "rompimento" e com o resultado separado na aba Simulação.
 
 Limitação: o robô roda a cada 5 min. Altas muito rápidas, como a da goldie (+38% em 2 minutos), podem passar do limite de 15% antes da rodada. Nesse caso o robô não persegue.
+
+### Saída do Radar por despejo e alarme falso de LP (16/11)
+- Moeda aprovada que você não tem sai do Radar quando cai 60% ou mais em menos de 20 minutos, ou quando perde a estrutura (abaixo de 78,6%) e aparecem insiders/concentração novos depois da aprovação.
+- Venda por "liquidez destravada" em que a liquidez continuou no mercado (80%+ da referência) passa a ser só aviso: a moeda não fica marcada como perigo para sempre.
+- Notificação de boa entrada diz se o robô vai comprar sozinho e, se não, por quê. Moeda reprovada ou já vendida (fora reentrada) não gera aviso de entrada.
+- "Bloquear painel" virou "Sair do painel" (esquece a senha neste navegador; o robô continua rodando).

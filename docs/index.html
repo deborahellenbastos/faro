@@ -29,7 +29,7 @@
     --gold: #f5c518;
     --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-7: 32px; --sp-8: 40px;
     --r-1: 6px; --r-2: 8px; --r-3: 10px; --r-4: 12px;
-    --side-w: 248px; --list-w: 380px;
+    --side-w: 268px; --list-w: 380px;
     --chart-h: 240px;
     --shadow: 0 18px 48px rgba(0,0,0,.45);
   }
@@ -81,6 +81,7 @@
   .dot.off { background: var(--red); box-shadow: 0 0 0 4px var(--red-bg); }
   .side-sep { height: 1px; background: var(--line); }
   .sw-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); font-size: 13px; font-weight: 500; color: var(--muted); }
+  .sw-row > div > span, .sw-row > span { white-space: nowrap; }
   .sw-row small { display: block; font-size: 11px; color: var(--amber); font-weight: 600; }
   .switch { position: relative; width: 36px; height: 20px; border-radius: 999px; border: 0; background: var(--line-2); transition: background .15s; flex: none; }
   .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s; }
@@ -643,9 +644,10 @@
   .lock-go:disabled { opacity: .6; }
   .lock-err { color: var(--red); font-size: 12px; font-weight: 600; min-height: 16px; }
   .lock-note { font-size: 11px; color: var(--faint); text-align: center; }
-  .lock-btn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; padding: 0; }
+  .lock-btn { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; padding: 2px 0; cursor: pointer; }
+  .lock-btn[hidden], .side-sep[hidden] { display: none; }
   .lock-btn svg { width: 14px; height: 14px; }
-  .lock-btn:hover { color: var(--text); }
+  .lock-btn:hover { color: var(--red, #f87171); }
 
   /* Barra de abas (celular) */
   .tabbar { display: none; }
@@ -723,7 +725,7 @@
       <div class="sw-row"><span>Notificações</span><button class="switch" id="t-notif" role="switch" aria-checked="false" aria-label="Notificações"></button></div>
       <div class="sw-row"><div><span>Gráfico da Dex<i class="info-btn tip" title="Desligado, o painel fica mais leve: não carrega os gráficos da DexScreener e mostra só o gráfico do Faro (com um link para abrir a Dex em outra aba)"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></i></span></div><button class="switch" id="t-dex" role="switch" aria-checked="true" aria-label="Gráfico da Dex"></button></div>
       <div class="sw-row autorow" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
-      <button class="lock-btn" data-lock hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Bloquear painel</button>
+      <div class="side-sep" data-lock-sep hidden></div><button class="lock-btn" data-lock hidden title="Esquece a senha neste navegador e fecha o painel. Para entrar de novo, pede a senha. O robô continua rodando."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sair do painel</button>
     </div>
   </aside>
 
@@ -807,7 +809,7 @@
           <div class="log" id="log"></div>
         </div>
       </div>
-      <button class="lock-btn" data-lock hidden style="margin-top:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Bloquear painel</button>
+      <button class="lock-btn" data-lock hidden style="margin-top:16px" title="Esquece a senha neste navegador e fecha o painel. Para entrar de novo, pede a senha. O robô continua rodando."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sair do painel</button>
       <p class="disclaimer">O Faro elimina sinais de golpe e ordena por força de compra. Isso não garante que a moeda vai subir. A decisão é sempre sua.</p>
     </div>
   </div>
@@ -1190,6 +1192,19 @@
   // Avisa sinais de entrada e saída (central de notificações + som), uma vez por movimento.
   // Usa o cálculo ao vivo do painel e, sem ele, o do robô.
   const SIGSEEN = new Set(store.get('faro-sinais-vistos', []));
+  // Com a compra automática ligada: diz se o robô vai comprar este sinal sozinho e, se não, por quê (mesmas travas do robô)
+  function autoBuyWhy(t, g) {
+    const lr = data.lastRun || {};
+    if (!(lr.autoBuy && lr.autoCompra?.on)) return '';
+    const c = data.config?.compra || {}, min = c.scoreMinimo ?? 70, rrMin = data.config?.simulacao?.riscoRetornoMin ?? 2;
+    const why = [];
+    if (!g.reentrada && t.status === 'aguardando' && (t.score || 0) < 75) why.push('ainda em observação');
+    if ((t.score || 0) < min) why.push(`nota ${t.score || 0}, abaixo de ${min}`);
+    if (t.dexId === 'pumpfun') why.push('ainda na curva da pump.fun');
+    if (t.shape && ['morta', 'reta'].includes(t.shape.tipo)) why.push('gráfico sem vida');
+    if ((g.rr || 0) < rrMin) why.push(`risco/retorno abaixo de 1:${rrMin}`);
+    return why.length ? `O robô não compra sozinho (${why.join(', ')}).` : 'O robô compra sozinho se ainda houver espaço nos limites do dia.';
+  }
   function checkSignals() {
     if (!data?.tokens || isDemo()) return;
     let entrada = false, ruim = false, bom = false;
@@ -1205,7 +1220,7 @@
           || [t.watchSell, t.autoSell, t.takeProfit].some((x) => x?.ok && x.at > recent);
         if (sold || !(t.heldAmount > 0)) continue;
       }
-      const hit = g.tipo === 'entrada' ? g.fase === 'entrada' && !mine && levelOf(t) !== 'danger'
+      const hit = g.tipo === 'entrada' ? g.fase === 'entrada' && !mine && levelOf(t) !== 'danger' && t.status !== 'reprovada' && !(isSold(t) && !g.reentrada)
         : mine && ['realizar', 'sair', 'proteger', 'exaustao'].includes(g.fase);
       if (!hit) continue;
       const k = `${t.mint}:${g.tipo}:${g.fase}:${g.key}`;
@@ -1214,7 +1229,8 @@
       const sym = t.symbol || t.mint.slice(0, 6);
       if (g.tipo === 'entrada') {
         entrada = true;
-        addInbox(`Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}`, `${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${g.rr.toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k, { kind: 'entrada', sig0: { msg: g.msg, zona: g.zona, stop: g.stop, alvo: g.alvo, rr: g.rr } });
+        const nb = autoBuyWhy(t, g);
+        addInbox(`Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}`, `${nb ? nb + ' ' : ''}${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${g.rr.toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k, { kind: 'entrada', sig0: { msg: g.msg, zona: g.zona, stop: g.stop, alvo: g.alvo, rr: g.rr } });
         toast(`Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}`);
       } else {
         g.fase === 'realizar' ? (bom = true) : (ruim = true);
@@ -1327,7 +1343,7 @@
       if (!res.ok) throw new Error(res.status);
       data = await res.json();
       }
-      document.querySelectorAll('[data-lock]').forEach((b) => { b.hidden = !vaultUsed; });
+      document.querySelectorAll('[data-lock], [data-lock-sep]').forEach((b) => { b.hidden = !vaultUsed; });
       for (const t of Object.values(data.tokens || {})) if (levelOf(t) === 'danger' && t.score != null) t.score = 0;
       // primeira vez com esta versão: o que já estava no radar conta como visto
       if (!store.get('faro-vistas-init', false)) { Object.values(data.tokens || {}).filter((t) => t.status === 'aprovada').forEach((t) => SEEN.add(t.mint)); store.set('faro-vistas', [...SEEN]); store.set('faro-vistas-init', true); }

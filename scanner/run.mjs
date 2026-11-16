@@ -165,6 +165,13 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         log(`SAIU DO RADAR: ${t.symbol} (${t.reasons[0]})`);
         continue;
       }
+      // Aprovada que levou um despejo (estrutura quebrada + insiders/concentração novos, ou -60% em poucos minutos): sai do radar
+      const dump = !t.held && t.status === 'aprovada' ? dumpReason(t, m.priceUsd, now) : null;
+      if (dump) {
+        t.status = 'reprovada'; t.rejectedAt = now; t.reasons = [dump];
+        log(`SAIU DO RADAR: ${t.symbol} (${dump})`);
+        continue;
+      }
       const every = (t.held ? RECHECK_MIN : RECHECK_APPROVED_MIN) * 60000;
       if (!t._rugAt || now - t._rugAt >= every) recheckQueue.push({ t, m });
       continue;
@@ -453,8 +460,11 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       : a.ok ? `Robô vendeu 100%${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`
       : `Vigia rápida tentou vender (${a.why}) e falhou: ${a.erro}. Venda manualmente!`;
     // Golpe no contrato = perigo; queda de liquidez = atenção; queda de preço ou lucro = só aviso (a moeda pode seguir viva)
-    const lvl = a.kind === 'golpe' ? 'danger' : /liquidez/.test(a.why || '') ? 'warn' : 'info';
-    t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: a.skipped ? 'info' : lvl, at: a.at, msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
+    let lvl = a.kind === 'golpe' ? 'danger' : /liquidez/.test(a.why || '') ? 'warn' : 'info';
+    // "LP destravada" com a liquidez ainda de pé no mercado: foi alarme falso do RugCheck, a moeda não fica marcada como perigo
+    const falso = lpFalseAlarm(t, a);
+    if (falso) lvl = 'info';
+    t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: a.skipped ? 'info' : lvl, at: a.at, msg: falso ? `${msg} (depois se viu que foi alarme falso: a liquidez seguiu no mercado)` : msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
   }
 
   // 6c2. Valor por operação conforme a banca: SOL na carteira + valor das moedas abertas, em dólar
@@ -556,4 +566,20 @@ function slimReport(r) {
     tokenMeta: r.tokenMeta ? { mutable: r.tokenMeta.mutable } : undefined,
     rugged: r.rugged, risks: r.risks, lpLockedPct: r.lpLockedPct,
   };
+}
+
+// Venda por "liquidez destravada" em que a liquidez continuou no mercado (80%+ da referência): falha do RugCheck
+export function lpFalseAlarm(t, a) {
+  return !!(a && a.kind === 'golpe' && /destravada/.test(a.why || '') && t.entryLiquidityUsd > 0 && t.liquidityUsd >= t.entryLiquidityUsd * 0.8);
+}
+
+// Despejo depois da aprovação. hist = [[ms, preço], ...] a cada rodada (~5 min)
+export function dumpReason(t, px, now) {
+  if (!(px > 0)) return null;
+  const recent = (t.hist || []).filter(([ms]) => now - ms <= 20 * 60000).map(([, p]) => p).filter((p) => p > 0);
+  const top = Math.max(...recent, 0);
+  if (top > 0 && px <= top * 0.4) return `Despejo: caiu ${((1 - px / top) * 100).toFixed(0)}% em menos de 20 minutos`;
+  const holders = (t.safety?.alerts || []).filter((a) => ['insiders', 'concentracao'].includes(a.id) && (!t.approvedAt || a.at >= t.approvedAt));
+  if (t.sinal?.fase === 'quebrou' && holders.length) return `Perdeu a estrutura (abaixo de 78,6%) e ${holders.map((a) => a.msg.charAt(0).toLowerCase() + a.msg.slice(1)).join('; ')}`;
+  return null;
 }

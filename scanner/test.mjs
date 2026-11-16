@@ -1,7 +1,7 @@
 // Teste com dados simulados (sem internet). Rode: node scanner/test.mjs
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
-import { runOnce } from './run.mjs';
+import { runOnce, dumpReason, lpFalseAlarm } from './run.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
 import { entrySignal, exitSignal, trailStop, weakSignals, realizeCheck, breakoutSignal } from './signals.mjs';
@@ -399,6 +399,22 @@ console.log('\nTodos os testes passaram.');
 console.log(JSON.stringify(state.lastRun.counts));
 
 // Gera um exemplo para visualizar o painel sem internet
+
+// Despejo (goldie 16/11): -70% em 2 min, ou estrutura quebrada + insiders novos -> sai do radar
+{
+  const now = Date.UTC(2026, 10, 16, 23, 45);
+  const hist = [[now - 15 * 60000, 55e-6], [now - 10 * 60000, 57e-6], [now - 5 * 60000, 40e-6]];
+  assert.match(dumpReason({ hist }, 17e-6, now), /Despejo: caiu 70%/);
+  assert.equal(dumpReason({ hist }, 45e-6, now), null);
+  const ins = { hist: [[now - 5 * 60000, 25e-6]], approvedAt: now - 3600e3, sinal: { fase: 'quebrou' }, safety: { alerts: [{ id: 'insiders', at: now - 60000, msg: 'Apareceram 4 carteiras ligadas entre si (insiders)' }] } };
+  assert.match(dumpReason(ins, 20e-6, now), /Perdeu a estrutura.*insiders/);
+  assert.equal(dumpReason({ ...ins, sinal: { fase: 'zona' } }, 20e-6, now), null);
+  // GOAT/GIFT: "liquidez destravada" com a liquidez de pé = alarme falso, não fica perigo
+  const a = { kind: 'golpe', why: 'golpe no contrato: liquidez destravada (era 100%, agora 0%)' };
+  assert.equal(lpFalseAlarm({ entryLiquidityUsd: 16058, liquidityUsd: 15015 }, a), true);
+  assert.equal(lpFalseAlarm({ entryLiquidityUsd: 16058, liquidityUsd: 3000 }, a), false);
+  assert.equal(lpFalseAlarm({ entryLiquidityUsd: 16058, liquidityUsd: 15015 }, { kind: 'golpe', why: 'mint authority ativa' }), false);
+}
 if (process.argv.includes('--demo')) {
   state.config = cfg;
   await writeFile(new URL('../docs/demo.json', import.meta.url), JSON.stringify(state));
