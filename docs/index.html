@@ -369,6 +369,7 @@
   [data-count].has-new { color: #60a5fa !important; font-weight: 800; }
   [data-count].has-new::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #60a5fa; margin-right: 5px; vertical-align: middle; }
   #radar-ord button { height: 24px; font-size: 11px; }
+  .stat-link { cursor: pointer; text-decoration: none; color: inherit; } .stat-link:hover { text-decoration: underline; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -2545,12 +2546,13 @@
       const recent = approved.filter((t) => t.approvedAt > day);
       const avg = approved.length ? approved.reduce((s2, t) => s2 + (Number(t.changePct) || 0), 0) / approved.length : null;
       const up = approved.filter((t) => (Number(t.changePct) || 0) > 0).length;
-      const best = [...approved].sort((a, b) => (b.maxChangePct || 0) - (a.maxChangePct || 0))[0];
+      // Melhor entre as que continuam no radar (sem as que você comprou e as que viraram perigo)
+      const best = [...lists.aprovada].sort((a, b) => (b.maxChangePct || 0) - (a.maxChangePct || 0))[0];
       $('summary').innerHTML = [
         stat('Aprovadas em 24h', recent.length, `${data.lastRun?.candidates ?? '-'} candidatas na última rodada`, 'hero'),
         stat('Média desde o alerta', avg == null ? '-' : `<span class="${cls(avg)}">${pct(avg)}</span>`, 'se tivesse comprado no alerta'),
         stat('Subiram desde o alerta', approved.length ? `${up} de ${approved.length}` : '-', approved.length ? `${Math.round((up / approved.length) * 100)}% de acerto` : ''),
-        stat('Melhor do radar', best ? esc(best.symbol) : '-', best ? `máxima ${pct(best.maxChangePct)}` : ''),
+        stat('Melhor do radar', best ? `<a class="stat-link" data-goto="${esc(best.mint)}">${esc(best.symbol)}</a>` : '-', best ? `máxima ${pct(best.maxChangePct)} - agora ${pct(best.changePct)}` : 'nenhuma no radar agora'),
       ].join('');
     }
 
