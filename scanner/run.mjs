@@ -138,6 +138,13 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       t.hist = [...(t.hist || []), [now, m.priceUsd]].slice(-288); // ~24h de pontos a cada 5 min
       t._mktAlerts = marketAlerts(t, m);
       t.safety = mergeSafety(t.safety, [...(t._rugAlerts || []), ...t._mktAlerts], now);
+      // Aprovada que virou perigo (rug, despejo...): sai do radar e vai para as reprovadas
+      if (!t.held && t.status === 'aprovada' && t.safety.level === 'danger') {
+        t.status = 'reprovada'; t.rejectedAt = now;
+        t.reasons = [`Virou perigo depois da aprovação: ${t.safety.alerts.filter((a) => a.level === 'danger').map((a) => a.msg).join('; ')}`];
+        log(`SAIU DO RADAR: ${t.symbol} (${t.reasons[0]})`);
+        continue;
+      }
       const every = (t.held ? RECHECK_MIN : RECHECK_APPROVED_MIN) * 60000;
       if (!t._rugAt || now - t._rugAt >= every) recheckQueue.push({ t, m });
       continue;

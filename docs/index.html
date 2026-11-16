@@ -1146,7 +1146,8 @@
       main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>${left ? `${left === 1 ? 'Falta 1 critério' : `Faltam ${left} critérios`} - ${esc((t.reasons || [])[0] || '')}` : esc((t.reasons || [])[0] || 'Na fila de checagem')}</small>`;
       side = `<div style="display:flex;align-items:center;gap:10px"><small class="num" style="color:var(--muted)">${t.mcapUsd ? `MC ${usd(t.mcapUsd)}` : ''}</small>${t.score != null ? scoreBadge(t.score, true, true) : ''}</div>`;
     } else {
-      main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>${esc((t.reasons || [])[0] || '')}</small>`;
+      const why = t.status === 'aprovada' ? `Virou perigo: ${(t.safety?.alerts || []).find((x) => x.level === 'danger')?.msg || ''}` : (t.reasons || [])[0] || '';
+      main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>${esc(why)}</small>`;
       side = t.mcapUsd ? `<b class="num" style="font-size:13px">${usd(t.mcapUsd)}</b><small class="num" style="color:var(--muted)">liq ${usd(t.liquidityUsd)}</small>` : '';
     }
     return `<button class="row ${on ? 'on' : ''}" data-sel="${esc(t.mint)}">${avatar(t)}<div class="r-main">${main}</div><div class="r-side">${side}</div></button>`;
@@ -1824,7 +1825,9 @@
     const mine = held.filter((t) => !isLost(t)).sort((a, b) => order[levelOf(a)] - order[levelOf(b)] || (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
     const closed = [...held.filter(isLost), ...all.filter(isSold)].sort((a, b) => (b.history?.[0]?.at || 0) - (a.history?.[0]?.at || 0));
     const danger = mine.filter((t) => levelOf(t) === 'danger').length;
-    const lists = { minhas: [...mine, ...closed], aprovada: by('aprovada'), aguardando: by('aguardando'), reprovada: by('reprovada') };
+    // Aprovada que virou perigo não fica no radar: vai para as reprovadas na hora (o robô confirma na rodada)
+    const fell = (t) => t.status === 'aprovada' && levelOf(t) === 'danger';
+    const lists = { minhas: [...mine, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t)), aguardando: by('aguardando'), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => fell(t) && !isSold(t))] };
 
     // Navegação
     document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === ui.tab));
