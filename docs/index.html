@@ -460,6 +460,11 @@
      ========================================================= */
   .lw-slot iframe { position: absolute; inset: 0; width: 100%; height: calc(100% + 40px); border: 0; }
   .chart-box.is-dex .lw-slot { height: 440px; border-bottom: 1px solid var(--line); border-radius: var(--r-2); }
+  .dexwrap, .farowrap { position: absolute; inset: 0; }
+  .chart-box.is-dex .farowrap, .chart-box:not(.is-dex) .dexwrap { visibility: hidden; pointer-events: none; }
+  .chart-box.is-dex .faro-only, .chart-box:not(.is-dex) .dex-only { display: none !important; }
+  #dex-vault { position: fixed; left: -10000px; top: 0; width: 900px; height: 440px; overflow: hidden; visibility: hidden; pointer-events: none; }
+  #dex-vault iframe { width: 100%; height: 100%; border: 0; }
   .list-sub { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .list-sub small { color: var(--faint); font-weight: 700; }
   .chart-box:not(.max) .cmax-only { display: none !important; }
@@ -1046,30 +1051,57 @@
     const base = window.__DEMO_CHART || t.pairUrl || `https://dexscreener.com/solana/${encodeURIComponent(t.pairAddress || t.mint)}`;
     return `${base}${base.includes('?') ? '&' : '?'}embed=1&theme=dark&chartTheme=dark&chartStyle=1&chartType=usd&interval=5&trades=0&info=0&chartLeftToolbar=1`;
   };
+  // As duas visões ficam montadas ao mesmo tempo; trocar entre Dex e Faro só mostra/esconde (sem recarregar)
   function chartBox(t) {
     const iv = CH.interval;
     const dex = chartSrc === 'dex';
-    const faroTools = dex ? `<span class="chart-hint">Gráfico da DexScreener, ao vivo, com todas as ferramentas (Fibonacci, régua...). Em "Faro" você vê suas compras, vendas e ordens marcadas.</span>` : `
-        <div class="seg-sm">${IVALS.map(([k]) => `<button data-ival="${k}" class="${k === iv ? 'on' : ''}">${k}</button>`).join('')}</div>
-        <div class="seg-sm" title="Ferramentas de traço">
+    return `<div class="chart-box ${dex ? 'is-dex' : ''}">
+      <div class="chart-tools">
+        <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
+        <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
+        <div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>
+        <span class="chart-hint dex-only">Gráfico da DexScreener, ao vivo, com todas as ferramentas (Fibonacci, régua...). Em "Faro" você vê suas compras, vendas e ordens marcadas.</span>
+        <div class="seg-sm faro-only">${IVALS.map(([k]) => `<button data-ival="${k}" class="${k === iv ? 'on' : ''}">${k}</button>`).join('')}</div>
+        <div class="seg-sm faro-only" title="Ferramentas de traço">
           <button data-tool="cursor" class="${CH.tool === 'cursor' ? 'on' : ''}" title="Mover e dar zoom">${TOOL_ICON.cursor}</button>
           <button data-tool="h" class="${CH.tool === 'h' ? 'on' : ''}" title="Linha horizontal (1 clique)">${TOOL_ICON.h}</button>
           <button data-tool="t" class="${CH.tool === 't' ? 'on' : ''}" title="Linha de tendência (2 cliques)">${TOOL_ICON.t}</button>
           <button data-tool="r" class="${CH.tool === 'r' ? 'on' : ''}" title="Régua de porcentagem (2 cliques)">${TOOL_ICON.r}</button>
           <button data-tool="trash" title="Apagar os traços desta moeda">${TOOL_ICON.trash}</button>
         </div>
-        <span class="chart-hint" id="chart-hint">Arraste para mover, role para dar zoom</span>`;
-    return `<div class="chart-box ${dex ? 'is-dex' : ''}">
-      <div class="chart-tools">
-        <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
-        <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
-        <div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>
-        ${faroTools}
+        <span class="chart-hint faro-only" id="chart-hint">Arraste para mover, role para dar zoom</span>
         <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
       </div>
-      <div class="lw-slot" data-lwslot="${esc(t.mint)}">${dex ? `<iframe src="${esc(chartUrl(t))}" title="Gráfico DexScreener" allow="clipboard-write" referrerpolicy="no-referrer-when-downgrade"></iframe>` : ''}</div>
-      ${dex ? '' : '<div class="mini-grip" data-grip title="Arraste para mudar a altura do gráfico"><i></i></div>'}
+      <div class="lw-slot" data-lwslot="${esc(t.mint)}"><div class="dexwrap" data-dexslot></div><div class="farowrap" data-faroslot></div></div>
+      <div class="mini-grip faro-only" data-grip title="Arraste para mudar a altura do gráfico"><i></i></div>
     </div>`;
+  }
+  // Gráficos da Dex já carregados ficam guardados (até 6 moedas): voltar para uma moeda não recarrega
+  const DEXF = new Map();
+  // Mover um iframe normalmente o recarrega; moveBefore (Chrome 133+) muda de lugar mantendo ele carregado
+  const moveNode = (parent, node) => { if (node.parentElement === parent) return; try { if (parent.moveBefore && node.isConnected) return parent.moveBefore(node, null); } catch {} parent.appendChild(node); };
+  const dexVault = () => { let v = $('dex-vault'); if (!v) { v = document.createElement('div'); v.id = 'dex-vault'; document.body.appendChild(v); } return v; };
+  function mountDex(t) {
+    const slot = document.querySelector('[data-dexslot]'); if (!slot) return;
+    const url = chartUrl(t);
+    let f = DEXF.get(t.mint);
+    if (!f || f.dataset.src !== url) {
+      f = document.createElement('iframe');
+      Object.assign(f, { src: url, title: 'Gráfico DexScreener' }); f.dataset.src = url;
+      f.setAttribute('allow', 'clipboard-write'); f.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+      DEXF.set(t.mint, f);
+      while (DEXF.size > 6) { const [k, old] = DEXF.entries().next().value; old.remove(); DEXF.delete(k); }
+    } else { DEXF.delete(t.mint); DEXF.set(t.mint, f); } // mais recente no fim
+    moveNode(slot, f);
+    // os outros gráficos guardados ficam num cofre invisível (continuam carregados)
+    const vault = dexVault();
+    for (const [k, other] of DEXF) if (k !== t.mint && other.parentElement !== vault) moveNode(vault, other);
+  }
+  function mountCharts(t, fresh) {
+    if (!t) return;
+    if (chartSrc === 'dex' || DEXF.has(t.mint)) mountDex(t);
+    const fs = document.querySelector('[data-faroslot]');
+    if (chartSrc === 'faro' && fs && (fresh || !CH.host?.isConnected || CH.host.parentElement !== fs)) showChart(t, fs);
   }
 
   const TFL = { m5: '5 min', h1: '1h', h6: '6h', h24: '24h' };
@@ -2080,7 +2112,7 @@
   // Troca o conteúdo do detalhe preservando a caixa do gráfico (senão o gráfico recarregaria a cada segundo)
   function mountDetail(t) {
     const el = $('detail');
-    const key = t ? `${t.mint}|${chartSrc}|${t.pairAddress || ''}` : '';
+    const key = t ? `${t.mint}|${t.pairAddress || ''}` : '';
     const tpl = document.createElement('template'); tpl.innerHTML = t ? detailHtml(t) : '';
     const oldCard = el.querySelector('.d-card'), oldBox = el.querySelector('.chart-box');
     const newCard = tpl.content.querySelector('.d-card'), newBox = tpl.content.querySelector('.chart-box');
@@ -2093,6 +2125,8 @@
       return false;
     }
     if (chartIsMax()) document.body.style.overflow = '';
+    // guarda o gráfico da Dex antes de trocar de moeda, para não descarregar
+    const cur = el.querySelector('[data-dexslot] iframe'); if (cur) moveNode(dexVault(), cur);
     el.replaceChildren(tpl.content); el.dataset.key = key;
     return true;
   }
@@ -2206,7 +2240,7 @@
     // Detalhe
     const t = sel && data.tokens[sel];
     const fresh = mountDetail(t);
-    if (t && chartSrc === 'faro' && (fresh || !CH.host?.isConnected)) showChart(t, document.querySelector('[data-lwslot]'));
+    mountCharts(t, fresh);
     if (t && LIM.token && LIM.loadedFor !== t.mint) { LIM.loadedFor = t.mint; loadOrders(t.mint).then(() => { if (CH.mint === t.mint && chartSrc === 'faro') decorate(t); render(); }); }
     if (!t) document.body.classList.remove('show-detail');
 
@@ -2313,7 +2347,12 @@
     if (e.target.closest('[data-chart]')) return setChartMax(true);
     if (e.target.closest('[data-chartmin]')) return setChartMax(false);
     const c = e.target.closest('[data-csrc]');
-    if (c && c.dataset.csrc !== chartSrc) { const max = chartIsMax(); chartSrc = c.dataset.csrc; store.set('faro-chart-src', chartSrc); render(); if (max) setChartMax(true); }
+    if (c && c.dataset.csrc !== chartSrc) {
+      chartSrc = c.dataset.csrc; store.set('faro-chart-src', chartSrc);
+      const box = document.querySelector('.chart-box'); if (box) box.classList.toggle('is-dex', chartSrc === 'dex');
+      document.querySelectorAll('[data-csrc]').forEach((b) => b.classList.toggle('on', b.dataset.csrc === chartSrc));
+      const t = data?.tokens?.[ui.sel[ui.tab]]; mountCharts(t, false);
+    }
   });
   // ---------- Altura do gráfico (arrastar o puxador; fica salva) ----------
   { const h = store.get('faro-chart-h', null); if (h) document.documentElement.style.setProperty('--chart-h', h + 'px'); }
