@@ -880,6 +880,9 @@
         tone(c, f, t0 + at, .45, 'sine', .22);
         tone(c, f * 2, t0 + at, .25, 'sine', .05);
       });
+    } else if (kind === 'entrada') {
+      // boa entrada: dois toques agudos e curtos, diferentes do som de moeda nova
+      [[987.77, 0], [1318.51, .12], [987.77, .3], [1318.51, .42]].forEach(([f, at]) => tone(c, f, t0 + at, .16, 'triangle', .2));
     } else {
       tone(c, 620, t0, .35, 'sine', .28, 330);
     }
@@ -989,27 +992,16 @@
       const fresh = (t.safety?.alerts || []).filter((a) => !ROBO_IDS.has(a.id) && !seenAl.has(`${t.mint}:${a.id}`));
       if (fresh.length) events.push({ kind: fresh.some((a) => a.level === 'danger') ? 'perigo' : 'atencao', t, alerts: fresh });
     }
-    // Sinais do robô: boa entrada (radar) e saída (suas moedas), uma vez por mudança
-    const sigKey = (t) => t.sinal && (t.sinal.boa || t.sinal.bom || t.sinal.ruim) ? `${t.mint}:${t.sinal.tipo}:${t.sinal.fase}:${t.sinal.at}` : null;
-    const seenS = new Set(seen.sinais || []), sigKeys = [];
-    for (const t of all) {
-      const k = sigKey(t); if (!k) continue; sigKeys.push(k);
-      if (seen.sinais && !seenS.has(k) && (t.sinal.tipo === 'saida' ? isMine(t) : !isMine(t) && levelOf(t) !== 'danger')) events.push({ kind: 'sinal', t });
-    }
-    seen = { approved: [...new Set([...seen.approved, ...approved.map((t) => t.mint)])].slice(-500), alerts: alertKeys, sinais: sigKeys };
+    seen = { approved: [...new Set([...seen.approved, ...approved.map((t) => t.mint)])].slice(-500), alerts: alertKeys };
     store.set('moeda-seen', seen);
     if (!events.length) return;
     // Um som por atualização: problema numa moeda sua tem prioridade (venda no lucro toca o som bom)
     const loud = events.filter((e) => !(e.kind === 'robo' && /não compensa/.test(e.alerts[0].msg)));
     if (!loud.length) return;
-    const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto') || (e.kind === 'sinal' && e.t.sinal.ruim));
+    const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto'));
     play(bad ? 'problema' : 'boa');
     for (const e of events) {
-      if (e.kind === 'sinal') {
-        const g = e.t.sinal, title = g.tipo === 'entrada' ? `Boa entrada: ${e.t.symbol}` : `${g.ruim ? 'Atenção' : 'Saída'}: ${e.t.symbol} - ${g.titulo.toLowerCase()}`;
-        toast(title);
-        notify(title, g.msg, 'sinal-' + e.t.mint);
-      } else if (e.kind === 'nova') {
+      if (e.kind === 'nova') {
         toast(`Nova no radar: ${e.t.symbol} (nota ${e.t.score})`);
         notify(`Nova no radar: ${e.t.symbol}`, `Nota ${e.t.score} - market cap ${usd(e.t.mcapUsd)}`, 'nova-' + e.t.mint);
       } else if (e.kind === 'robo') {
@@ -1023,6 +1015,39 @@
     }
     if (document.hidden) unread += events.length;
   }
+
+  // Avisa sinais de entrada e saída (central de notificações + som), uma vez por movimento.
+  // Usa o cálculo ao vivo do painel e, sem ele, o do robô.
+  const SIGSEEN = new Set(store.get('faro-sinais-vistos', []));
+  function checkSignals() {
+    if (!data?.tokens || isDemo()) return;
+    let entrada = false, ruim = false, bom = false;
+    for (const t of Object.values(data.tokens)) {
+      const g = liveSig(t) || t.sinal; if (!g) continue;
+      const mine = isMine(t);
+      const hit = g.tipo === 'entrada' ? g.fase === 'entrada' && !mine && levelOf(t) !== 'danger'
+        : mine && ['realizar', 'sair', 'proteger', 'exaustao'].includes(g.fase);
+      if (!hit) continue;
+      const k = `${t.mint}:${g.tipo}:${g.fase}:${g.key}`;
+      if (SIGSEEN.has(k)) continue;
+      SIGSEEN.add(k);
+      const sym = t.symbol || t.mint.slice(0, 6);
+      if (g.tipo === 'entrada') {
+        entrada = true;
+        addInbox(`Boa entrada: ${sym}`, `${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${g.rr.toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k);
+        toast(`Boa entrada: ${sym}`);
+      } else {
+        g.fase === 'realizar' ? (bom = true) : (ruim = true);
+        addInbox(`${g.fase === 'realizar' ? 'Saída' : 'Atenção'}: ${sym} - ${g.titulo.toLowerCase()}`, g.msg, t.mint, g.fase === 'realizar' ? 'good' : 'warn', 'sinal-' + k);
+        toast(`${sym}: ${g.titulo.toLowerCase()}`);
+      }
+      if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') {
+        try { const n = new Notification(g.tipo === 'entrada' ? `Boa entrada: ${sym}` : `${sym}: ${g.titulo}`, { body: g.msg, tag: 'sinal-' + t.mint }); n.onclick = () => { window.focus(); goTo(t.mint); n.close(); }; } catch {}
+      }
+    }
+    if (entrada || ruim || bom) { store.set('faro-sinais-vistos', [...SIGSEEN].slice(-400)); play(ruim ? 'problema' : entrada ? 'entrada' : 'boa'); }
+  }
+  setInterval(() => { if (!document.hidden) checkSignals(); }, 10000);
 
   // Moedas do radar que você ainda não abriu
   const SEEN = new Set(store.get('faro-vistas', []));

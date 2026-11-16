@@ -167,6 +167,6 @@ O Faro avisa quando é uma boa hora de entrar ou sair. Ele usa as velas de 5 min
 - **Onde aparece**
   - Na tela da moeda, acima do bloco de compra. Com o botão "Usar este stop e alvo no plano".
   - Como etiqueta na lista.
-  - Na central de notificações, com som. O robô calcula a cada rodada, mesmo com o painel fechado.
+  - Na central de notificações e como notificação do computador. A boa entrada tem um som só dela (dois toques agudos duplos). O robô também calcula a cada rodada, então o sinal já está pronto quando você abre o painel.
 - **Não compra nem vende sozinho.** Você decide.
 - **Para mudar a lógica:** ela fica em `scanner/signals.mjs`. O painel tem uma cópia entre `<sinais>` e `</fim-sinais>`, e o teste confere que as duas estão iguais.
