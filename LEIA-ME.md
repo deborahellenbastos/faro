@@ -268,6 +268,6 @@ Com a compra automática ligada, o robô pode reentrar sozinho quantas vezes o f
 
 O robô procura moedas em duas fontes:
 - **DexScreener:** perfis novos, boosts, as mais impulsionadas e community takeovers.
-- **GeckoTerminal:** as que estão em alta na última hora e nos últimos 5 minutos. Essa fonte pega as que sobem forte mesmo sem pagar perfil. Em 16/11, FLOOR (+934%) e MEOWL (+913%) só apareceram no DexScreener depois do pico.
+- **GeckoTerminal:** as que estão em alta na última hora e nos últimos 5 minutos, e as que acabaram de migrar da curva da pump.fun para a PumpSwap (quando ganham liquidez de verdade). Essa fonte pega as que sobem forte mesmo sem pagar perfil. Em 16/11, FLOOR (+934%) e MEOWL (+913%) só apareceram no DexScreener depois do pico.
 
 Todas passam pelos mesmos filtros de segurança.

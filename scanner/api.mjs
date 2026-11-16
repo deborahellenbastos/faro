@@ -65,14 +65,23 @@ export async function getSolanaCandidates(log) {
   // Em alta no GeckoTerminal: pega moedas que estão subindo forte mesmo sem perfil pago no DexScreener
   // (casos FLOOR e MEOWL em 16/11: o robô só viu depois do pico)
   const SKIP = new Set(['So11111111111111111111111111111111111111112', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB']);
-  for (const [label, q] of [['em alta (1h)', 'duration=1h&page=1'], ['em alta (1h) 2', 'duration=1h&page=2'], ['em alta (5min)', 'duration=5m&page=1']]) {
+  // + pools novos na PumpSwap: a moeda acabou de sair da curva da pump.fun e ganhou liquidez de verdade (o robô vê na hora da migração)
+  const GT = 'https://api.geckoterminal.com/api/v2/networks/solana';
+  for (const [label, url, src] of [
+    ['em alta (1h)', `${GT}/trending_pools?duration=1h&page=1`, 'em alta (GeckoTerminal)'],
+    ['em alta (1h) 2', `${GT}/trending_pools?duration=1h&page=2`, 'em alta (GeckoTerminal)'],
+    ['em alta (5min)', `${GT}/trending_pools?duration=5m&page=1`, 'em alta (GeckoTerminal)'],
+    ['migradas para a PumpSwap', `${GT}/dexes/pumpswap/pools?sort=pool_created_at_desc&page=1`, 'migrou para a PumpSwap'],
+  ]) {
     try {
-      const j = await getJson(`https://api.geckoterminal.com/api/v2/networks/solana/trending_pools?${q}`, { headers: { accept: 'application/json;version=20230302' }, retries: 1 });
+      const j = await getJson(url, { headers: { accept: 'application/json;version=20230302' }, retries: 1 });
       let n = 0;
       for (const pool of j?.data || []) {
         const mint = String(pool?.relationships?.base_token?.data?.id || '').replace(/^solana_/, '');
         if (!mint || SKIP.has(mint) || found.has(mint)) continue;
-        found.set(mint, { mint, source: 'em alta (GeckoTerminal)', icon: null, description: '', links: [] });
+        // pools da PumpSwap com mais de 1h já foram vistos antes (ou não interessam): só os recém-migrados
+        if (src === 'migrou para a PumpSwap' && Date.now() - Date.parse(pool?.attributes?.pool_created_at || 0) > 3600000) continue;
+        found.set(mint, { mint, source: src, icon: null, description: '', links: [] });
         n++;
       }
       log(`GeckoTerminal ${label}: ${n} moedas novas`);
