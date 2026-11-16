@@ -121,6 +121,8 @@
   .stat b { display: block; margin-top: 6px; font-size: 22px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .stat small { display: block; margin-top: 2px; font-size: 12px; color: var(--faint); font-weight: 500; }
   .stat.hero { background: linear-gradient(140deg, rgba(16,210,127,.16), var(--panel) 55%); border-color: rgba(16,210,127,.25); }
+  .stat.hero.neg { background: linear-gradient(140deg, rgba(255,91,91,.16), var(--panel) 55%); border-color: rgba(255,91,91,.28); }
+  .stat.hero.flat { background: var(--panel); border-color: var(--line); }
 
   /* Área de trabalho: lista + detalhe */
   .workspace { display: grid; grid-template-columns: var(--list-w) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
@@ -2930,9 +2932,14 @@
       const spent = ps.reduce((a, p) => a + (p.spentUsd || 0), 0) + shut.reduce((a, r) => a + r.spent, 0);
       const pnl = ps.reduce((a, p) => a + (p.pnlUsd || 0), 0) + shut.reduce((a, r) => a + r.pnl, 0);
       const W = walletTotals();
+      // Resultado das operações de hoje (desde 00:00): encerradas hoje + abertas que começaram hoje
+      const d0 = new Date(); d0.setHours(0, 0, 0, 0); const today = d0.getTime();
+      const D = { pnl: 0, spent: 0, n: 0 };
+      for (const t of closed.filter(isSold)) { const r = closedResult(t); if (r && (t.history?.[0]?.at || 0) >= today) { D.pnl += r.pnl; D.spent += r.spent; D.n++; } }
+      for (const t of mine) { const p = t.position; if (p?.known && (p.firstBuyAt || posStart(t)) >= today) { D.pnl += p.pnlUsd || 0; D.spent += p.spentUsd || 0; D.n++; } }
       $('summary').innerHTML = [
-        stat('Total na carteira', W.total != null ? money(W.total) : '-', W.total != null ? `${money(W.coins)} em transações abertas - ${money(W.solUsd)} para comprar` : 'somando SOL e moedas', 'hero'),
-        stat('Em transações abertas', money(value), `${mine.length} em aberto${closed.length ? ` - ${closed.length} ${closed.length === 1 ? 'encerrada' : 'encerradas'}` : ''}`),
+        stat('Em transações abertas', money(value), `${mine.length} em aberto - hoje: <span class="${cls(D.pnl)}">${signedMoney(D.pnl)}</span>${D.spent ? ` (${pct((D.pnl / D.spent) * 100)})` : ''}`, `hero ${D.n ? (D.pnl > 0.005 ? '' : D.pnl < -0.005 ? 'neg' : 'flat') : 'flat'}`),
+        stat('Total na carteira', W.total != null ? money(W.total) : '-', 'transações abertas + disponível para comprar'),
         stat('Disponível para comprar', W.sol != null ? solFmt(W.sol, 4) : '-', W.solUsd != null ? `aprox. ${money(W.solUsd)}${W.buys != null ? ` - dá para ${W.buys} ${W.buys === 1 ? 'compra' : 'compras'}` : ''}` : 'saldo em SOL'),
         stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, spent ? `${pct((pnl / spent) * 100)} sobre ${money(spent)} investidos` : ''),
       ].join('');
