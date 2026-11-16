@@ -83,7 +83,7 @@ export function simStep({ state, tokens, candidates, cfg, now, log }) {
     const g = t.sinal, E = t.priceUsd;
     if (!(E > 0) || !(g.stop > 0 && g.stop < E)) continue;
     const tp = E * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);
-    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg });
+    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}) });
     log(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de boa entrada a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
   }
 
@@ -99,4 +99,6 @@ export function simStep({ state, tokens, candidates, cfg, now, log }) {
     avgLoss: losses.length ? losses.reduce((a, x) => a + x.pnlPct, 0) / losses.length : 0,
     base,
   };
+  const cv = c.filter((x) => x.curva);
+  sim.stats.curva = { ops: cv.length, winRate: cv.length ? (cv.filter((x) => x.pnlPct > 0).length / cv.length) * 100 : 0, pnlSol: cv.reduce((a, x) => a + x.pnlSol, 0) };
 }

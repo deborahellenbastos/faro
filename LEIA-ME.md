@@ -271,3 +271,15 @@ O robô procura moedas em duas fontes:
 - **GeckoTerminal:** as que estão em alta na última hora e nos últimos 5 minutos, e as que acabaram de migrar da curva da pump.fun para a PumpSwap (quando ganham liquidez de verdade). Essa fonte pega as que sobem forte mesmo sem pagar perfil. Em 16/11, FLOOR (+934%) e MEOWL (+913%) só apareceram no DexScreener depois do pico.
 
 Todas passam pelos mesmos filtros de segurança.
+
+## Espera depois da migração e modo curva
+
+- **Espera mínima de 5 minutos** depois que o par existe. Antes eram 10. Na PumpSwap, o par nasce na migração.
+- **Modo curva (só simulação).** Moedas ainda na curva da pump.fun entram na simulação quando atendem a tudo isto:
+  - market cap de US$ 45 mil ou mais (perto de migrar);
+  - 15 minutos de vida ou mais;
+  - 100 ou mais compras por hora;
+  - 55% ou mais de compras;
+  - mint e freeze revogados, holders sem bundle, dev limpo e RugCheck ok.
+
+  Liquidez e LP não são checados, porque na curva ainda não existe pool. Elas entram no sinal de boa entrada da mesma forma. A compra de verdade **nunca** entra na curva. O resultado aparece separado na aba Simulação, marcado como "curva". Desligue em `curva.ligado`.

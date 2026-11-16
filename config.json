@@ -3,7 +3,7 @@
     "enderecoPublico": ""
   },
   "busca": {
-    "idadeMinimaMinutos": 10,
+    "idadeMinimaMinutos": 5,
     "idadeMaximaHoras": 24,
     "maxRugcheckPorRodada": 25,
     "diasAcompanhando": 3
@@ -80,6 +80,7 @@
     "usd": 10,
     "riscoPorOperacaoPct": 2
   },
+  "curva": { "ligado": true, "somenteSimulacao": true, "marketCapMinUsd": 45000, "idadeMinMin": 15, "comprasHoraMin": 100, "compraPctMin": 55, "maxRugcheckPorRodada": 3 },
   "simulacao": {
     "ligado": true,
     "maxAbertas": 2,

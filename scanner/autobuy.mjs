@@ -16,6 +16,7 @@ export function entryCandidates(tokens, cfg, now) {
     // reentrada: só com a liquidez ainda de pé (golpe tira a liquidez) e sem alerta de perigo
     .filter((t) => !isReentry(t, cfg, now) || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => !t.held && t.safety?.level !== 'danger' && (t.score || 0) >= (c.scoreMinimo ?? 70))
+    .filter((t) => t.dexId !== 'pumpfun') // compra de verdade nunca na curva da pump.fun (modo curva é só simulação)
     .filter((t) => !(t.shape && ['morta', 'reta'].includes(t.shape.tipo)))
     .filter((t) => (t.sinal.rr || 0) >= (cfg.simulacao?.riscoRetornoMin ?? 2))
     .sort((a, b) => (b.sinal.rr || 0) - (a.sinal.rr || 0) || (b.score || 0) - (a.score || 0));

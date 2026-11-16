@@ -115,7 +115,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   const simOpen = new Set((state.sim?.open || []).map((o) => o.mint));
   const REENTRY_MS = (cfg.compra?.reentradaHoras ?? 3) * 3600000;
   const reentryOpen = (t) => !!(t.reentry && !t.held && now - t.reentry.at < REENTRY_MS);
-  const monitored = (t) => t.held || simOpen.has(t.mint) || t.status === 'carteira' || reentryOpen(t) || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
+  const curveOn = (t) => !!(t.curva?.ok && now - t.curva.at < 3600000);
+  const monitored = (t) => t.held || simOpen.has(t.mint) || t.status === 'carteira' || reentryOpen(t) || curveOn(t) || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
   const active = Object.values(tokens).filter((t) => t.status === 'nova' || t.status === 'aguardando' || monitored(t));
 
   // 3. Dados de mercado de todas de uma vez
@@ -123,6 +124,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
 
   // 4. Filtro rápido, vigilância de mercado e filas do RugCheck
   const rugQueue = [];
+  const curveQueue = [];
   const recheckQueue = [];
   const marketNow = new Map();
   let lpFlips = 0;
@@ -179,7 +181,15 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     t.score = scoreToken(m, t.rug);
     t.scoreParts = scoreParts(m, t.rug);
     t.pending = pre.length;
-    if (pre.length) { t.status = 'aguardando'; t.reasons = pre; t.checks = null; continue; }
+    if (pre.length) {
+      t.status = 'aguardando'; t.reasons = pre; t.checks = null;
+      // Modo curva (só simulação): moeda ainda na curva da pump.fun, perto de migrar e com muita compra
+      const CV = cfg.curva || {};
+      if (CV.ligado && m.dexId === 'pumpfun' && m.mcapUsd >= (CV.marketCapMinUsd ?? 45000) && (m.ageMin ?? 0) >= (CV.idadeMinMin ?? 15)
+        && m.buysH1 >= (CV.comprasHoraMin ?? 100) && m.buyRatioH1 >= (CV.compraPctMin ?? 55)) curveQueue.push({ t, m });
+      else if (t.curva && m.dexId !== 'pumpfun') delete t.curva; // migrou: segue pelo caminho normal
+      continue;
+    }
     rugQueue.push({ t, m });
   }
 
@@ -307,6 +317,26 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     }
   }
 
+  // 5b2. Modo curva (só simulação): segurança sem os itens de liquidez (na curva não existe pool ainda)
+  {
+    const CV = cfg.curva || {};
+    let n = 0;
+    for (const { t, m } of curveQueue.sort((a, b) => b.m.mcapUsd - a.m.mcapUsd)) {
+      if (paused || n >= (CV.maxRugcheckPorRodada ?? 3) || rugCalls >= cfg.busca.maxRugcheckPorRodada + (CV.maxRugcheckPorRodada ?? 3)) break;
+      if (t.curva && now - t.curva.at < 10 * 60000) continue;
+      try {
+        n++;
+        const sum = summarizeRug(await fetchRug(t));
+        if (!sum) continue;
+        const checks = runChecks(m, sum, cfg).filter((c) => ['mint', 'freeze', 'holders', 'dev', 'rugcheck'].includes(c.id));
+        const bad = checks.filter((c) => c.ok === false);
+        t.rug = t.rug || { creator: sum.creator, totalHolders: sum.totalHolders, top10Pct: sum.top10Pct };
+        t.curva = { ok: !bad.length, at: now, mc: m.mcapUsd, reasons: bad.map((c) => `${c.label.replace(/^\d\.\s*/, '')}: ${c.detail}`) };
+        if (t.curva.ok) log(`CURVA (simulação): ${t.symbol} ok para o sinal (market cap ${Math.round(m.mcapUsd)})`);
+      } catch (e) { if (e.rateLimited) { paused = true; break; } }
+    }
+  }
+
   // 5c. Velas para o mini gráfico (aprovadas e as suas), via GeckoTerminal
   if (api.getCandles) {
     const want = Object.values(tokens)
@@ -366,7 +396,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       ctx.trail = t.trail;
       const x = exitSignal(t.candles, { entryPx: t.position.avgPriceUsd, entryAt }, ctx);
       if (x) sig = { tipo: 'saida', ...x };
-    } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t)) {
+    } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t) || curveOn(t)) {
       sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };
     }
     if (!sig) { delete t.sinal; continue; }
@@ -443,7 +473,9 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     } catch (e) { log(`Não consegui ler o interruptor da compra automática: ${e.message}`, true); }
   }
   const buyList = entryCandidates(tokens, cfg, now);
-  try { simStep({ state, tokens, candidates: buyList, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
+  // Simulação: os mesmos sinais da compra real + (modo curva) moedas na curva da pump.fun com boa entrada
+  const curveList = Object.values(tokens).filter((t) => curveOn(t) && !t.held && t.sinal?.tipo === 'entrada' && t.sinal.boa && now - (t.sinal.at || 0) <= 10 * 60000).map((t) => Object.assign(t, { _simCurva: true }));
+  try { simStep({ state, tokens, candidates: [...buyList, ...curveList.filter((t) => !buyList.includes(t))], cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
   if (trader?.canBuy && state.autoCompra?.on && buyList.length) {
     try {
       const limits = buyLimits(state, tokens, cfg, now);

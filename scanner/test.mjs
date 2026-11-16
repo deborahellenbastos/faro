@@ -40,7 +40,7 @@ const market = {
   GOOD1: [pair('GOOD1', 'GATO', {})],
   GOOD2: [pair('GOOD2', 'LUA', { volH1: 40000, buys: 520, sells: 480, ch1: 5, liq: 30000, mcap: 250000 })],
   MINTX: [pair('MINTX', 'GOLPE', {})],
-  YOUNG: [pair('YOUNG', 'BEBE', { ageMin: 5 })],
+  YOUNG: [pair('YOUNG', 'BEBE', { ageMin: 3 })],
   THIN: [pair('THIN', 'MAGRO', { liq: 4000, mcap: 90000 })],
   WHALE: [pair('WHALE', 'BALEIA', {})],
   SERIAL: [pair('SERIAL', 'REPETE', {})],
@@ -364,6 +364,14 @@ assert.equal(state.lastRun.autoCompra, null);
     G: { mint: 'G', symbol: 'GOL', status: 'carteira', priceUsd: 1, score: 80, sinal: sig, reentry: { at: 500 }, liquidityUsd: 2000, entryLiquidityUsd: 22000 },
   };
   assert.deepEqual(entryCandidates(tk, cfgR, 1000).map((t) => t.mint), ['R']);
+}
+
+// Modo curva é só simulação: a compra de verdade nunca entra numa moeda ainda na curva da pump.fun
+{
+  const { entryCandidates } = await import('./autobuy.mjs');
+  const sig = { tipo: 'entrada', fase: 'entrada', boa: true, stop: 0.8, alvo: 1.6, rr: 3, at: 1000 };
+  const tk = { C: { mint: 'C', status: 'aguardando', score: 90, dexId: 'pumpfun', sinal: sig, priceUsd: 1 }, P: { mint: 'P', status: 'aprovada', score: 90, dexId: 'pumpswap', sinal: sig, priceUsd: 1 } };
+  assert.deepEqual(entryCandidates(tk, { compra: {}, simulacao: {} }, 1000).map((t) => t.mint), ['P']);
 }
 
 // O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais

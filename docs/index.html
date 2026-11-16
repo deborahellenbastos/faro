@@ -3394,10 +3394,11 @@
         <div><span>Acerto</span><b class="num">${(st?.winRate || 0).toFixed(0)}%</b><small>ganho médio ${pct(st?.avgWin || 0)} - perda média ${pct(st?.avgLoss || 0)}</small></div>
         <div><span>Resultado</span><b class="num ${cls(st?.pnlSol)}">${(st?.pnlSol || 0) >= 0 ? '+' : ''}${solFmt(st?.pnlSol || 0, 4)}</b><small>${usdOf(st?.pnlSol || 0).replace(/[()]/g, '') || 'já descontadas taxas'}</small></div>
       </div>
+      ${st?.curva?.ops ? `<p class="note">Modo curva (entradas ainda na curva da pump.fun, só simulação): <b>${st.curva.ops} operações</b>, ${Math.round(st.curva.winRate)}% de acerto, ${(st.curva.pnlSol >= 0 ? '+' : '') + solFmt(st.curva.pnlSol, 4)}.</p>` : ''}
       <p class="note">${pass ? '<b>Critério atingido:</b> 30+ operações com resultado positivo. Dá para pensar na fase "um toque para executar".' : `Para avançar: 30 operações simuladas com resultado positivo (faltam ${Math.max(0, 30 - (st?.ops || 0))}). Nenhum dinheiro é usado.`}</p>
       <div class="sim-list">${ops.slice((simPage - 1) * per, simPage * per).map((o) => `
         <button class="sim-op" data-goto="${esc(o.mint)}">
-          <span><b>${esc(o.symbol || o.mint.slice(0, 6))}</b><small>${o.aberta ? `aberta ${ago(o.at)} - stop ${pct((o.stop / o.entry - 1) * 100)}, alvo ${pct((o.tp / o.entry - 1) * 100)}` : `${whyTxt[o.why] || o.why} - ${dt(o.exitAt)}`}</small></span>
+          <span><b>${esc(o.symbol || o.mint.slice(0, 6))}${o.curva ? ' <i class="mini-tag warn">curva</i>' : ''}</b><small>${o.aberta ? `aberta ${ago(o.at)} - stop ${pct((o.stop / o.entry - 1) * 100)}, alvo ${pct((o.tp / o.entry - 1) * 100)}` : `${whyTxt[o.why] || o.why} - ${dt(o.exitAt)}`}</small></span>
           <b class="num ${o.aberta ? '' : cls(o.pnlPct)}">${o.aberta ? '1:' + o.rr.toFixed(1).replace('.', ',') : pct(o.pnlPct)}</b>
         </button>`).join('') || '<p class="note">Nenhuma operação ainda.</p>'}</div>
       ${pages > 1 ? `<div class="hpager"><button data-simpage="-1" ${simPage <= 1 ? 'disabled' : ''}>&larr;</button><span>${simPage} de ${pages}</span><button data-simpage="1" ${simPage >= pages ? 'disabled' : ''}>&rarr;</button></div>` : ''}`;
@@ -3423,6 +3424,7 @@
       ['Holders', `mín ${f.holdersMin}`],
       ['Volume na última hora', `mín ${usd(f.volumeH1MinUsd)}`],
       ['Compras na última hora', `mín ${f.comprasSobreTotalH1MinPct}%`],
+      ['Modo curva', data.config?.curva?.ligado ? `só na simulação (moedas ainda na curva da pump.fun com market cap ${usd(data.config.curva.marketCapMinUsd)}+, ${data.config.curva.comprasHoraMin}+ compras por hora e sem bundle/dev ruim)` : 'desligado'],
       ['Compra automática', data.lastRun?.autoCompra?.on && data.lastRun?.autoBuy ? `ligada no sinal de boa entrada (até ${data.config?.simulacao?.maxAbertas ?? 2} abertas, ${c.maxComprasPorDia}/dia)` : data.lastRun?.autoCompra?.on ? 'ligada no painel, mas falta a variável AUTO_BUY no GitHub' : 'desligada (liga pelo botão no topo)'],
       ['Venda automática por golpe', data.lastRun?.autoSell ? 'ligada (vende 100% se o contrato mudar para golpe)' : 'desligada'],
       ['Perfil', data.config?.perfil === 'equilibrado' ? 'Equilibrado' : 'Conservador'],
