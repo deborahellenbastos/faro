@@ -862,7 +862,19 @@
   function isMine(t) { return !!(t.held || (!walletOn() && manualMine.has(t.mint))); }
 
   // Compara com o que você já viu e dispara sons/avisos só para o que é novo
+  const ROBO_IDS = new Set(['vigia', 'auto-venda', 'lucro-auto']);
+  // Vendas do robô que aconteceram antes desta versão também entram na central (uma vez só)
+  function backfillRobo(d) {
+    for (const t of Object.values(d.tokens || {})) for (const a of t.safety?.alerts || []) {
+      if (!ROBO_IDS.has(a.id)) continue;
+      const key = `robo-${t.mint}-${a.id}-${a.at}`;
+      if (INBOX.list.some((x) => x.key === key)) continue;
+      INBOX.list.push({ key, title: `${/falh/i.test(a.msg) ? 'Venda automática falhou' : 'Robô vendeu'}: ${t.symbol}`, body: a.msg, mint: t.mint, level: a.level === 'danger' ? 'danger' : a.level === 'warn' ? 'warn' : 'info', at: a.at, read: false });
+    }
+    INBOX.list.sort((x, y) => y.at - x.at); store.set('faro-inbox', INBOX.list); renderInbox();
+  }
   function detectEvents(d) {
+    backfillRobo(d);
     const all = Object.values(d.tokens || {});
     const approved = all.filter((t) => t.status === 'aprovada');
     const alertKeys = [];
@@ -872,19 +884,27 @@
     const events = [];
     for (const t of approved) if (!seenA.has(t.mint) && levelOf(t) !== 'danger') events.push({ kind: 'nova', t });
     for (const t of all) {
+      // vendas do robô aparecem mesmo depois que a moeda saiu da carteira
+      const robo = (t.safety?.alerts || []).filter((a) => ROBO_IDS.has(a.id) && !seenAl.has(`${t.mint}:${a.id}`));
+      for (const a of robo) events.push({ kind: 'robo', t, alerts: [a] });
       if (!isMine(t)) continue;
-      const fresh = (t.safety?.alerts || []).filter((a) => !seenAl.has(`${t.mint}:${a.id}`));
+      const fresh = (t.safety?.alerts || []).filter((a) => !ROBO_IDS.has(a.id) && !seenAl.has(`${t.mint}:${a.id}`));
       if (fresh.length) events.push({ kind: fresh.some((a) => a.level === 'danger') ? 'perigo' : 'atencao', t, alerts: fresh });
     }
     seen = { approved: [...new Set([...seen.approved, ...approved.map((t) => t.mint)])].slice(-500), alerts: alertKeys };
     store.set('moeda-seen', seen);
     if (!events.length) return;
-    // Um som por atualização: problema numa moeda sua tem prioridade
-    play(events.some((e) => e.kind !== 'nova') ? 'problema' : 'boa');
+    // Um som por atualização: problema numa moeda sua tem prioridade (venda no lucro toca o som bom)
+    const bad = events.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto'));
+    play(bad ? 'problema' : 'boa');
     for (const e of events) {
       if (e.kind === 'nova') {
         toast(`Nova no radar: ${e.t.symbol} (nota ${e.t.score})`);
         notify(`Nova no radar: ${e.t.symbol}`, `Nota ${e.t.score} - market cap ${usd(e.t.mcapUsd)}`, 'nova-' + e.t.mint);
+      } else if (e.kind === 'robo') {
+        const a = e.alerts[0];
+        toast(`${e.t.symbol}: ${a.msg.split('.')[0]}`);
+        if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') { try { new Notification(`Robô vendeu: ${e.t.symbol}`, { body: a.msg, tag: 'robo-' + e.t.mint }); } catch {} }
       } else {
         notify(`${e.kind === 'perigo' ? 'Perigo' : 'Atenção'} em ${e.t.symbol}`, e.alerts.map((a) => a.msg).join('. '), 'alerta-' + e.t.mint);
       }
