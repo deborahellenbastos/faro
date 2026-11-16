@@ -197,11 +197,13 @@ export function scoreToken(m, rug) {
   const buyPressure = clamp((m.buyRatioH1 - 50) / 25); // 50% compras = 0, 75%+ = 1
   const volVsLiq = clamp(m.volumeH1 / Math.max(1, m.liquidityUsd) / 1.5); // girou 1,5x a liquidez em 1h = 1
   const trend = clamp(m.priceChangeH1 / 50); // +50% na hora = 1 (negativo = 0)
+  rug = rug || {};
   const holders = rug.totalHolders ? clamp(Math.log10(rug.totalHolders) / 3.5) : 0.3; // ~3000 holders = 1
   const liq = clamp(Math.log10(Math.max(1, m.liquidityUsd)) / 6); // $1M = 1
   const safety = rug.scoreNormalised != null ? clamp(1 - rug.scoreNormalised / 100) : 0.5;
-  const distribution = clamp(1 - rug.top10Pct / 40);
-  const s = buyPressure * 20 + volVsLiq * 15 + trend * 10 + holders * 15 + liq * 10 + safety * 15 + distribution * 15;
+  const distribution = rug.top10Pct != null ? clamp(1 - rug.top10Pct / 40) : 0.5; // sem RugCheck ainda: neutro
+  const n = (v) => (Number.isFinite(v) ? v : 0);
+  const s = n(buyPressure) * 20 + n(volVsLiq) * 15 + n(trend) * 10 + n(holders) * 15 + n(liq) * 10 + n(safety) * 15 + n(distribution) * 15;
   return Math.round(s);
 }
 

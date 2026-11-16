@@ -260,6 +260,7 @@
   .keybox { display: grid; gap: 6px; padding: var(--sp-3); border-radius: var(--r-2); background: var(--bg); border: 1px dashed var(--line-2); font-size: 12px; color: var(--muted); }
   .keybox input { height: 32px; padding: 0 10px; border-radius: var(--r-1); border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); outline: none; font-size: 12px; }
   .keybox a { color: var(--brand); }
+  .score.prev { opacity: .72; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -860,11 +861,11 @@
       ${metaHtml ? `<div class="meta">${metaHtml}</div>` : ''}
     </div>`;
   }
-  function scoreBadge(n, small) {
+  function scoreBadge(n, small, preview) {
     if (n == null) return '';
     const tier = n >= 75 ? ['strong', 'Forte'] : n >= 55 ? ['mid', 'Média'] : ['weak', 'Fraca'];
     const r = 22, c = 2 * Math.PI * r, off = c * (1 - Math.min(100, Math.max(0, n)) / 100);
-    return `<div class="score ${tier[0]} ${small ? 'sm' : ''}" title="Nota ${n} de 100: ${tier[1].toLowerCase()} (segurança + força de compra)">
+    return `<div class="score ${tier[0]} ${small ? 'sm' : ''} ${preview ? 'prev' : ''}" title="${preview ? 'Nota prévia' : 'Nota'} ${n} de 100: ${tier[1].toLowerCase()} (segurança + força de compra)${preview ? '. Ainda não passou em todos os filtros' : ''}">
       <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="${r}" class="track"/><circle cx="26" cy="26" r="${r}" class="val" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg>
       <b class="num">${n}</b><span>${tier[1]}</span></div>`;
   }
@@ -1119,6 +1120,10 @@
       const ch = Number(t.changePct) || 0;
       main = `<b>${esc(t.symbol)}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}</small>`;
       side = `<div style="display:flex;align-items:center;gap:10px"><small class="num ${cls(ch)}" style="font-size:13px">${pct(ch)}</small>${scoreBadge(t.score, true)}</div>`;
+    } else if (ui.tab === 'aguardando') {
+      const left = t.pending ?? (t.reasons || []).length;
+      main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>${left ? `${left === 1 ? 'Falta 1 critério' : `Faltam ${left} critérios`} - ${esc((t.reasons || [])[0] || '')}` : esc((t.reasons || [])[0] || 'Na fila de checagem')}</small>`;
+      side = `<div style="display:flex;align-items:center;gap:10px"><small class="num" style="color:var(--muted)">${t.mcapUsd ? `MC ${usd(t.mcapUsd)}` : ''}</small>${t.score != null ? scoreBadge(t.score, true, true) : ''}</div>`;
     } else {
       main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>${esc((t.reasons || [])[0] || '')}</small>`;
       side = t.mcapUsd ? `<b class="num" style="font-size:13px">${usd(t.mcapUsd)}</b><small class="num" style="color:var(--muted)">liq ${usd(t.liquidityUsd)}</small>` : '';
@@ -1846,7 +1851,10 @@
     if (ui.tab === 'aprovada') {
       // Melhor nota primeiro; empate fica com a mais recente
       items = [...items].sort((a, b) => (b.score || 0) - (a.score || 0) || (b.approvedAt || 0) - (a.approvedAt || 0));
-    } else if (ui.tab === 'aguardando') items = [...items].sort((a, b) => (b.volumeH1 || 0) - (a.volumeH1 || 0));
+    } else if (ui.tab === 'aguardando') {
+      // Mais perto de ser aprovada primeiro: nota prévia, depois quem tem menos critérios faltando
+      items = [...items].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (a.pending ?? 9) - (b.pending ?? 9) || (b.volumeH1 || 0) - (a.volumeH1 || 0));
+    }
     else if (ui.tab === 'reprovada') items = [...items].sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));
     const q = ui.q.trim().toLowerCase();
     if (q) items = items.filter((t) => [t.symbol, t.name, t.mint].some((v) => String(v || '').toLowerCase().includes(q)));
