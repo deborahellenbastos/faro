@@ -5,6 +5,7 @@ const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas po
 const RECHECK_MIN = 15;     // moedas da carteira: rechecagem de segurança a cada 15 min
 const RECHECK_APPROVED_MIN = 30; // aprovadas que você não comprou: a cada 30 min
 const MAX_REJECTED_KEPT = 300;
+const MAX_PRICE_LOOKUPS = 6;         // preços históricos buscados por rodada (o resto fica para a próxima)
 const MAX_CANDLE_CALLS = 8;         // GeckoTerminal grátis aceita poucas consultas por minuto
 const CANDLE_REFRESH_MIN = 15;      // aprovadas: velas atualizadas a cada 15 min (as da carteira, toda rodada)
 
@@ -57,7 +58,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
           const r = await api.getWalletOps(wallet, state.wallet.lastSig);
           let solUsdNow = null;
           if (r.ops.length && api.getSolUsd) { try { solUsdNow = await api.getSolUsd(); } catch {} }
-          // Compras recentes: registra o preço do SOL de agora (é o da hora da compra, com folga de minutos)
+          // Provisório: preço do SOL de agora. O valor exato do minuto da transação é buscado logo abaixo.
           for (const o of r.ops) if (solUsdNow && !o.solUsd && now - o.at < 6 * 3600000) o.solUsd = solUsdNow;
           const seenSig = new Set(state.wallet.ops.map((o) => o.sig + o.mint));
           state.wallet.ops = [...state.wallet.ops, ...r.ops.filter((o) => !seenSig.has(o.sig + o.mint))].slice(-1500);
@@ -65,6 +66,34 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
           state.wallet.updatedAt = now;
           if (r.ops.length) log(`Carteira: ${r.ops.length} compras/vendas novas lidas${r.pending ? ` (${r.pending} na fila)` : ''}`);
         } catch (e) { log(`Não consegui ler as transações da carteira: ${e.message}`, true); }
+      }
+      // Valores exatos: preço do SOL no minuto de cada transação; compras em USDC; moedas recebidas/enviadas
+      // (transferência ou ordem limite executada) valem pelo preço de mercado daquele minuto.
+      if (api.getPriceAt) {
+        let calls = 0;
+        const lookup = async (pool, at) => {
+          if (calls >= MAX_PRICE_LOOKUPS) return undefined;
+          if (calls++ && api.sleep) await api.sleep(6500);
+          try { return await api.getPriceAt(pool, at); } catch { return undefined; }
+        };
+        for (const o of [...state.wallet.ops].reverse()) {
+          if (calls >= MAX_PRICE_LOOKUPS) break;
+          if (!o.px) {
+            const v = await lookup(api.SOL_POOL, o.at);
+            if (v === undefined) break;
+            if (v) { o.solUsd = v; o.px = 1; } else if ((o.tries = (o.tries || 0) + 1) >= 5) o.px = 1;
+            if (o.px && o.stable && o.solUsd) { o.sol += o.stable / o.solUsd; delete o.stable; }
+          }
+          if (o.px && !o.k && o.solUsd) {
+            const moved = (o.tokens > 0 && o.sol > -0.00005) || (o.tokens < 0 && o.sol < 0.00005);
+            if (!moved) { o.k = 1; continue; }
+            const pool = tokens[o.mint]?.pairAddress;
+            if (!pool) continue; // ainda sem par conhecido: tenta na próxima rodada
+            const p = await lookup(pool, o.at);
+            if (p === undefined) break;
+            if (p) { o.sol = (-o.tokens * p) / o.solUsd; o.est = 1; o.k = 1; } else if ((o.tries = (o.tries || 0) + 1) >= 5) o.k = 1;
+          }
+        }
       }
     } catch (e) {
       log(`Não consegui ler a carteira: ${e.message}`, true);
@@ -104,7 +133,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         const myOps = state.wallet.ops.filter((o) => o.mint === t.mint);
         t.position = positionFrom(myOps, t.heldAmount || 0, m.priceNative, m.priceUsd);
         // Histórico de compras e vendas desta moeda (mais recentes primeiro)
-        t.history = myOps.slice(-50).reverse().map((o) => ({ sig: o.sig, at: o.at, tokens: o.tokens, sol: o.sol }));
+        t.history = myOps.slice(-50).reverse().map((o) => ({ sig: o.sig, at: o.at, tokens: o.tokens, sol: o.sol, ...(o.est ? { est: 1 } : {}) }));
       }
       t.hist = [...(t.hist || []), [now, m.priceUsd]].slice(-288); // ~24h de pontos a cada 5 min
       t._mktAlerts = marketAlerts(t, m);

@@ -74,6 +74,8 @@ const api = {
     ],
   },
   sleep: async () => {},
+  SOL_POOL: 'SOLPOOL',
+  getPriceAt: async (pool) => (pool === 'SOLPOOL' ? 150 : 0.002),
   getSolanaCandidates: async () => Object.keys(market).map((mint) => ({ mint, source: 'perfis novos', icon: null, description: '', links: [] })),
   getMarketData: async (mints) => new Map(mints.filter((m) => market[m]).map((m) => [m, market[m]])),
   getRugReport: async (mint) => { rugCalls++; return reports[mint]; },
@@ -181,6 +183,17 @@ assert.equal(ops.length, 1);
 assert.equal(ops[0].tokens, 1000);
 // a taxa de criação da conta (~0,002 SOL) não conta como custo
 assert.ok(Math.abs(ops[0].sol - (-0.25 + 0.00203928)) < 1e-9);
+
+// Compra paga em USDC: o valor em dólar fica guardado para virar SOL equivalente
+const usdcTx = { blockTime: 1700000000, transaction: { message: { accountKeys: ['ME'] } }, meta: { preBalances: [1e9], postBalances: [1e9 - 5000],
+  preTokenBalances: [{ owner: 'ME', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', uiTokenAmount: { uiAmount: 100 } }, { owner: 'ME', mint: 'TOK', uiTokenAmount: { uiAmount: 5 } }],
+  postTokenBalances: [{ owner: 'ME', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', uiTokenAmount: { uiAmount: 70 } }, { owner: 'ME', mint: 'TOK', uiTokenAmount: { uiAmount: 505 } }] } };
+const uops = parseOps(usdcTx, 'ME', 'u1');
+assert.equal(uops.length, 1);
+assert.equal(uops[0].tokens, 500);
+assert.equal(uops[0].stable, -30);
+// Preço do SOL do minuto exato gravado em cada transação da carteira
+assert.ok(state.wallet.ops.every((o) => o.px === 1 && o.solUsd === 150));
 
 // Compra desligada por padrão
 assert.equal(state.lastRun.autoBuy, false);

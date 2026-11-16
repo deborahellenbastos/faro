@@ -267,6 +267,9 @@
   .ord span { color: var(--muted); }
   .ord .btn { height: 28px; font-size: 12px; grid-row: span 2; }
 
+  .lnote { color: var(--faint); font-size: 11px; line-height: 1.4; }
+  .hrow .est { color: var(--faint); font-weight: 600; }
+
   /* Métricas de mercado */
   .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin-top: var(--sp-4); }
   .tile { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-2); padding: var(--sp-3); min-width: 0; }
@@ -383,18 +386,15 @@
   /* =========================================================
      Camadas: gráfico grande, gaveta do robô, toast
      ========================================================= */
-  .chart-view { position: fixed; inset: 0; z-index: 40; background: rgba(4,5,7,.72); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; }
-  .chart-view.show { display: flex; animation: fade .18s ease-out; }
-  @keyframes fade { from { opacity: 0; } }
-  .chart-panel { width: min(1280px, 94vw); height: 88vh; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-4); display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow); }
-  .chart-head { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); }
-  .chart-head .back { display: inline-flex; }
-  .chart-head .ttl { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: var(--sp-2); }
-  .chart-head .ttl b { font-size: 17px; font-weight: 800; }
-  .chart-head .ttl span { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .chart-frame { flex: 1; position: relative; background: #0b0d12; }
-  .chart-frame .lw-host { position: absolute; inset: 0; height: auto; }
-  .chart-panel > .chart-tools { padding: var(--sp-2) var(--sp-4); border-bottom: 1px solid var(--line); margin: 0; }
+  .lw-slot iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .chart-box.is-dex .lw-slot { height: max(var(--chart-h), 420px); }
+  .chart-box:not(.max) .cmax-only { display: none !important; }
+  .cmax-sym { font-size: 16px; font-weight: 800; }
+  .chart-box.max { position: fixed; inset: 0; z-index: 60; margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-4); background: var(--bg); display: flex; flex-direction: column; }
+  .chart-box.max .lw-slot { flex: 1; height: auto; border-bottom: 1px solid var(--line); border-radius: var(--r-2); }
+  .chart-box.max .mini-grip, .chart-box.max .cmin-only { display: none; }
+  .chart-box.max .cmax-only { display: inline-flex; }
+  .chart-box.max .chart-tools .back { display: inline-flex; }
 
   .drawer { position: fixed; inset: 0; z-index: 35; background: rgba(4,5,7,.6); display: none; justify-content: flex-end; }
   .drawer.show { display: flex; }
@@ -579,19 +579,6 @@
       </div>
       <button class="lock-btn" data-lock hidden style="margin-top:16px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Bloquear painel</button>
       <p class="disclaimer">O Faro elimina sinais de golpe e ordena por força de compra. Isso não garante que a moeda vai subir. A decisão é sempre sua.</p>
-    </div>
-  </div>
-
-  <!-- Gráfico completo (o mesmo gráfico do card, em tela grande, com os mesmos traços) -->
-  <div class="chart-view" id="chart" role="dialog" aria-modal="true" aria-label="Gráfico da moeda">
-    <div class="chart-panel">
-      <div class="chart-head">
-        <button class="back" id="chart-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Voltar</button>
-        <div class="ttl"><b id="chart-sym"></b><span id="chart-sub"></span></div>
-        <span class="pill" id="chart-pill"></span>
-        <a class="btn" id="chart-ext" target="_blank" rel="noopener">DexScreener <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
-      </div>
-      <div class="chart-frame" id="chart-big"></div>
     </div>
   </div>
 
@@ -829,6 +816,8 @@
       }
       document.querySelectorAll('[data-lock]').forEach((b) => { b.hidden = !vaultUsed; });
       detectEvents(data);
+      applyLive(); connectWallet();
+      if (!LIVE.booted) { LIVE.booted = true; pollPrice(); pollLive(); pollWallet(); }
       render();
       if (manual) toast('Atualizado');
     } catch (e) {
@@ -893,10 +882,14 @@
     t: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19 20 5"/><circle cx="4" cy="19" r="1.8" fill="currentColor"/><circle cx="20" cy="5" r="1.8" fill="currentColor"/></svg>',
     trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
   };
+  const chartUrl = (t) => {
+    const base = window.__DEMO_CHART || t.pairUrl || `https://dexscreener.com/solana/${encodeURIComponent(t.pairAddress || t.mint)}`;
+    return `${base}${base.includes('?') ? '&' : '?'}embed=1&theme=dark&chartTheme=dark&chartStyle=1&chartType=usd&interval=5&trades=0&info=0&chartLeftToolbar=1`;
+  };
   function chartBox(t) {
     const iv = CH.interval;
-    return `<div class="chart-box">
-      <div class="chart-tools">
+    const dex = chartSrc === 'dex';
+    const faroTools = dex ? `<span class="chart-hint">Gráfico da DexScreener, ao vivo, com todas as ferramentas (Fibonacci, régua...). Em "Faro" você vê suas compras, vendas e ordens marcadas.</span>` : `
         <div class="seg-sm">${IVALS.map(([k]) => `<button data-ival="${k}" class="${k === iv ? 'on' : ''}">${k}</button>`).join('')}</div>
         <div class="seg-sm" title="Ferramentas de traço">
           <button data-tool="cursor" class="${CH.tool === 'cursor' ? 'on' : ''}" title="Mover e dar zoom">${TOOL_ICON.cursor}</button>
@@ -904,10 +897,16 @@
           <button data-tool="t" class="${CH.tool === 't' ? 'on' : ''}" title="Linha de tendência (2 cliques)">${TOOL_ICON.t}</button>
           <button data-tool="trash" title="Apagar os traços desta moeda">${TOOL_ICON.trash}</button>
         </div>
-        <span class="chart-hint" id="chart-hint">${CH.tool === 'h' ? 'Clique no preço para marcar a linha' : CH.tool === 't' ? 'Clique no ponto inicial e depois no final' : 'Arraste para mover, role para dar zoom'}</span>
-        <button class="btn btn-sm" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
+        <span class="chart-hint" id="chart-hint">Arraste para mover, role para dar zoom</span>`;
+    return `<div class="chart-box ${dex ? 'is-dex' : ''}">
+      <div class="chart-tools">
+        <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
+        <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
+        <div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>
+        ${faroTools}
+        <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
       </div>
-      <div class="lw-slot" data-lwslot="${esc(t.mint)}"></div>
+      <div class="lw-slot" data-lwslot="${esc(t.mint)}">${dex ? `<iframe src="${esc(chartUrl(t))}" title="Gráfico DexScreener" allow="clipboard-write" referrerpolicy="no-referrer-when-downgrade"></iframe>` : ''}</div>
       <div class="mini-grip" data-grip title="Arraste para mudar a altura do gráfico"><i></i></div>
     </div>`;
   }
@@ -989,7 +988,7 @@
       const buy = o.tokens > 0;
       return `<a class="hrow" href="https://solscan.io/tx/${esc(o.sig)}" target="_blank" rel="noopener">
         <i class="hico">${ICON.swap}</i>
-        <span class="hname"><b>${buy ? 'Compra' : 'Venda'}</b><small>${dt(o.at)}</small></span>
+        <span class="hname"><b>${o.est ? (buy ? 'Recebida' : 'Enviada') : buy ? 'Compra' : 'Venda'}</b><small>${dt(o.at)}${o.est ? ' <span class="est" title="Transferência ou ordem limite: valor estimado pelo preço de mercado daquele minuto">- valor estimado</span>' : ''}</small></span>
         <span class="hval"><b class="num ${buy ? 'pos' : ''}">${buy ? '+' : '-'}${tokFmt(Math.abs(o.tokens))}</b><small class="num">${solFmt(Math.abs(o.sol), 4)}</small></span></a>`;
     }).join('');
     return `<div class="hist">
@@ -1060,6 +1059,7 @@
       body = `${keyBox}${amountBox}${fields}
         <div class="tin" style="padding:0"><label style="font-size:12px;color:var(--muted)">Validade</label><span style="flex:1"></span><div class="seg-sm">${days}</div></div>
         ${st.msg ? `<div class="tquote ${st.msg.err ? 'err' : ''}">${st.msg.html}</div>` : ''}
+        ${buy ? '' : '<small class="lnote">Em memecoin o stop não é garantia: se a liquidez sumir de uma vez, ele pode executar bem abaixo do valor ou nem executar.</small>'}
         <button class="tgo ${buy ? 'buy' : 'sell'}" data-lgo="${m}" ${LIM.busy ? 'disabled' : ''}>${LIM.busy ? 'Aguarde...' : buy ? 'Criar ordem de compra' : 'Criar ordem de venda'}</button>
         <div class="orders"><h4>Ordens abertas</h4>${LIM.token ? (orders || '<span class="meta">Nenhuma ordem aberta nesta moeda.</span>') : `<button class="btn btn-sm" data-lconnect="${m}">Conectar a Phantom para ver</button>`}</div>`;
     }
@@ -1137,6 +1137,7 @@
   // =========================================================
   //  Gráfico próprio (Lightweight Charts)
   // =========================================================
+  let chartSrc = store.get('faro-chart-src', 'dex');
   const CH = { lib: null, loading: null, host: null, chart: null, candle: null, vol: null, mint: null, interval: store.get('faro-ival', '5m'),
     tool: 'cursor', pending: null, bars: [], lines: [], trends: [], fetchedAt: 0, big: false };
   const TZ = -new Date().getTimezoneOffset() * 60; // mostra os horários no seu fuso
@@ -1145,6 +1146,7 @@
     return (CH.loading = CH.loading || new Promise((ok, fail) => {
       const sc = document.createElement('script');
       sc.src = 'https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js';
+      sc.integrity = 'sha384-stKllnUqA9AD0gsKCuUtf5XlqAW7PwIgDagoNsTWkjkBmJ/GZ/uHTgEBxdLV2VSK'; sc.crossOrigin = 'anonymous';
       sc.onload = () => ok(window.LightweightCharts); sc.onerror = () => fail(new Error('Não consegui carregar o gráfico'));
       document.head.appendChild(sc);
     }));
@@ -1228,7 +1230,7 @@
   async function showChart(t, slot) {
     if (!slot) return;
     if (!CH.chart) { try { await buildChart(); } catch (e) { slot.innerHTML = `<div class="chart-empty">${esc(e.message)}</div>`; return; } }
-    if (!CH.big) slot.appendChild(CH.host);
+    if (CH.host.parentElement !== slot) slot.appendChild(CH.host);
     if (CH.mint !== t.mint || CH.ivalLoaded !== CH.interval) {
       CH.mint = t.mint; CH.ivalLoaded = CH.interval; CH.fetchedAt = 0;
       const seed = CH.interval === '5m' ? candlesFromRobot(t) : [];
@@ -1286,13 +1288,22 @@
       setTool(tb.dataset.tool); return;
     }
     const iv = e.target.closest('[data-ival]');
-    if (iv) { CH.interval = iv.dataset.ival; store.set('faro-ival', CH.interval); document.querySelectorAll('[data-ival]').forEach((b) => b.classList.toggle('on', b.dataset.ival === CH.interval)); const t = data.tokens[CH.mint]; if (t) showChart(t, CH.host.parentElement); }
+    if (iv) { CH.interval = iv.dataset.ival; store.set('faro-ival', CH.interval); document.querySelectorAll('[data-ival]').forEach((b) => b.classList.toggle('on', b.dataset.ival === CH.interval)); const t = data.tokens[CH.mint]; if (t && CH.host?.parentElement) showChart(t, CH.host.parentElement); }
   });
 
   // =========================================================
-  //  Tempo real: preços do DexScreener a cada 10s, velas a cada 30s
+  //  Tempo real
+  //  - preço: Jupiter a cada 2,5s (mesma fonte da Phantom)
+  //  - liquidez, volume e transações: DexScreener a cada 10s
+  //  - carteira: a blockchain avisa na hora de cada transação sua
   // =========================================================
-  const LIVE = { at: 0, ok: false };
+  const SOL = 'So11111111111111111111111111111111111111112';
+  const LIVE = { at: 0, ok: false, solUsd: 0, jupAt: {}, liq: {}, alerts: {}, down: false };
+  const busyUi = () => (LIVE.down && Date.now() - LIVE.down < 1500) || document.activeElement?.matches?.('input') || Object.values(ui.trade).some((x) => x.quote || x.busy) || LIM.busy;
+  document.addEventListener('pointerdown', () => { LIVE.down = Date.now(); }, true);
+  for (const ev of ['pointerup', 'pointercancel']) document.addEventListener(ev, () => { LIVE.down = 0; }, true);
+  const liveRender = () => { if (busyUi()) updateLivePill(); else render(); };
+
   function recalcLive(t) {
     const p = t.position;
     if (p && t.priceNative > 0) {
@@ -1311,12 +1322,42 @@
       t.maxChangePct = ((t.maxPriceUsd - t.entryPriceUsd) / t.entryPriceUsd) * 100;
     }
   }
+  const liveMints = () => {
+    const want = new Set();
+    Object.values(data.tokens || {}).filter(isMine).forEach((t) => want.add(t.mint));
+    const sel = ui.sel[ui.tab]; if (sel) want.add(sel);
+    return want;
+  };
+
+  // Preço (2,5s)
+  async function pollPrice() {
+    if (!data || isDemo() || document.hidden || LIVE.pricing) return;
+    LIVE.pricing = true;
+    try {
+      const mints = [...liveMints()].slice(0, 49);
+      const j = await fetch(`https://lite-api.jup.ag/price/v3?ids=${[SOL, ...mints].join(',')}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (!j) return;
+      const solUsd = Number(j[SOL]?.usdPrice); if (solUsd > 0) LIVE.solUsd = solUsd;
+      let changed = false;
+      for (const m of mints) {
+        const t = data.tokens[m]; const px = Number(j[m]?.usdPrice);
+        if (!t || !(px > 0)) continue;
+        if (Number.isInteger(j[m].decimals)) t.decimals = j[m].decimals;
+        if (t.priceUsd > 0 && px !== t.priceUsd) { const k = px / t.priceUsd; if (t.mcapUsd) t.mcapUsd *= k; if (t.fdvUsd) t.fdvUsd *= k; }
+        if (px !== t.priceUsd) changed = true;
+        t.priceUsd = px; if (LIVE.solUsd) t.priceNative = px / LIVE.solUsd;
+        LIVE.jupAt[m] = Date.now();
+        recalcLive(t); tickBar(t);
+      }
+      LIVE.at = Date.now(); LIVE.ok = true;
+      if (changed) liveRender(); else updateLivePill();
+    } finally { LIVE.pricing = false; }
+  }
+
+  // Mercado (10s) + vigia de liquidez das suas moedas
   async function pollLive() {
     if (!data || isDemo() || document.hidden) return;
-    const all = Object.values(data.tokens || {});
-    const want = new Set();
-    all.filter(isMine).forEach((t) => want.add(t.mint));
-    const sel = ui.sel[ui.tab]; if (sel) want.add(sel);
+    const want = liveMints();
     document.querySelectorAll('#list [data-sel]').forEach((r) => want.add(r.dataset.sel));
     const mints = [...want].slice(0, 60);
     let changed = false;
@@ -1328,34 +1369,216 @@
       for (const [m, pr] of Object.entries(best)) {
         const t = data.tokens[m]; if (!t) continue;
         const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-        t.priceUsd = num(pr.priceUsd); t.priceNative = num(pr.priceNative);
-        t.liquidityUsd = num(pr?.liquidity?.usd); t.mcapUsd = num(pr.marketCap) || num(pr.fdv); t.fdvUsd = num(pr.fdv);
+        if (!(Date.now() - (LIVE.jupAt[m] || 0) < 8000)) { t.priceUsd = num(pr.priceUsd); t.priceNative = num(pr.priceNative); t.mcapUsd = num(pr.marketCap) || num(pr.fdv); t.fdvUsd = num(pr.fdv); }
+        if (!t.symbol) Object.assign(t, { symbol: pr.baseToken?.symbol, name: pr.baseToken?.name, icon: pr.info?.imageUrl, quoteSymbol: pr.quoteToken?.symbol });
+        if (!t.pairAddress) Object.assign(t, { pairAddress: pr.pairAddress, pairUrl: pr.url, dexId: pr.dexId });
+        t.liquidityUsd = num(pr?.liquidity?.usd);
         t.boosts = num(pr?.boosts?.active) || t.boosts;
         t.periods = Object.fromEntries(['m5', 'h1', 'h6', 'h24'].map((k) => [k, { chg: num(pr?.priceChange?.[k]), buys: num(pr?.txns?.[k]?.buys), sells: num(pr?.txns?.[k]?.sells), vol: num(pr?.volume?.[k]) }]));
+        if (isMine(t)) watchLiquidity(t);
         recalcLive(t); tickBar(t); changed = true;
       }
     }
     LIVE.at = Date.now(); LIVE.ok = changed || LIVE.ok;
-    const typing = document.activeElement?.matches?.('input');
-    const pending = Object.values(ui.trade).some((x) => x.quote || x.busy) || LIM.busy;
-    if (changed && !typing && !pending) render();
-    else updateLivePill();
+    if (changed) liveRender(); else updateLivePill();
+  }
+  // Liquidez caindo 30% ou mais em até 10 minutos numa moeda sua: alerta na hora, sem esperar o robô
+  function watchLiquidity(t) {
+    const now = Date.now(); const liq = t.liquidityUsd || 0;
+    const w = (LIVE.liq[t.mint] = (LIVE.liq[t.mint] || []).filter((x) => now - x[0] < 600000));
+    w.push([now, liq]);
+    const peak = Math.max(...w.map((x) => x[1]));
+    if (!(peak > 0) || liq > peak * 0.7 || LIVE.alerts[t.mint]) return;
+    const drop = Math.round((1 - liq / peak) * 100);
+    LIVE.alerts[t.mint] = { id: 'vivo-liq', level: 'danger', at: now, msg: `Liquidez caiu ${drop}% em poucos minutos (visto ao vivo). Possível rug: avalie vender` };
+    applyLiveAlerts(t);
+    play('problema');
+    notify(`Perigo em ${t.symbol}`, LIVE.alerts[t.mint].msg, 'alerta-' + t.mint);
+    setTimeout(() => { delete LIVE.alerts[t.mint]; LIVE.liq[t.mint] = []; }, 600000);
+  }
+  function applyLiveAlerts(t) {
+    const a = LIVE.alerts[t.mint]; if (!a) return;
+    t.safety = t.safety || { alerts: [] };
+    if (!(t.safety.alerts || []).some((x) => x.id === a.id)) t.safety.alerts = [a, ...(t.safety.alerts || [])];
+    t.safety.level = 'danger';
   }
   function updateLivePill() {
     const el = $('live'); if (!el) return;
-    const fresh = LIVE.ok && Date.now() - LIVE.at < 30000;
+    const fresh = LIVE.ok && Date.now() - LIVE.at < 15000;
     el.className = 'live ' + (fresh ? 'on' : '');
     el.querySelector('span').textContent = fresh ? 'Ao vivo' : 'Conectando...';
+    el.title = `Preço: a cada 2,5s - Mercado: a cada 10s - Carteira: ${WAL.ws ? 'na hora' : 'a cada 20s'}`;
   }
+  setInterval(pollPrice, 2500);
   setInterval(pollLive, 10000);
-  setInterval(() => { const t = data?.tokens?.[CH.mint]; if (t && !document.hidden) refreshCandles(t); }, 30000);
+  setInterval(() => { const t = data?.tokens?.[CH.mint]; if (t && !document.hidden && chartSrc === 'faro' && CH.host?.isConnected) refreshCandles(t); }, 30000);
   setInterval(updateLivePill, 5000);
+
+  // =========================================================
+  //  Carteira ao vivo: lê suas transações direto da blockchain
+  // =========================================================
+  const RPC_URL = store.get('faro-rpc', '') || 'https://solana-rpc.publicnode.com';
+  const WAL = { ws: null, ops: store.get('faro-liveops', []), bal: {}, sol: null, seen: new Set(), busy: new Set(), retry: 1000 };
+  async function rpcCall(method, params) {
+    const r = await fetch(RPC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+    const j = await r.json();
+    if (j.error) throw new Error(j.error.message || 'Erro na conexão com a Solana');
+    return j.result;
+  }
+  let txVer = 1;
+  async function getTxB(sig) {
+    try { return await rpcCall('getTransaction', [sig, { encoding: 'jsonParsed', maxSupportedTransactionVersion: txVer, commitment: 'confirmed' }]); }
+    catch (e) { const m = /version \((\d+)\)/i.exec(e.message || ''); if (m && Number(m[1]) > txVer) { txVer = Number(m[1]); return getTxB(sig); } throw e; }
+  }
+  // Mesma leitura que o robô faz (scanner/api.mjs)
+  const STABLES = new Set(['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB']);
+  function parseTx(tx, owner, sig) {
+    const meta = tx.meta || {};
+    const keys = (tx.transaction?.message?.accountKeys || []).map((k) => (typeof k === 'string' ? k : k.pubkey));
+    const i = keys.indexOf(owner);
+    let sol = i >= 0 ? (Number(meta.postBalances?.[i] || 0) - Number(meta.preBalances?.[i] || 0)) / 1e9 : 0;
+    const bal = (arr) => { const m = new Map(); for (const b of arr || []) if (b.owner === owner) m.set(b.mint, (m.get(b.mint) || 0) + Number(b.uiTokenAmount?.uiAmount || 0)); return m; };
+    const pre = bal(meta.preTokenBalances), post = bal(meta.postTokenBalances);
+    const at = (tx.blockTime || Math.floor(Date.now() / 1000)) * 1000;
+    const out = { ops: [], post: [], solPost: i >= 0 ? Number(meta.postBalances?.[i] || 0) / 1e9 : null, at };
+    const owned = (arr, mint) => (arr || []).some((b) => b.owner === owner && b.mint === mint);
+    const deltas = []; let stable = 0;
+    for (const mint of new Set([...pre.keys(), ...post.keys()])) {
+      const d = (post.get(mint) || 0) - (pre.get(mint) || 0);
+      if (mint !== SOL && !STABLES.has(mint)) out.post.push([mint, post.get(mint) || 0]);
+      if (Math.abs(d) < 1e-12) continue;
+      if (mint === SOL) sol += d; else if (STABLES.has(mint)) stable += d; else deltas.push([mint, d]);
+    }
+    if (deltas.length !== 1) return out;
+    const mint = deltas[0][0];
+    if (!owned(meta.preTokenBalances, mint) && owned(meta.postTokenBalances, mint)) sol += 0.00203928;
+    if (owned(meta.preTokenBalances, mint) && !owned(meta.postTokenBalances, mint)) sol -= 0.00203928;
+    if (Math.abs(stable) > 0.005 && LIVE.solUsd) sol += stable / LIVE.solUsd;
+    out.ops.push({ sig, at, mint, tokens: deltas[0][1], sol, ...(LIVE.solUsd ? { solUsd: LIVE.solUsd } : {}) });
+    return out;
+  }
+  // Mesma conta que o robô faz (scanner/analyze.mjs)
+  function positionCalc(ops, heldAmount, priceNative, priceUsd) {
+    const solUsd = priceNative > 0 ? priceUsd / priceNative : null;
+    const valueSol = heldAmount * (priceNative || 0);
+    const base = { amount: heldAmount, valueSol, valueUsd: solUsd ? valueSol * solUsd : null, solUsd };
+    const buys = (ops || []).filter((o) => o.tokens > 0 && o.sol < 0);
+    const sells = (ops || []).filter((o) => o.tokens < 0 && o.sol > 0);
+    if (!buys.length) return { ...base, known: false };
+    const spentSol = buys.reduce((a, o) => a - o.sol, 0);
+    const bought = buys.reduce((a, o) => a + o.tokens, 0);
+    const receivedSol = sells.reduce((a, o) => a + o.sol, 0);
+    const prices = buys.map((o) => -o.sol / o.tokens);
+    const avg = spentSol / bought;
+    const atUsd = (o) => Math.abs(o.sol) * (o.solUsd || solUsd || 0);
+    const spentUsd = buys.reduce((a, o) => a + atUsd(o), 0);
+    const receivedUsd = sells.reduce((a, o) => a + atUsd(o), 0);
+    const avgUsd = spentUsd / (bought || 1);
+    const soldTokens = sells.reduce((a, o) => a - o.tokens, 0);
+    const usd = (v) => (solUsd ? v * solUsd : null);
+    const valueUsd = valueSol * (solUsd || 0);
+    return { ...base, known: true,
+      realizedSol: receivedSol - soldTokens * avg, realizedUsd: receivedUsd - soldTokens * avgUsd, receivedUsd,
+      costOpenSol: heldAmount * avg, costOpenUsd: heldAmount * avgUsd,
+      openPnlSol: valueSol - heldAmount * avg, openPnlUsd: solUsd ? valueUsd - heldAmount * avgUsd : null,
+      openPnlPct: heldAmount * avgUsd > 0 && solUsd ? ((valueUsd - heldAmount * avgUsd) / (heldAmount * avgUsd)) * 100 : 0,
+      spentSol, spentUsd, receivedSol, avgPriceSol: avg, avgPriceUsd: avgUsd,
+      minPriceUsd: usd(Math.min(...prices)), maxPriceUsd: usd(Math.max(...prices)),
+      pnlSol: valueSol + receivedSol - spentSol, pnlUsd: solUsd ? valueUsd + receivedUsd - spentUsd : null,
+      pnlPct: spentUsd ? ((valueUsd + receivedUsd - spentUsd) / spentUsd) * 100 : 0,
+      buys: buys.length, sells: sells.length,
+      firstBuyAt: Math.min(...buys.map((o) => o.at)), lastBuyAt: Math.max(...buys.map((o) => o.at)) };
+  }
+  // Junta o que o robô gravou com o que acabou de acontecer (chamado a cada carga de dados e a cada transação)
+  function applyLive() {
+    if (!data?.wallet?.address) return;
+    const robotAt = data.wallet.updatedAt || 0;
+    const robotSigs = new Set((data.wallet.ops || []).map((o) => o.sig));
+    WAL.ops = WAL.ops.filter((o) => !robotSigs.has(o.sig) && Date.now() - o.at < 3 * 86400000);
+    store.set('faro-liveops', WAL.ops);
+    if (WAL.sol && WAL.sol.at > robotAt) data.wallet.solBalance = WAL.sol.v;
+    const touched = new Set(WAL.ops.map((o) => o.mint));
+    for (const [mint, b] of Object.entries(WAL.bal)) if (b.at > robotAt) touched.add(mint);
+    for (const mint of touched) {
+      let t = data.tokens[mint];
+      const b = WAL.bal[mint];
+      if (!t) { if (!(b?.amount > 0)) continue; t = data.tokens[mint] = { mint, firstSeen: Date.now(), status: 'carteira', source: 'sua carteira', heldSince: Date.now() }; }
+      if (b && b.at > robotAt) { t.heldAmount = b.amount; if (b.amount > 0 && !t.held) t.heldSince = Date.now(); t.held = b.amount > 0; }
+      const ops = [...(data.wallet.ops || []).filter((o) => o.mint === mint), ...WAL.ops.filter((o) => o.mint === mint)].sort((a, b2) => a.at - b2.at);
+      if (t.held) t.position = positionCalc(ops, t.heldAmount || 0, t.priceNative, t.priceUsd);
+      t.history = ops.slice(-50).reverse().map((o) => ({ sig: o.sig, at: o.at, tokens: o.tokens, sol: o.sol, ...(o.est ? { est: 1 } : {}) }));
+    }
+    for (const t of Object.values(data.tokens)) applyLiveAlerts(t);
+  }
+  async function handleSig(sig, quiet) {
+    const owner = data?.wallet?.address;
+    if (!owner || WAL.seen.has(sig) || WAL.busy.has(sig)) return null;
+    if ((data.wallet.ops || []).some((o) => o.sig === sig) || WAL.ops.some((o) => o.sig === sig)) return null;
+    WAL.busy.add(sig);
+    try {
+      let tx = null;
+      for (let i = 0; i < 12 && !tx; i++) { try { tx = await getTxB(sig); } catch {} if (!tx) await new Promise((r) => setTimeout(r, 800)); }
+      if (!tx) return null;
+      WAL.seen.add(sig);
+      if (tx.meta?.err) return { failed: true };
+      const r = parseTx(tx, owner, sig);
+      for (const [mint, amount] of r.post) if (!WAL.bal[mint] || WAL.bal[mint].at <= r.at) WAL.bal[mint] = { amount, at: r.at };
+      if (r.solPost != null && (!WAL.sol || WAL.sol.at <= r.at)) WAL.sol = { v: r.solPost, at: r.at };
+      WAL.ops.push(...r.ops);
+      applyLive();
+      for (const o of r.ops) {
+        const t = data.tokens[o.mint];
+        if (!quiet) toast(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''}`);
+        if (t && CH.mint === o.mint && chartSrc === 'faro') decorate(t);
+      }
+      liveRender();
+      if (r.ops.length) pollLive();
+      return { ops: r.ops };
+    } finally { WAL.busy.delete(sig); }
+  }
+  async function pollWallet() {
+    const owner = data?.wallet?.address;
+    if (!owner || isDemo() || document.hidden) return;
+    try {
+      const lam = await rpcCall('getBalance', [owner, { commitment: 'confirmed' }]);
+      const v = (lam?.value ?? 0) / 1e9;
+      if (!WAL.sol || Math.abs(WAL.sol.v - v) > 1e-9) { WAL.sol = { v, at: Date.now() }; data.wallet.solBalance = v; }
+      const sigs = await rpcCall('getSignaturesForAddress', [owner, { limit: 15 }]);
+      const since = (data.wallet.updatedAt || Date.now()) - 180000;
+      for (const x of (sigs || []).reverse()) if (!x.err && (x.blockTime || 0) * 1000 > since) await handleSig(x.signature, true);
+    } catch {}
+  }
+  function connectWallet() {
+    const owner = data?.wallet?.address;
+    if (!owner || isDemo() || WAL.ws) return;
+    let ws;
+    try { ws = new WebSocket(RPC_URL.replace(/^http/, 'ws')); } catch { return; }
+    WAL.ws = ws;
+    ws.onopen = () => { WAL.retry = 1000; ws.send(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'logsSubscribe', params: [{ mentions: [owner] }, { commitment: 'confirmed' }] })); };
+    ws.onmessage = (m) => { try { const v = JSON.parse(m.data)?.params?.result?.value; if (v?.signature && !v.err) handleSig(v.signature); } catch {} };
+    ws.onclose = () => { WAL.ws = null; clearInterval(ws._ping); setTimeout(connectWallet, WAL.retry = Math.min(WAL.retry * 2, 30000)); };
+    ws.onerror = () => { try { ws.close(); } catch {} };
+    ws._ping = setInterval(() => { if (ws.readyState === 1) ws.send(JSON.stringify({ jsonrpc: '2.0', id: 9, method: 'getHealth' })); }, 25000);
+  }
+  setInterval(() => { connectWallet(); pollWallet(); }, 20000);
+  // Acompanha uma transação enviada até a blockchain confirmar (ou recusar)
+  async function confirmSig(sig) {
+    for (let i = 0; i < 75; i++) {
+      await new Promise((r) => setTimeout(r, 800));
+      let s = null;
+      try { s = (await rpcCall('getSignatureStatuses', [[sig], { searchTransactionHistory: false }]))?.value?.[0]; } catch {}
+      if (!s) continue;
+      if (s.err) return 'failed';
+      if (s.confirmationStatus === 'confirmed' || s.confirmationStatus === 'finalized') return 'ok';
+    }
+    return 'timeout';
+  }
 
   // =========================================================
   //  Ordens limite (Jupiter Trigger V2): executam sozinhas na blockchain
   // =========================================================
   const TRIG = 'https://api.jup.ag/trigger/v2';
-  const LIM = { orders: {}, busy: false, token: null, tokenExp: 0, wallet: null, loadedFor: null };
+  const LIM = { orders: {}, cancelled: new Set(), busy: false, token: null, tokenExp: 0, wallet: null, loadedFor: null };
   const jupKey = () => store.get('faro-jup-key', '');
   const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   function b58enc(bytes) {
@@ -1392,8 +1615,22 @@
     if (!LIM.token) return;
     try {
       const r = await trig(`/orders/history?state=active&mint=${mint}&limit=50`);
+      const prev = LIM.orders[mint];
       LIM.orders[mint] = (r.orders || []).filter((o) => ['pending', 'open', 'executing'].includes(o.orderState));
       LIM.loadedFor = mint;
+      // Uma ordem que estava aberta sumiu sem você cancelar: executou (ou venceu). Avisa na hora.
+      const gone = (prev || []).filter((o) => !LIM.orders[mint].some((x) => x.id === o.id) && !LIM.cancelled.has(o.id));
+      if (gone.length) {
+        const past = await trig(`/orders/history?state=past&mint=${mint}&limit=20`).catch(() => null);
+        const sym = data?.tokens?.[mint]?.symbol || '';
+        for (const o of gone) {
+          const stt = (past?.orders || []).find((x) => x.id === o.id)?.orderState || '';
+          const txt = /expir/i.test(stt) ? 'venceu sem executar' : /cancel/i.test(stt) ? 'foi cancelada' : /fail/i.test(stt) ? 'falhou' : 'foi executada';
+          toast(`Ordem limite de ${sym} ${txt}`);
+          notify(`Ordem limite de ${sym} ${txt}`, o.inputMint === SOL_MINT ? 'Ordem de compra' : 'Ordem de venda', 'alerta-' + mint);
+        }
+        pollWallet();
+      }
     } catch (e) { if (e.status === 401) { LIM.token = null; sessionStorage.removeItem('faro-trig'); } }
   }
   async function signTx(b64tx) {
@@ -1431,11 +1668,34 @@
   }
   async function cancelLimit(t, id) {
     await trigAuth();
+    LIM.cancelled.add(id);
     const c = await trig(`/orders/price/cancel/${id}`, { method: 'POST', body: '{}' });
     const signed = await signTx(c.transaction);
     await trig(`/orders/price/confirm-cancel/${id}`, { method: 'POST', body: JSON.stringify({ signedTransaction: signed, cancelRequestId: c.requestId }) });
     await loadOrders(t.mint);
   }
+
+  // Troca o conteúdo do detalhe preservando a caixa do gráfico (senão o gráfico recarregaria a cada segundo)
+  function mountDetail(t) {
+    const el = $('detail');
+    const key = t ? `${t.mint}|${chartSrc}|${t.pairAddress || ''}` : '';
+    const tpl = document.createElement('template'); tpl.innerHTML = t ? detailHtml(t) : '';
+    const oldCard = el.querySelector('.d-card'), oldBox = el.querySelector('.chart-box');
+    const newCard = tpl.content.querySelector('.d-card'), newBox = tpl.content.querySelector('.chart-box');
+    if (t && el.dataset.key === key && oldCard && oldBox && newCard && newBox) {
+      for (const c of [...oldCard.children]) if (c !== oldBox) c.remove();
+      let before = true;
+      for (const c of [...newCard.children]) { if (c === newBox) { before = false; continue; } if (before) oldCard.insertBefore(c, oldBox); else oldCard.appendChild(c); }
+      for (const c of [...el.children]) if (c !== oldCard) c.remove();
+      for (const c of [...tpl.content.children]) if (c !== newCard) el.appendChild(c);
+      return false;
+    }
+    if (chartIsMax()) document.body.style.overflow = '';
+    el.replaceChildren(tpl.content); el.dataset.key = key;
+    return true;
+  }
+
+  setInterval(() => { if (LIM.token && LIM.loadedFor && !document.hidden && !LIM.busy) { const m = LIM.loadedFor; loadOrders(m).then(() => { const t = data?.tokens?.[m]; if (t && CH.mint === m && chartSrc === 'faro') decorate(t); }); } }, 30000);
 
   // ---------- Render ----------
   function render() {
@@ -1519,8 +1779,9 @@
 
     // Detalhe
     const t = sel && data.tokens[sel];
-    $('detail').innerHTML = t ? detailHtml(t) : '';
-    if (t) { showChart(t, document.querySelector('[data-lwslot]')); if (LIM.token && LIM.loadedFor !== t.mint) loadOrders(t.mint).then(() => { if (CH.mint === t.mint) decorate(t); render(); }); }
+    const fresh = mountDetail(t);
+    if (t && chartSrc === 'faro' && (fresh || !CH.host?.isConnected)) showChart(t, document.querySelector('[data-lwslot]'));
+    if (t && LIM.token && LIM.loadedFor !== t.mint) { LIM.loadedFor = t.mint; loadOrders(t.mint).then(() => { if (CH.mint === t.mint && chartSrc === 'faro') decorate(t); render(); }); }
     if (!t) document.body.classList.remove('show-detail');
 
     renderRobot();
@@ -1608,33 +1869,19 @@
   syncToggles();
   setTimeout(unlockAudio, 300);
 
-  // ---------- Gráfico expandido: move o mesmo gráfico (com os mesmos traços) para a tela grande ----------
-  function openChart(mint) {
-    const t = data?.tokens?.[mint]; if (!t) return;
-    $('chart-sym').textContent = t.symbol || mint.slice(0, 6);
-    $('chart-sub').textContent = [t.mcapUsd ? `MC ${usd(t.mcapUsd)}` : '', t.liquidityUsd ? `Liquidez ${usd(t.liquidityUsd)}` : ''].filter(Boolean).join(' - ');
-    const pill = $('chart-pill');
-    const lvl = isMine(t) ? levelOf(t) : null;
-    pill.hidden = !lvl;
-    if (lvl) { pill.className = 'pill ' + (lvl === 'ok' ? '' : lvl); pill.textContent = { ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[lvl]; }
-    $('chart-ext').href = dexLink(t);
-    $('chart').classList.add('show');
-    document.body.style.overflow = 'hidden';
-    CH.big = true;
-    const tools = document.querySelector('.chart-tools');
-    if (tools) { CH.toolsHome = tools.parentElement; $('chart-big').before(tools); }
-    if (CH.host) $('chart-big').appendChild(CH.host);
-    if (CH.mint !== mint) showChart(t, $('chart-big'));
+  // ---------- Gráfico em tela cheia: a mesma caixa cresce (sem recarregar nada) ----------
+  const chartIsMax = () => !!document.querySelector('.chart-box.max');
+  function setChartMax(on) {
+    const box = document.querySelector('.chart-box'); if (!box) return;
+    box.classList.toggle('max', on);
+    document.body.style.overflow = on ? 'hidden' : '';
   }
-  function closeChart() {
-    $('chart').classList.remove('show'); document.body.style.overflow = '';
-    CH.big = false;
-    document.querySelectorAll('.chart-panel > .chart-tools').forEach((x) => x.remove());
-    render();
-  }
-  document.addEventListener('click', (e) => { const b = e.target.closest('[data-chart]'); if (b) openChart(b.dataset.chart); });
-  $('chart-back').addEventListener('click', closeChart);
-  $('chart').addEventListener('click', (e) => { if (e.target.id === 'chart') closeChart(); });
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-chart]')) return setChartMax(true);
+    if (e.target.closest('[data-chartmin]')) return setChartMax(false);
+    const c = e.target.closest('[data-csrc]');
+    if (c && c.dataset.csrc !== chartSrc) { const max = chartIsMax(); chartSrc = c.dataset.csrc; store.set('faro-chart-src', chartSrc); render(); if (max) setChartMax(true); }
+  });
   // ---------- Altura do gráfico (arrastar o puxador; fica salva) ----------
   { const h = store.get('faro-chart-h', null); if (h) document.documentElement.style.setProperty('--chart-h', h + 'px'); }
   document.addEventListener('pointerdown', (e) => {
@@ -1643,7 +1890,7 @@
     const startY = e.clientY;
     const start = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--chart-h')) || 240;
     g.classList.add('drag'); g.setPointerCapture(e.pointerId);
-    const move = (ev) => document.documentElement.style.setProperty('--chart-h', Math.round(Math.min(560, Math.max(140, start + ev.clientY - startY))) + 'px');
+    const move = (ev) => document.documentElement.style.setProperty('--chart-h', Math.round(Math.min(900, Math.max(140, start + ev.clientY - startY))) + 'px');
     const up = () => {
       g.classList.remove('drag'); g.removeEventListener('pointermove', move); g.removeEventListener('pointerup', up);
       store.set('faro-chart-h', parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--chart-h')));
@@ -1665,7 +1912,7 @@
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if ($('chart').classList.contains('show')) closeChart();
+    if (chartIsMax()) setChartMax(false);
     else if ($('robot').classList.contains('show')) closeRobot();
     else if (document.body.classList.contains('show-detail')) { document.body.classList.remove('show-detail'); render(); }
   });
@@ -1689,6 +1936,7 @@
     return (web3Promise = web3Promise || new Promise((ok, fail) => {
       const sc = document.createElement('script');
       sc.src = 'https://unpkg.com/@solana/web3.js@1.98.0/lib/index.iife.min.js';
+      sc.integrity = 'sha384-1/Ll6ABlJDlMx1URcif2stL9Fxod/1rg71YHzGqTl6Bwzi0Vq993Jt/oVLFXfUgQ'; sc.crossOrigin = 'anonymous';
       sc.onload = () => ok(window.solanaWeb3); sc.onerror = () => fail(new Error('Não consegui carregar a biblioteca da Solana'));
       document.head.appendChild(sc);
     }));
@@ -1749,8 +1997,22 @@
         st.quote = null; st.amt = '';
         st.msg = sig === 'DEMO'
           ? { html: `<b>Demonstração:</b> nada foi enviado. No Faro de verdade a Phantom abre para você aprovar a ${buy ? 'compra' : 'venda'}.` }
-          : { html: `<b>${buy ? 'Compra' : 'Venda'} enviada.</b> <a href="https://solscan.io/tx/${sig}" target="_blank" rel="noopener">Ver no Solscan</a>. Sua operação atualiza na próxima rodada do robô.` };
-        toast(sig === 'DEMO' ? 'Demonstração: nada foi enviado' : `${buy ? 'Compra' : 'Venda'} de ${t.symbol} enviada`);
+          : { html: `<b>${buy ? 'Compra' : 'Venda'} enviada.</b> Aguardando a confirmação da blockchain...` };
+        if (sig === 'DEMO') toast('Demonstração: nada foi enviado');
+        else {
+          render();
+          const link = `<a href="https://solscan.io/tx/${sig}" target="_blank" rel="noopener">Ver no Solscan</a>`;
+          const res = await confirmSig(sig);
+          if (res === 'failed') { st.msg = { err: true, html: `<b>A ${buy ? 'compra' : 'venda'} falhou na blockchain</b> (quase sempre o preço andou além do slippage). Nada foi trocado; só a taxa de rede foi cobrada. ${link}` }; play('problema'); }
+          else if (res === 'timeout') st.msg = { err: true, html: `Ainda sem confirmação depois de 1 minuto. Confira antes de tentar de novo: ${link}` };
+          else {
+            const done = await handleSig(sig, true);
+            let o = done?.ops?.[0];
+            for (let i = 0; i < 10 && !o; i++) { o = WAL.ops.find((x) => x.sig === sig); if (!o) await new Promise((r) => setTimeout(r, 500)); }
+            st.msg = { html: o ? `<b>${buy ? 'Compra' : 'Venda'} confirmada.</b> ${buy ? 'Recebeu' : 'Vendeu'} ${tokFmt(Math.abs(o.tokens))} ${esc(t.symbol)} por ${solFmt(Math.abs(o.sol), 4)}. ${link}` : `<b>${buy ? 'Compra' : 'Venda'} confirmada.</b> ${link}` };
+            toast(`${buy ? 'Compra' : 'Venda'} de ${t.symbol} confirmada`);
+          }
+        }
       }
     } catch (e) {
       st.quote = null;

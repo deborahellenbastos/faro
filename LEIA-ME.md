@@ -105,3 +105,18 @@ Por enquanto o robô só compra. A venda continua manual.
 - Painel sem dados: veja a aba Actions. Um X vermelho mostra o erro.
 - Erro de permissão no "Salvar resultado": vá em **Settings**, depois **Actions**, depois **General**, e em *Workflow permissions* marque **Read and write**.
 - Testar a lógica sem internet: `node scanner/test.mjs`
+
+## Tempo real (o que atualiza e de onde vem)
+
+| O quê | Frequência | Fonte |
+|---|---|---|
+| Preço das suas moedas e da moeda aberta | a cada 2,5 s | Jupiter (a mesma da Phantom) |
+| Liquidez, volume, compras e vendas | a cada 10 s | DexScreener |
+| Suas compras, vendas e saldos | na hora em que a transação confirma | blockchain da Solana (conexão pública) |
+| Alerta de queda brusca de liquidez nas suas moedas | a cada 10 s, sem esperar o robô | DexScreener |
+| Radar de moedas novas e checagem de segurança | a cada 5 min | robô no GitHub |
+
+- O gráfico tem dois modos: **Dex** (DexScreener, com Fibonacci, régua e todas as ferramentas) e **Faro** (com suas compras, vendas, preço médio e ordens marcadas).
+- Compra e venda pelo painel só aparecem como "confirmada" depois que a blockchain confirma. Se falhar, o painel avisa.
+- O robô roda em sequência por ~55 minutos a cada execução e grava por cima do resultado anterior, para o histórico do repositório não crescer.
+- Valor em dólar de cada compra e venda: usa o preço do SOL no minuto exato da transação. Moedas recebidas ou enviadas (transferência ou ordem limite executada) entram pelo preço de mercado daquele minuto e aparecem como "valor estimado".

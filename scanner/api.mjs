@@ -96,6 +96,7 @@ const IGNORE = new Set([
   'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
   'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
 ]);
+const STABLE = new Set(['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB']);
 const TOKEN_PROGRAMS = ['TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'];
 
 const RPC = () => process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -172,10 +173,12 @@ export function parseOps(tx, owner, sig) {
   const RENT = 0.00203928;
   const owned = (arr, mint) => (arr || []).some((b) => b.owner === owner && b.mint === mint);
   const deltas = [];
+  let stable = 0;
   for (const mint of new Set([...pre.keys(), ...post.keys()])) {
     const d = (post.get(mint) || 0) - (pre.get(mint) || 0);
     if (Math.abs(d) < 1e-12) continue;
     if (mint === 'So11111111111111111111111111111111111111112') sol += d; // SOL embrulhado conta como SOL
+    else if (STABLE.has(mint)) stable += d; // compra/venda paga em dólar (USDC/USDT)
     else if (!IGNORE.has(mint)) deltas.push([mint, d]);
   }
   // Só registramos troca simples (1 moeda contra SOL), que é o caso de compra/venda de memecoin
@@ -183,7 +186,21 @@ export function parseOps(tx, owner, sig) {
   const mint = deltas[0][0];
   if (!owned(meta.preTokenBalances, mint) && owned(meta.postTokenBalances, mint)) sol += RENT; // abriu a conta
   if (owned(meta.preTokenBalances, mint) && !owned(meta.postTokenBalances, mint)) sol -= RENT; // fechou a conta
-  return [{ sig, at: (tx.blockTime || 0) * 1000, mint, tokens: deltas[0][1], sol }];
+  const op = { sig, at: (tx.blockTime || 0) * 1000, mint, tokens: deltas[0][1], sol };
+  if (Math.abs(stable) > 0.005) op.stable = stable; // vira SOL equivalente quando soubermos o preço do SOL daquele minuto
+  return [op];
+}
+
+// Preço em dólar de um par num minuto exato do passado (GeckoTerminal). Para o SOL, use SOL_POOL.
+export const SOL_POOL = '58oQChx4yWmvKdwLLZzBi4ChoCc2fqCUWBkwMihLYQo2'; // SOL/USDC, o par mais líquido
+export async function getPriceAt(pairAddress, atMs) {
+  const before = Math.floor(atMs / 1000) + 60;
+  const url = `https://api.geckoterminal.com/api/v2/networks/solana/pools/${pairAddress}/ohlcv/minute?aggregate=1&before_timestamp=${before}&limit=1&currency=usd`;
+  const j = await getJson(url, { headers: { accept: 'application/json;version=20230302' }, retries: 1 });
+  const c = j?.data?.attributes?.ohlcv_list?.[0];
+  if (!c || Math.abs(c[0] * 1000 - atMs) > 3 * 3600000) return null; // sem vela perto daquele horário
+  const v = Number(c[4]);
+  return Number.isFinite(v) && v > 0 ? v : null;
 }
 
 // Velas de 5 minutos das últimas ~6h (GeckoTerminal, grátis, sem chave)
