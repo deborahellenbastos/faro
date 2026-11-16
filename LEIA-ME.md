@@ -246,3 +246,9 @@ Antes só existia o "-40% do topo com confirmação". Por isso a SENT (16/11) fo
 Não protege de golpe que derruba 99% num único minuto, como a VI e a GTAHUB. Nesses casos não dá tempo de vender.
 
 Ajuste em `config.json`, `venda.stopPerda`.
+
+## Dev com histórico ruim
+
+O item "Dev limpo" reprova a moeda, de vez, em dois casos:
+- **O dev já lançou moedas e todas morreram:** nenhuma passou de US$ 30 mil de market cap. Em 16/11, os únicos devs com histórico eram os da SENT e da 6STAR, e as duas foram golpe. Ajuste em `filtros.devAnterioresMcMinUsd`.
+- **É o mesmo dev de um golpe que o Faro já viu:** quando uma moeda aprovada some (liquidez sumiu, rug ou -90%), o robô guarda a carteira do criador e reprova as próximas moedas dele. Em 16/11, o mesmo dev lançou a PASSED e a 6STAR e as duas viraram golpe. Ele ainda aparece em outras 3 moedas.

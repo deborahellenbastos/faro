@@ -341,6 +341,19 @@ assert.equal(state.lastRun.autoCompra, null);
   assert.ok(rocco.twinCount < 7, `cauda de holders pequenos não é bundle (${rocco.twinCount})`);
 }
 
+// Dev com histórico de moedas mortas (SENT, 6STAR) e dev de golpe anterior: reprovados no item Dev
+{
+  const { summarizeRug, runChecks } = await import('./analyze.mjs');
+  const cfgD = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
+  const m = { liquidityUsd: 20000, mcapUsd: 90000, ageMin: 20, priceChangeH1: 10, volumeH1: 5000, buysH1: 100, sellsH1: 80, buyRatioH1: 55 };
+  const base = { topHolders: [{ address: 'a', owner: 'o', pct: 3 }], markets: [{ lp: { lpLockedPct: 100 } }], creator: 'DEV1', score_normalised: 1, totalHolders: 900 };
+  const dev = (rep, extra = {}) => runChecks(m, summarizeRug({ ...base, ...rep }), { ...cfgD, ...extra }).find((c) => c.id === 'dev');
+  assert.equal(dev({ creatorTokens: [{ marketCap: 2033 }, { marketCap: 8101 }] }).ok, false);
+  assert.equal(dev({ creatorTokens: [{ marketCap: 2033 }, { marketCap: 450000 }] }).ok, true, 'dev com uma moeda que deu certo passa');
+  assert.equal(dev({}, { __badDevs: { DEV1: { symbol: 'PASSED' } } }).ok, false);
+  assert.match(dev({}, { __badDevs: { DEV1: { symbol: 'PASSED' } } }).detail, /golpe anterior \(PASSED\)/);
+}
+
 // O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais
 {
   const norm = (x) => x.replace(/export /g, '').replace(/\s+/g, ' ').trim();

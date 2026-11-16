@@ -139,6 +139,7 @@ export function summarizeRug(r) {
     creator,
     devPct,
     devPreviousTokens: Array.isArray(r.creatorTokens) ? r.creatorTokens.length : null,
+    devPrevMaxMc: (() => { const v = (Array.isArray(r.creatorTokens) ? r.creatorTokens : []).map((c) => Number(c?.marketCap)).filter(Number.isFinite); return v.length ? Math.max(...v) : null; })(),
     totalHolders: r.totalHolders != null ? num(r.totalHolders) : null,
     scoreNormalised: r.score_normalised != null ? num(r.score_normalised) : null,
     transferFeePct: num(r.transferFee?.pct),
@@ -185,10 +186,17 @@ export function runChecks(m, rug, cfg) {
     devOk = false;
     devProblems.push(`dev já criou ${rug.devPreviousTokens} moedas (máx ${f.devMaxTokensAnteriores})`);
   }
+  // Dev que já lançou moedas e todas morreram (nenhuma passou de US$ 30 mil de market cap): padrão de quem lança, despeja e repete (SENT, 6STAR em 16/11)
+  if (rug.devPreviousTokens > 0 && rug.devPrevMaxMc != null && rug.devPrevMaxMc < (f.devAnterioresMcMinUsd ?? 30000)) {
+    devOk = false;
+    devProblems.push(`dev já lançou ${rug.devPreviousTokens} ${rug.devPreviousTokens === 1 ? 'moeda que morreu' : 'moedas que morreram'} (a maior chegou a ${fmtUsd(rug.devPrevMaxMc)})`);
+  }
+  // Dev (ou quem bancou a carteira dele) de um golpe que o Faro já viu
+  if (rug.creator && cfg.__badDevs?.[rug.creator]) { devOk = false; devProblems.push(`mesmo dev de um golpe anterior (${cfg.__badDevs[rug.creator].symbol})`); }
   const devHist = rug.devPreviousTokens == null ? 'histórico: conferir no GMGN' : `${rug.devPreviousTokens} moedas anteriores`;
   add('dev', '5. Dev limpo', devOk,
     devProblems.length ? devProblems.join('; ') : rug.devPct == null ? `Carteira do dev não identificada; ${devHist}` : `Dev segura ${fmtPct(rug.devPct)}; ${devHist}`,
-    false);
+    devProblems.some((p) => /morre|golpe anterior/.test(p)));
 
   const liqRatio = m.mcapUsd > 0 ? (m.liquidityUsd / m.mcapUsd) * 100 : 0;
   add('liquidez', '6. Liquidez saudável', m.liquidityUsd >= f.liquidezMinimaUsd && liqRatio >= f.liquidezSobreMarketCapMinPct,

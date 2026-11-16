@@ -24,6 +24,15 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   state.tokens = state.tokens || {};
   state.trades = state.trades || [];
   const tokens = state.tokens;
+  // Devs de golpes que o Faro já viu: moedas novas do mesmo dev são reprovadas
+  state.badDevs = state.badDevs || {};
+  for (const t of Object.values(tokens)) {
+    const c = t.rug?.creator; if (!c || state.badDevs[c] || !t.approvedAt) continue;
+    const rugged = (t.safety?.alerts || []).some((a) => a.id === 'liq-sumiu' || a.id === 'rugged') || (t.changePct ?? 0) <= -90;
+    if (rugged) state.badDevs[c] = { symbol: t.symbol, mint: t.mint, at: now };
+  }
+  { const e = Object.entries(state.badDevs); if (e.length > 500) state.badDevs = Object.fromEntries(e.sort((a, b) => b[1].at - a[1].at).slice(0, 500)); }
+  cfg.__badDevs = state.badDevs;
   const maxAgeMin = cfg.busca.idadeMaximaHoras * 60;
   const trackMs = cfg.busca.diasAcompanhando * 86400000;
 
