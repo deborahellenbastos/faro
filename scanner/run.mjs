@@ -322,9 +322,9 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   for (const t of Object.values(tokens)) {
     const a = t.watchSell; if (!a || !t.safety) continue;
     const msg = a.skipped ? `Queda forte (${a.why}), mas a posição vale menos de US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender`
-      : a.ok ? `Vigia rápida vendeu 100%${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`
+      : a.ok ? `Robô vendeu 100%${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`
       : `Vigia rápida tentou vender (${a.why}) e falhou: ${a.erro}. Venda manualmente!`;
-    t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: 'danger', msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
+    t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: a.kind === 'lucro' ? 'warn' : 'danger', msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
   }
 
   // 7. Limpeza

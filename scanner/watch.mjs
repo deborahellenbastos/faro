@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { decrypt } from './vault.mjs';
 import { createTrader } from './trader.mjs';
+import { getRugReport, getWalletHoldings } from './api.mjs';
+import { summarizeRug, scamSignals } from './analyze.mjs';
 
 const seconds = Math.max(0, Number(process.argv[2]) || 0);
 const until = Date.now() + seconds * 1000;
@@ -45,19 +47,96 @@ const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
 // Moedas que você tem agora, com o pico desde a compra (velas do robô + o que a vigia já viu)
 // Uma venda feita antes de uma nova compra da mesma moeda não conta mais
 const done = (t) => mem.sold[t.mint] && mem.sold[t.mint].at > (t.position?.lastBuyAt || 0);
-const held = Object.values(state.tokens || {}).filter((t) => t.held && t.heldAmount > 0 && !done(t));
+let held = Object.values(state.tokens || {}).filter((t) => t.held && t.heldAmount > 0 && !done(t));
+const L = cfg.venda?.lucro || {};
+const lucroOn = L.ligado === true && process.env.LUCRO_AUTO !== 'false';
+const golpeOn = cfg.venda?.automatica === true && process.env.AUTO_SELL === 'true';
+let lastHoldings = 0, lastRug = 0, lastAuth = 0;
+mem.base = mem.base || {};
+
+// Carteira ao vivo: moedas compradas depois da última rodada também entram na vigia
+async function refreshHoldings() {
+  try {
+    const list = await getWalletHoldings(wallet);
+    const map = new Map(list.map((h) => [h.mint, h]));
+    held = held.filter((t) => map.has(t.mint)).map((t) => ({ ...t, heldAmount: map.get(t.mint).amount }));
+    for (const h of list) {
+      if (held.some((t) => t.mint === h.mint)) continue;
+      const old = state.tokens?.[h.mint] || { mint: h.mint, symbol: h.mint.slice(0, 6) };
+      const t = { ...old, held: true, heldAmount: h.amount, position: old.position, isNew: !old.held };
+      if (!done(t)) { held.push(t); log(`nova na carteira: ${t.symbol}`); }
+    }
+  } catch (e) { log(`não consegui ler a carteira: ${e.message}`, true); }
+}
+
+// Sinais de golpe no contrato: mint/freeze direto da blockchain (rápido) e RugCheck completo a cada minuto
+async function contractCheck(now) {
+  const out = {};
+  if (!golpeOn || !held.length) return out;
+  if (now - lastAuth >= 10000) {
+    lastAuth = now;
+    try {
+      const r = await fetch(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getMultipleAccounts', params: [held.map((t) => t.mint), { encoding: 'jsonParsed' }] }), signal: AbortSignal.timeout(8000) }).then((x) => x.json());
+      (r?.result?.value || []).forEach((acc, i) => {
+        const t = held[i]; const info = acc?.data?.parsed?.info; if (!t || !info) return;
+        const b = (mem.base[t.mint] = mem.base[t.mint] || { mint: info.mintAuthority != null, freeze: info.freezeAuthority != null });
+        const why = [];
+        if (!b.mint && info.mintAuthority != null) why.push('mint authority reativada (podem criar tokens novos)');
+        if (!b.freeze && info.freezeAuthority != null) why.push('freeze authority reativada (podem congelar sua carteira)');
+        if (why.length) out[t.mint] = why.join('; ');
+      });
+    } catch (e) { log(`checagem do contrato falhou: ${e.message}`, true); }
+  }
+  if (now - lastRug >= 60000) {
+    lastRug = now;
+    for (const t of held) {
+      try {
+        const sum = summarizeRug(await getRugReport(t.mint));
+        if (!sum) continue;
+        // Moeda nova na carteira: a primeira leitura vira a referência (o que já era assim na compra não conta)
+        const mb = (mem.base[t.mint] = mem.base[t.mint] || {});
+        if (!mb.rug) mb.rug = { lpLockedPct: sum.lpLockedPct, devPct: sum.devPct, mint: sum.mintAuthority != null, freeze: sum.freezeAuthority != null };
+        const base = t.baseline || mb.rug;
+        const sig = scamSignals(base, sum, cfg);
+        if (sig.length) out[t.mint] = [out[t.mint], ...sig].filter(Boolean).join('; ');
+        await sleep(400);
+      } catch (e) { if (e.rateLimited) break; }
+    }
+  }
+  return out;
+}
+
+async function sell(t, why, kind, px) {
+  const worth = (t.heldAmount || 0) * px;
+  if (worth < minUsd) { mem.sold[t.mint] = { skipped: true, at: Date.now(), why, worth, kind }; log(`${t.symbol}: ${why}, mas vale só US$ ${worth.toFixed(2)}. Não vendi.`); return; }
+  log(`${t.symbol}: ${why}. Vendendo 100%...`);
+  try {
+    const s = await trader.sellAll(t.mint);
+    mem.sold[t.mint] = { ok: true, at: Date.now(), sig: s.sig, outSol: s.outSol, why, kind };
+    log(s.nada ? `${t.symbol}: nada para vender.` : `VENDEU 100% de ${t.symbol} por ${s.outSol.toFixed(4)} SOL (tx ${s.sig.slice(0, 8)}...)`);
+  } catch (e) {
+    const tries = ((mem.retry || {})[t.mint] || 0) + 1;
+    log(`Venda de ${t.symbol} falhou (${tries}/3): ${e.message}`, true);
+    mem.retry = { ...(mem.retry || {}), [t.mint]: tries };
+    if (tries >= 3) mem.sold[t.mint] = { ok: false, at: Date.now(), why, erro: e.message, kind };
+  }
+}
 for (const t of held) {
   const since = t.position?.lastBuyAt || t.heldSince || 0;
   const candleTop = Math.max(0, ...(t.candles || []).filter((c) => c[0] >= since - 300000).map((c) => c[2]));
   mem.peak[t.mint] = Math.max(mem.peak[t.mint] || 0, t.position?.avgPriceUsd || 0, candleTop, t.priceUsd || 0);
 }
-if (!held.length) { await idle(); process.exit(0); }
-log(`vigiando ${held.map((t) => t.symbol).join(', ')} (vende com -${dropPct}% do pico ou liquidez -${liqPct}% em ${liqWin / 60000} min)`);
+await refreshHoldings(); lastHoldings = Date.now();
+if (!held.length && !wallet) { await idle(); process.exit(0); }
+log(`vigiando ${held.map((t) => t.symbol).join(', ') || '(carteira vazia)'}: golpe ${golpeOn ? 'sim' : 'não'}, queda -${dropPct}% do pico ou liquidez -${liqPct}% em ${liqWin / 60000} min, lucro ${lucroOn ? `+${L.alvoPct}%` : 'não'}`);
 
 while (Date.now() < until) {
+  if (Date.now() - lastHoldings >= 30000) { lastHoldings = Date.now(); await refreshHoldings(); }
   const live = held.filter((t) => !done(t));
-  if (!live.length) break;
+  if (!live.length) { await sleep(Math.min(10000, Math.max(0, until - Date.now()))); continue; }
   try {
+    const scam = await contractCheck(Date.now());
     const r = await fetch(`https://api.dexscreener.com/tokens/v1/solana/${live.map((t) => t.mint).join(',')}`, { signal: AbortSignal.timeout(8000) });
     const pairs = r.ok ? await r.json() : [];
     const now = Date.now();
@@ -67,29 +146,20 @@ while (Date.now() < until) {
       const p = ps.find((x) => x.pairAddress === t.pairAddress) || ps.sort((a, b) => (b?.liquidity?.usd || 0) - (a?.liquidity?.usd || 0))[0];
       const px = Number(p?.priceUsd), liq = Number(p?.liquidity?.usd);
       if (!(px > 0)) continue;
-      mem.peak[t.mint] = Math.max(mem.peak[t.mint] || 0, px);
+      if (done(t)) continue;
+      mem.peak[t.mint] = Math.max(mem.peak[t.mint] || 0, t.position?.avgPriceUsd || 0, px);
       const w = (mem.liq[t.mint] = (mem.liq[t.mint] || []).filter((x) => now - x[0] <= liqWin));
       if (liq > 0) w.push([now, liq]);
       const liqTop = Math.max(0, ...w.map((x) => x[1]));
       const fromPeak = (1 - px / mem.peak[t.mint]) * 100;
       const liqDrop = liqTop > 0 && liq > 0 ? (1 - liq / liqTop) * 100 : 0;
-      let why = null;
-      if (fromPeak >= dropPct) why = `preço caiu ${fromPeak.toFixed(0)}% do pico desde a compra`;
-      else if (liqDrop >= liqPct) why = `liquidez caiu ${liqDrop.toFixed(0)}% em poucos minutos`;
-      if (!why) continue;
-      const worth = (t.heldAmount || 0) * px;
-      if (worth < minUsd) { mem.sold[t.mint] = { skipped: true, at: now, why, worth }; log(`${t.symbol}: ${why}, mas vale só US$ ${worth.toFixed(2)}. Não vendi.`); continue; }
-      log(`${t.symbol}: ${why}. Vendendo 100%...`);
-      try {
-        const s = await trader.sellAll(t.mint);
-        mem.sold[t.mint] = { ok: true, at: Date.now(), sig: s.sig, outSol: s.outSol, why };
-        log(s.nada ? `${t.symbol}: nada para vender.` : `VENDEU 100% de ${t.symbol} por ${s.outSol.toFixed(4)} SOL (tx ${s.sig.slice(0, 8)}...)`);
-      } catch (e) {
-        const tries = ((mem.retry || {})[t.mint] || 0) + 1;
-        log(`Venda de ${t.symbol} falhou (${tries}/3): ${e.message}`, true);
-        mem.retry = { ...(mem.retry || {}), [t.mint]: tries };
-        if (tries >= 3) mem.sold[t.mint] = { ok: false, at: Date.now(), why, erro: e.message };
-      }
+      // 1. Golpe no contrato  2. Queda forte  3. Lucro em posição pequena
+      const cost = t.position?.known ? t.position.costOpenUsd : 0;
+      const gain = cost > 0 ? ((t.heldAmount * px) / cost - 1) * 100 : null;
+      if (scam[t.mint]) await sell(t, `golpe no contrato: ${scam[t.mint]}`, 'golpe', px);
+      else if (fromPeak >= dropPct) await sell(t, `preço caiu ${fromPeak.toFixed(0)}% do pico desde a compra`, 'vigia', px);
+      else if (liqDrop >= liqPct) await sell(t, `liquidez caiu ${liqDrop.toFixed(0)}% em poucos minutos`, 'vigia', px);
+      else if (lucroOn && cost > 0 && cost < (L.ateUsd ?? 10) && gain >= (L.alvoPct ?? 100)) await sell(t, `lucro de +${gain.toFixed(0)}% (investido US$ ${cost.toFixed(2)})`, 'lucro', px);
     }
     await save();
   } catch (e) { log(`consulta falhou: ${e.message}`, true); }

@@ -126,7 +126,7 @@ Por enquanto o robô só compra. A venda continua manual.
 | Proteção | Quando vende 100% | Frequência | Liga/desliga |
 |---|---|---|---|
 | Vigia rápida | preço cai 40% do pico desde a compra, ou liquidez cai 30% em até 5 min | a cada ~10 s | variável `VIGIA` = `false` desliga |
-| Golpe no contrato | rugada, mint/freeze reativados, liquidez destravada, dev vendeu metade | a cada 5 min | variável `AUTO_SELL` |
-| Lucro (posições < US$ 10) | +100% sobre o investido | a cada 5 min | variável `LUCRO_AUTO` = `false` desliga |
+| Golpe no contrato | rugada, mint/freeze reativados, liquidez destravada, dev vendeu metade | mint/freeze a cada ~10 s; RugCheck a cada 1 min | variável `AUTO_SELL` |
+| Lucro (posições < US$ 10) | +100% sobre o investido | a cada ~10 s | variável `LUCRO_AUTO` = `false` desliga |
 
-Nenhuma vende se a posição valer menos de US$ 1. Os números ficam no `config.json` (bloco `venda`).
+A vigia também relê a carteira a cada 30 s, então moedas recém-compradas entram logo. Nenhuma vende se a posição valer menos de US$ 1. Os números ficam no `config.json` (bloco `venda`).
