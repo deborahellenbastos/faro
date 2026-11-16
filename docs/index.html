@@ -950,6 +950,9 @@
   const isSold = (t) => !!t.closedOp && !t.held;
   const isLost = (t) => !!(t.held && t.position?.known && t.position.openPnlPct <= -95);
   const isClosed = (t) => isSold(t) || isLost(t);
+  // Morta: você ainda tem, mas vale menos de US$ 1 e o gráfico morreu (ou caiu 50%+). Sai da conta das transações abertas
+  // e volta sozinha se passar a valer US$ 1 ou mais
+  const isDead = (t) => !!(t.held && t.position?.known && !isLost(t) && (t.position.valueUsd || 0) < 1 && (t.shape?.tipo === 'morta' || t.position.openPnlPct <= -50));
   // Resultado de uma operação encerrada fica congelado (não muda com o preço da moeda nem do SOL depois da venda)
   const CLOSED = store.get('faro-closed', {});
   function closedResult(t) {
@@ -1859,11 +1862,13 @@
     const sol = data?.wallet?.solBalance;
     const anyT = Object.values(data?.tokens || {}).find((t) => t.priceNative > 0 && t.priceUsd > 0);
     const px = LIVE.solUsd || (anyT ? anyT.priceUsd / anyT.priceNative : 0);
-    const coins = Object.values(data?.tokens || {}).filter((t) => isMine(t) && !isLost(t)).reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
+    const mineAll = Object.values(data?.tokens || {}).filter((t) => isMine(t) && !isLost(t));
+    const coins = mineAll.filter((t) => !isDead(t)).reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
+    const deadUsd = mineAll.filter(isDead).reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
     if (sol == null || !px) return { sol, coins, solUsd: null, total: null, buys: null };
     const perSol = data.banca?.solPorCompra || data.config?.compra?.solPorCompra || 0;
     const reserve = 0.01; // deixa um pouco de SOL para as taxas de rede
-    return { sol, coins, solUsd: sol * px, total: sol * px + coins, perBuy: perSol * px, buys: perSol > 0 ? Math.max(0, Math.floor((sol - reserve) / perSol)) : null };
+    return { sol, coins, solUsd: sol * px, total: sol * px + coins + deadUsd, perBuy: perSol * px, buys: perSol > 0 ? Math.max(0, Math.floor((sol - reserve) / perSol)) : null };
   }
   const solUsdOf = (t) => LIVE.solUsd || (t?.priceNative > 0 ? t.priceUsd / t.priceNative : 0);
   // Quantidade em SOL a partir do que foi digitado (em SOL ou em dólar)
@@ -2903,12 +2908,13 @@
     const approved = all.filter((t) => t.status === 'aprovada');
     const order = { danger: 0, warn: 1, ok: 2 };
     const held = all.filter(isMine);
-    const mine = held.filter((t) => !isLost(t)).sort((a, b) => order[levelOf(a)] - order[levelOf(b)] || (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
+    const dead = held.filter((t) => !isLost(t) && isDead(t)).sort((a, b) => (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
+    const mine = held.filter((t) => !isLost(t) && !isDead(t)).sort((a, b) => order[levelOf(a)] - order[levelOf(b)] || (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
     const closed = [...held.filter(isLost), ...all.filter(isSold)].sort((a, b) => (b.history?.[0]?.at || 0) - (a.history?.[0]?.at || 0));
     const danger = mine.filter((t) => levelOf(t) === 'danger').length;
     // Aprovada que virou perigo não fica no radar: vai para as reprovadas na hora (o robô confirma na rodada)
     const fell = (t) => t.status === 'aprovada' && levelOf(t) === 'danger';
-    const lists = { minhas: [...mine, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t)), aguardando: by('aguardando'), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => fell(t) && !isSold(t))] };
+    const lists = { minhas: [...mine, ...dead, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t)), aguardando: by('aguardando'), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => fell(t) && !isSold(t))] };
 
     // Moeda aberta que você acabou de comprar: o Faro vai junto com ela para a Carteira
     const opened = ui.sel[ui.tab];
@@ -2938,7 +2944,7 @@
     if (ui.tab === 'minhas') {
       const ps = held.map((t) => t.position).filter((p) => p && p.known);
       const shut = closed.filter(isSold).map(closedResult).filter(Boolean);
-      const value = held.reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
+      const value = mine.reduce((a, t) => a + (t.position?.valueUsd || 0), 0);
       const spent = ps.reduce((a, p) => a + (p.spentUsd || 0), 0) + shut.reduce((a, r) => a + r.spent, 0);
       const pnl = ps.reduce((a, p) => a + (p.pnlUsd || 0), 0) + shut.reduce((a, r) => a + r.pnl, 0);
       const W = walletTotals();
@@ -2946,9 +2952,9 @@
       const d0 = new Date(); d0.setHours(0, 0, 0, 0); const today = d0.getTime();
       const D = { pnl: 0, spent: 0, n: 0 };
       for (const t of closed.filter(isSold)) { const r = closedResult(t); if (r && (t.history?.[0]?.at || 0) >= today) { D.pnl += r.pnl; D.spent += r.spent; D.n++; } }
-      for (const t of mine) { const p = t.position; if (p?.known && (p.firstBuyAt || posStart(t)) >= today) { D.pnl += p.pnlUsd || 0; D.spent += p.spentUsd || 0; D.n++; } }
+      for (const t of [...mine, ...dead]) { const p = t.position; if (p?.known && (p.firstBuyAt || posStart(t)) >= today) { D.pnl += p.pnlUsd || 0; D.spent += p.spentUsd || 0; D.n++; } }
       $('summary').innerHTML = [
-        stat('Em transações abertas', money(value), `${mine.length} em aberto - hoje: <span class="${cls(D.pnl)}">${signedMoney(D.pnl)}</span>${D.spent ? ` (${pct((D.pnl / D.spent) * 100)})` : ''}`, `hero ${D.n ? (D.pnl > 0.005 ? '' : D.pnl < -0.005 ? 'neg' : 'flat') : 'flat'}`),
+        stat('Em transações abertas', money(value), `${mine.length} em aberto${dead.length ? ` - ${dead.length} ${dead.length === 1 ? 'morta' : 'mortas'}` : ''} - hoje: <span class="${cls(D.pnl)}">${signedMoney(D.pnl)}</span>${D.spent ? ` (${pct((D.pnl / D.spent) * 100)})` : ''}`, `hero ${D.n ? (D.pnl > 0.005 ? '' : D.pnl < -0.005 ? 'neg' : 'flat') : 'flat'}`),
         stat('Total na carteira', W.total != null ? money(W.total) : '-', 'transações abertas + disponível para comprar'),
         stat('Disponível para comprar', W.sol != null ? solFmt(W.sol, 4) : '-', W.solUsd != null ? `aprox. ${money(W.solUsd)}${W.buys != null ? ` - dá para ${W.buys} ${W.buys === 1 ? 'compra' : 'compras'}` : ''}` : 'saldo em SOL'),
         stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, spent ? `${pct((pnl / spent) * 100)} sobre ${money(spent)} investidos` : ''),
@@ -3006,8 +3012,9 @@
     const rows = slice.map((t, i) => {
       let head = '';
       if (ui.tab === 'minhas' && !q) {
-        const c = isClosed(t), prev = slice[i - 1];
-        if (!c && i === 0) head = sub('Em aberto', mine.length);
+        const c = isClosed(t), dd = !c && isDead(t), prev = slice[i - 1];
+        if (!c && !dd && i === 0) head = sub('Em aberto', mine.length);
+        if (dd && (!prev || !isDead(prev))) head = sub('Mortas - valem menos de US$ 1', dead.length);
         if (c && (!prev || !isClosed(prev))) head = sub('Encerradas', closed.length);
       }
       return head + rowHtml(t, t.mint === sel);
