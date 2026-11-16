@@ -367,6 +367,10 @@
   .new-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #60a5fa; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(96,165,250,.18); }
   .mini-tag.new { color: #60a5fa; background: rgba(96,165,250,.14); }
   .mini-tag.bad { color: #ff5b5b; background: rgba(255,91,91,.12); }
+  .info-btn { border: 0; background: none; padding: 0 0 0 4px; color: var(--faint); cursor: pointer; vertical-align: -2px; line-height: 0; display: inline-block; }
+  .info-btn:hover, .info-btn.on { color: var(--text); } .rr .info-btn { color: inherit; }
+  .info-box { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-2); padding: 10px 12px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+  .info-box b { color: var(--text); }
   .sig { padding: var(--sp-4); display: grid; gap: 8px; border-left: 3px solid var(--line-2); }
   .sig.good { border-left-color: var(--green); } .sig.warn { border-left-color: #f5b14c; } .sig.bad { border-left-color: #ff5b5b; }
   .sig-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -1187,7 +1191,8 @@
     const row = (label, field, val, chips) => `<div class="pl-row"><label>${label}</label><input inputmode="decimal" value="${esc(st[field] || pxFmt(val))}" data-pfield="${field}" data-tmint="${m}"><small>US$</small>
       <div class="pl-chips">${chips.map(([txt, px]) => `<button data-pset="${field}" data-px="${px}" data-tmint="${m}">${txt}</button>`).join('')}</div></div>`;
     return `<div class="plan ${ok ? 'ok' : 'bad'}">
-      <div class="pl-h"><b>Plano da operação</b><span class="rr ${ok ? 'ok' : 'bad'}">risco/retorno 1:${P.rr.toFixed(1).replace('.', ',')}</span></div>
+      <div class="pl-h"><b>Plano da operação</b><span class="rr ${ok ? 'ok' : 'bad'}">risco/retorno 1:${P.rr.toFixed(1).replace('.', ',')}${infoBtn('rr', 'rr-plan-' + m)}</span></div>
+      ${infoBox('rr', 'rr-plan-' + m)}
       ${row('Stop', 'pStop', P.stop, [['fundo recente', P.sugStop], ['-15%', P.E * 0.85], ['-25%', P.E * 0.75], ['-35%', P.E * 0.65]])}
       ${row('Alvo', 'pTp', P.tp, [['topo anterior', P.sugTp], ['+50%', P.E * 1.5], ['+100%', P.E * 2], ['+200%', P.E * 3]])}
       <div class="pl-sum">
@@ -1291,6 +1296,17 @@
   }
   // </fim-sinais>
 
+  // Ícone de informação: toca para abrir/fechar a explicação (funciona no celular, sem depender de passar o mouse)
+  const INFO_TXT = {
+    rr: `<b>Risco/retorno</b> compara quanto você pode perder com quanto pode ganhar. <b>1:2</b> quer dizer: se der errado (bater o stop), você perde 1; se der certo (bater o alvo), ganha 2.<br><br>
+      Exemplo com US$ 3,50: stop a -20% perde US$ 0,70; alvo a +40% ganha US$ 1,40. Isso é 1:2.<br><br>
+      Com 1:2 ou mais, mesmo acertando só 1 de cada 3 operações você não fica no prejuízo. Abaixo disso (como 1:1,4), o ganho é pequeno para o risco, normalmente porque o preço já está perto do topo. Aí vale esperar a correção.`,
+  };
+  const INFO_OPEN = new Set();
+  const infoBtn = (key, id) => `<button class="info-btn ${INFO_OPEN.has(id) ? 'on' : ''}" data-info="${id}" aria-label="O que é isso?" title="O que é isso?"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>`;
+  const infoBox = (key, id) => (INFO_OPEN.has(id) ? `<div class="info-box">${INFO_TXT[key]}</div>` : '');
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-info]'); if (!b) return; e.preventDefault(); const id = b.dataset.info; INFO_OPEN.has(id) ? INFO_OPEN.delete(id) : INFO_OPEN.add(id); render(); });
+
   // Sinal ao vivo: velas do robô (5 min) ou as do gráfico aberto, com o preço de agora
   function liveSig(t) {
     let c = t.candles || [];
@@ -1331,8 +1347,9 @@
     if (g.tipo === 'entrada' && g.rr > 0) lv.push(['Risco/retorno', `1:${g.rr.toFixed(1).replace('.', ',')}`]);
     const use = g.tipo === 'entrada' && g.stop && g.alvo && ['entrada', 'zona', 'perto'].includes(g.fase)
       ? `<button class="linkbtn planlink" data-sigplan="${esc(t.mint)}" data-stop="${g.stop}" data-tp="${g.alvo}">Usar este stop e alvo no plano</button>` : '';
+    const iid = 'rr-sig-' + t.mint;
     return `<section class="panel sig ${cls}"><div class="sig-h"><span>${g.tipo === 'entrada' ? 'Sinal de entrada' : 'Sinal de saída'}</span><b>${esc(g.titulo)}</b></div>
-      <p>${esc(g.msg)}</p>${lv.length ? `<div class="sig-lv">${lv.map(([a, b]) => `<div><span>${a}</span><b class="num">${b}</b></div>`).join('')}</div>` : ''}${use}</section>`;
+      <p>${esc(g.msg)}</p>${lv.length ? `<div class="sig-lv">${lv.map(([a, b]) => `<div><span>${a}${a === 'Risco/retorno' ? infoBtn('rr', iid) : ''}</span><b class="num">${b}</b></div>`).join('')}</div>` : ''}${infoBox('rr', iid)}${use}</section>`;
   }
   // Níveis de Fibonacci do último movimento (fundo -> topo), para comprar na correção
   function swingMove(t) {
