@@ -241,6 +241,18 @@ export async function getPriceAt(pairAddress, atMs) {
 }
 
 // Velas de 5 minutos das últimas ~6h (GeckoTerminal, grátis, sem chave)
+// Velas de 5 min: primeiro a Jupiter (por moeda, junta todos os pools), depois o GeckoTerminal (por pool)
+export async function getCandlesFor(mint, pairAddress) {
+  try {
+    const r = await fetch(`https://datapi.jup.ag/v2/charts/${mint}?interval=5_MINUTE&to=${Date.now()}&candles=72&type=price&quote=usd`, { signal: AbortSignal.timeout(10000) });
+    if (r.ok) {
+      const list = ((await r.json())?.candles || []).map((c) => [c.time * 1000, +c.open, +c.high, +c.low, +c.close, Math.round(+c.volume || 0)]).filter((c) => c.every(Number.isFinite)).sort((a, b) => a[0] - b[0]);
+      if (list.length && Date.now() - list[list.length - 1][0] < 40 * 60000) return list;
+    }
+  } catch {}
+  return pairAddress ? getCandles(pairAddress) : [];
+}
+
 export async function getCandles(pairAddress) {
   const url = `https://api.geckoterminal.com/api/v2/networks/solana/pools/${pairAddress}/ohlcv/minute?aggregate=5&limit=72&currency=usd`;
   const j = await getJson(url, { headers: { accept: 'application/json;version=20230302' }, retries: 1 });

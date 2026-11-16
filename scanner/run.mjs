@@ -264,7 +264,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     if (res.status === 'aprovada' && t.pairAddress && api.getCandles) {
       try {
         if (shapeCalls++ && api.sleep) await api.sleep(6500);
-        const c = await api.getCandles(t.pairAddress);
+        const c = await (api.getCandlesFor ? api.getCandlesFor(t.mint, t.pairAddress) : api.getCandles(t.pairAddress));
         if (c && c.length) { t.candles = c; t.candlesAt = now; }
       } catch (e) { log(`Velas de ${t.symbol} indisponíveis: ${e.message}`, true); }
       const sh = chartShape(t.candles);
@@ -305,7 +305,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       .slice(0, MAX_CANDLE_CALLS);
     for (const t of want) {
       try {
-        const c = await api.getCandles(t.pairAddress);
+        const c = await (api.getCandlesFor ? api.getCandlesFor(t.mint, t.pairAddress) : api.getCandles(t.pairAddress));
         if (c && c.length) { t.candles = c; t.candlesAt = now; delete t.candlesFromHist; }
       } catch (e) {
         log(`Velas de ${t.symbol} indisponíveis: ${e.message}`, true);
