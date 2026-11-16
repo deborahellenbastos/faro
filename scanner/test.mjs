@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce } from './run.mjs';
 import { parseOps } from './api.mjs';
+import { scamSignals } from './analyze.mjs';
 
 const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
 const now = Date.UTC(2026, 10, 15, 21, 0, 0);
@@ -209,6 +210,16 @@ const jupTx = { blockTime: 1700000000, transaction: { message: { accountKeys: ['
 const jops = parseOps(jupTx, 'ME', 'j1');
 assert.equal(jops.length, 1);
 assert.ok(Math.abs(jops[0].sol - -0.011941433) < 1e-12);
+
+// Venda automática: só o que MUDOU para golpe depois da compra
+const cfgT = { filtros: { lpTravadaMinPct: 90 } };
+const base0 = { lpLockedPct: 100, devPct: 4, mint: false, freeze: false };
+assert.equal(scamSignals(base0, { lpLockedPct: 100, devPct: 4, mintAuthority: null, freezeAuthority: null }, cfgT).length, 0);
+assert.equal(scamSignals(base0, { lpLockedPct: 20, devPct: 4, mintAuthority: null, freezeAuthority: null }, cfgT).length, 1);
+assert.equal(scamSignals(base0, { lpLockedPct: 100, devPct: 1, mintAuthority: 'X', freezeAuthority: null }, cfgT).length, 2);
+assert.equal(scamSignals(base0, { rugged: true, lpLockedPct: 100, devPct: 4 }, cfgT).length, 1);
+// moeda comprada já sem liquidez travada não dispara venda
+assert.equal(scamSignals({ lpLockedPct: 0, devPct: 0 }, { lpLockedPct: 0, devPct: 0 }, cfgT).length, 0);
 
 // Compra desligada por padrão
 assert.equal(state.lastRun.autoBuy, false);

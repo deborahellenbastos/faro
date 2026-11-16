@@ -1,8 +1,8 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
-import { summarizeMarket, prefilter, analyze, scoreToken, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
+import { summarizeMarket, prefilter, analyze, scoreToken, scamSignals, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
-const RECHECK_MIN = 15;     // moedas da carteira: rechecagem de segurança a cada 15 min
+const RECHECK_MIN = 5;      // moedas da carteira: rechecagem de segurança toda rodada (5 min)
 const RECHECK_APPROVED_MIN = 30; // aprovadas que você não comprou: a cada 30 min
 const MAX_REJECTED_KEPT = 300;
 const MAX_PRICE_LOOKUPS = 6;         // preços históricos buscados por rodada (o resto fica para a próxima)
@@ -180,6 +180,27 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       t.checks = runChecks(m, sum, cfg);
       t.safety = mergeSafety(t.safety, [...t._rugAlerts, ...(t._mktAlerts || [])], now);
       if (t.safety.level !== 'ok') log(`ALERTA ${t.symbol}: ${t.safety.alerts.map((a) => a.msg).join(' | ')}`);
+      // Venda automática de 100% quando o contrato muda para golpe (só com tudo ligado)
+      const scam = t.held ? scamSignals(t.baseline, sum, cfg) : [];
+      if (scam.length && trader?.canSell && !(t.autoSell?.ok) && (t.autoSell?.tries || 0) < 3) {
+        const why = scam.join('; ');
+        log(`GOLPE em ${t.symbol}: ${why}. Vendendo 100%...`, true);
+        try {
+          const r = await trader.sellAll(t.mint);
+          t.autoSell = { ok: true, at: now, sig: r.sig, outSol: r.outSol, why };
+          log(r.nada ? `Nada de ${t.symbol} para vender (já vendida).` : `VENDEU 100% de ${t.symbol} por ${r.outSol.toFixed(4)} SOL (tx ${r.sig.slice(0, 8)}...)`);
+        } catch (e) {
+          t.autoSell = { ok: false, at: now, tries: (t.autoSell?.tries || 0) + 1, why, erro: e.message };
+          log(`Venda automática de ${t.symbol} falhou: ${e.message}`, true);
+        }
+      }
+      if (t.autoSell) {
+        const a = t.autoSell;
+        const alert = a.ok
+          ? { id: 'auto-venda', level: 'danger', msg: `Robô vendeu 100% automaticamente${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`, sig: a.sig }
+          : { id: 'auto-venda', level: 'danger', msg: `Tentei vender 100% (${a.why}) e falhou: ${a.erro}. Venda manualmente!` };
+        t.safety = mergeSafety(t.safety, [alert, ...t.safety.alerts.filter((x) => x.id !== 'auto-venda')], now);
+      }
     } catch (e) {
       log(`Rechecagem de ${t.symbol || t.mint} falhou: ${e.message}`, true);
       if (e.rateLimited) paused = true;
@@ -280,7 +301,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     rugcheckCalls: rugCalls,
     newApproved: newlyApproved.map((t) => t.symbol),
     counts,
-    autoBuy: !!trader,
+    autoBuy: !!trader?.canBuy,
+    autoSell: !!trader?.canSell,
     wallet: wallet ? `${wallet.slice(0, 4)}...${wallet.slice(-4)}` : null,
     logs: logs.slice(-30),
   };

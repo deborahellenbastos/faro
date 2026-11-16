@@ -957,7 +957,7 @@
     if (!al.length) return '';
     const lvl = levelOf(t);
     return `<ul class="alerts ${lvl}"><h3>${ICON.warn}${lvl === 'danger' ? 'Perigo: algo piorou desde a compra' : 'Atenção: vale ficar de olho'}</h3>
-      ${al.map((a) => `<li class="${a.level}"><span>${esc(a.msg)}</span><small>${ago(a.at)}</small></li>`).join('')}</ul>`;
+      ${al.map((a) => `<li class="${a.level}"><span>${esc(a.msg)}${a.sig ? ` <a href="https://solscan.io/tx/${esc(a.sig)}" target="_blank" rel="noopener">Ver no Solscan</a>` : ''}</span><small>${ago(a.at)}</small></li>`).join('')}</ul>`;
   }
 
   // ---------- Minha operação (modelo da Phantom) ----------
@@ -1914,6 +1914,7 @@
       ['Volume na última hora', `mín ${usd(f.volumeH1MinUsd)}`],
       ['Compras na última hora', `mín ${f.comprasSobreTotalH1MinPct}%`],
       ['Compra automática', c.ativada ? `ligada (${c.solPorCompra} SOL, até ${c.maxComprasPorDia}/dia)` : 'desligada'],
+      ['Venda automática por golpe', data.lastRun?.autoSell ? 'ligada (vende 100% se o contrato mudar para golpe)' : 'desligada'],
     ];
     $('cfg').innerHTML = rows.map(([k, v]) => `<span>${esc(k)}</span><span class="num">${esc(v)}</span>`).join('');
     const r = data.lastRun || {};

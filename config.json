@@ -31,5 +31,9 @@
     "scoreMinimo": 70,
     "slippagePct": 10,
     "impactoPrecoMaxPct": 5
+  },
+  "venda": {
+    "automatica": false,
+    "slippageMaxPct": 30
   }
 }

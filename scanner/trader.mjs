@@ -3,18 +3,23 @@
 //   1. config.json -> "compra": { "ativada": true }
 //   2. No GitHub: variável AUTO_BUY = true (Settings > Secrets and variables > Actions > Variables)
 // E dos segredos: SOLANA_PRIVATE_KEY (carteira SÓ do robô), JUPITER_API_KEY, SOLANA_RPC_URL (opcional).
-// Ainda não vende sozinho: a venda continua manual por enquanto.
+//
+// Venda automática (golpe no contrato): também VEM DESLIGADA. Precisa de
+//   1. config.json -> "venda": { "automatica": true }
+//   2. No GitHub: variável AUTO_SELL = true
+// E do segredo SOLANA_PRIVATE_KEY da MESMA carteira do FARO_WALLET (o robô confere antes de vender).
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
 const JUP = 'https://api.jup.ag/swap/v1';
 
 export async function createTrader(cfg, log) {
-  const on = cfg?.compra?.ativada === true && process.env.AUTO_BUY === 'true';
-  if (!on) return null;
+  const buyOn = cfg?.compra?.ativada === true && process.env.AUTO_BUY === 'true';
+  const sellOn = cfg?.venda?.automatica === true && process.env.AUTO_SELL === 'true';
+  if (!buyOn && !sellOn) return null;
   const key = process.env.SOLANA_PRIVATE_KEY;
   const jupKey = process.env.JUPITER_API_KEY;
   if (!key || !jupKey) {
-    log('Compra ligada, mas faltam os segredos SOLANA_PRIVATE_KEY ou JUPITER_API_KEY. Nada foi comprado.', true);
+    log('Compra/venda automática ligada, mas faltam os segredos SOLANA_PRIVATE_KEY ou JUPITER_API_KEY. Nada foi feito.', true);
     return null;
   }
   // Bibliotecas só são carregadas quando a compra está ligada
@@ -23,7 +28,13 @@ export async function createTrader(cfg, log) {
   const wallet = Keypair.fromSecretKey(bs58.decode(key.trim()));
   const conn = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com', 'confirmed');
   const headers = { 'x-api-key': jupKey, 'Content-Type': 'application/json' };
-  log(`Compra automática LIGADA (carteira ${wallet.publicKey.toBase58().slice(0, 6)}...)`);
+  const me = wallet.publicKey.toBase58();
+  // Venda só na carteira vigiada pelo Faro: se a chave for de outra carteira, não vende nada
+  const watched = (cfg?.carteira?.enderecoPublico || '').trim();
+  const canSell = sellOn && !!watched && watched === me;
+  if (sellOn && !canSell) log('Venda automática NÃO ativada: a chave SOLANA_PRIVATE_KEY não é da carteira vigiada (FARO_WALLET).', true);
+  if (buyOn) log(`Compra automática LIGADA (carteira ${me.slice(0, 6)}...)`);
+  if (canSell) log(`Venda automática por golpe LIGADA (carteira ${me.slice(0, 6)}...)`);
 
   async function buy(mint) {
     const c = cfg.compra;
@@ -60,8 +71,37 @@ export async function createTrader(cfg, log) {
     return { sig, outAmount: quote.outAmount, impact };
   }
 
+  // Vende TUDO o que a carteira tem dessa moeda, por qualquer preço que a Jupiter conseguir (em golpe, sair é o que importa)
+  async function sellAll(mint) {
+    let raw = 0n;
+    for (const programId of ['TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb']) {
+      const r = await conn.getParsedTokenAccountsByOwner(wallet.publicKey, { programId: new (await import('@solana/web3.js')).PublicKey(programId) });
+      for (const a of r.value) { const i = a.account.data.parsed.info; if (i.mint === mint) raw += BigInt(i.tokenAmount.amount); }
+    }
+    if (raw === 0n) return { sig: null, nada: true };
+    const slip = Math.round((cfg?.venda?.slippageMaxPct ?? 30) * 100);
+    const quote = await (await fetch(`${JUP}/quote?inputMint=${mint}&outputMint=${SOL_MINT}&amount=${raw}&slippageBps=${slip}`, { headers })).json();
+    if (!quote?.outAmount) throw new Error(`Jupiter sem rota para vender: ${JSON.stringify(quote).slice(0, 160)}`);
+    const swap = await (await fetch(`${JUP}/swap`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ quoteResponse: quote, userPublicKey: me, wrapAndUnwrapSol: true, dynamicComputeUnitLimit: true, dynamicSlippage: true,
+        prioritizationFeeLamports: { priorityLevelWithMaxLamports: { maxLamports: 3_000_000, priorityLevel: 'veryHigh' } } }),
+    })).json();
+    if (!swap?.swapTransaction) throw new Error(`Jupiter não montou a venda: ${JSON.stringify(swap).slice(0, 160)}`);
+    const tx = VersionedTransaction.deserialize(Buffer.from(swap.swapTransaction, 'base64'));
+    tx.sign([wallet]);
+    const sig = await conn.sendRawTransaction(tx.serialize(), { maxRetries: 3 });
+    const conf = await conn.confirmTransaction({ signature: sig, blockhash: tx.message.recentBlockhash, lastValidBlockHeight: swap.lastValidBlockHeight }, 'confirmed');
+    if (conf?.value?.err) throw new Error(`Venda falhou na blockchain: ${JSON.stringify(conf.value.err)}`);
+    return { sig, outSol: Number(quote.outAmount) / LAMPORTS_PER_SOL };
+  }
+
   return {
+    canBuy: buyOn,
+    canSell,
+    sellAll,
     async maybeBuy(approved, state, cfg2, log2) {
+      if (!buyOn) return [];
       const c = cfg2.compra;
       const dayAgo = Date.now() - 86400000;
       const today = (state.trades || []).filter((t) => t.ok && t.at > dayAgo).length;

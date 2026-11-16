@@ -240,7 +240,26 @@ export function baselineFrom(sum) {
     lpLockedPct: sum.lpLockedPct, top10Pct: sum.top10Pct, maxHolderPct: sum.maxHolderPct,
     devPct: sum.devPct, insiders: sum.insiders, scoreNormalised: sum.scoreNormalised,
     dangerNames: sum.dangerRisks.map((d) => d.name),
+    mint: sum.mintAuthority != null, freeze: sum.freezeAuthority != null,
   };
+}
+
+// Sinais de golpe no contrato que MUDARAM depois da compra (o que já era assim na compra não conta).
+// É isso que dispara a venda automática de 100%.
+export function scamSignals(base, sum, cfg) {
+  if (!base || !sum) return [];
+  const f = cfg.filtros;
+  const out = [];
+  if (sum.rugged) out.push('RugCheck marcou como rugada');
+  if (base.mint === false && sum.mintAuthority != null) out.push('mint authority reativada (podem criar tokens novos)');
+  if (base.freeze === false && sum.freezeAuthority != null) out.push('freeze authority reativada (podem congelar sua carteira)');
+  if (base.lpLockedPct != null && base.lpLockedPct >= f.lpTravadaMinPct && sum.lpLockedPct != null && sum.lpLockedPct < f.lpTravadaMinPct) {
+    out.push(`liquidez destravada (era ${base.lpLockedPct.toFixed(0)}%, agora ${sum.lpLockedPct.toFixed(0)}%)`);
+  }
+  if (base.devPct != null && base.devPct >= 1 && sum.devPct != null && sum.devPct <= base.devPct * 0.5) {
+    out.push(`dev vendeu mais da metade (tinha ${base.devPct.toFixed(1)}%, agora ${sum.devPct.toFixed(1)}%)`);
+  }
+  return out;
 }
 
 // Alertas a partir do mercado (roda toda rodada, não gasta RugCheck)
