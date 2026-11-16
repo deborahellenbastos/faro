@@ -302,6 +302,19 @@
   @keyframes trnew { from { background: rgba(255,255,255,.08); } to { background: transparent; } }
   .trades .hpager { padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--line); }
   @media (max-width: 700px) { .thead, .trow { grid-template-columns: 40px 56px 1fr 1fr 0 1fr 0; } .thead span:nth-child(5), .trow span:nth-child(5), .thead span:nth-child(7), .trow span:nth-child(7) { display: none; } }
+  .bell { position: relative; }
+  .bell .badge { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--red); color: #fff; font-size: 10px; font-weight: 800; font-style: normal; display: grid; place-items: center; border: 2px solid var(--bg); }
+  .nt { width: 100%; display: grid; grid-template-columns: 32px 1fr auto; gap: var(--sp-3); align-items: start; text-align: left; padding: var(--sp-3); border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 0; }
+  .nt:hover { background: var(--panel-2); }
+  .nt.unread { background: rgba(255,255,255,.03); }
+  .nt.unread .nt-txt b::after { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); margin-left: 6px; vertical-align: middle; }
+  .nt-ico { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--panel-3); color: var(--muted); }
+  .nt-ico svg { width: 16px; height: 16px; }
+  .nt.danger .nt-ico { background: rgba(255,91,91,.14); color: var(--red); }
+  .nt.warn .nt-ico { background: rgba(245,177,76,.14); color: #f5b14c; }
+  .nt.good .nt-ico { background: rgba(16,210,127,.14); color: var(--green); }
+  .nt-txt { display: grid; gap: 2px; min-width: 0; } .nt-txt b { font-size: 13px; } .nt-txt small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .nt-at { color: var(--faint); font-size: 11px; text-align: right; white-space: nowrap; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -571,6 +584,7 @@
       <div class="top-tools">
         <span class="live" id="live" title="Preços atualizados a cada 10 segundos"><i></i><span>Conectando...</span></span>
         <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="search" type="search" name="faro-busca" placeholder="Buscar moeda ou endereço" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></label>
+        <button class="icon-btn bell" id="bell" aria-label="Central de notificações" title="Central de notificações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><i class="badge" id="bell-n" hidden></i></button>
         <button class="icon-btn" id="refresh" aria-label="Atualizar" title="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
       </div>
     </header>
@@ -603,6 +617,17 @@
 </div>
 
   <!-- Gaveta do robô: filtros, sons e última rodada -->
+  <!-- Central de notificações -->
+  <div class="drawer" id="inbox" role="dialog" aria-modal="true" aria-label="Central de notificações">
+    <div class="drawer-panel">
+      <div class="drawer-head">
+        <button class="back" id="inbox-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Voltar</button>
+        <b>Notificações</b><span style="flex:1"></span><button class="linkbtn" id="inbox-clear">Limpar tudo</button>
+      </div>
+      <div class="drawer-body" id="inbox-list"></div>
+    </div>
+  </div>
+
   <div class="drawer" id="robot" role="dialog" aria-modal="true" aria-label="Robô">
     <div class="drawer-panel">
       <div class="drawer-head">
@@ -743,7 +768,45 @@
   }
 
   // ---------- Notificações do sistema (computador) ----------
+  // ---------- Central de notificações: tudo que tocou som ou avisou fica guardado aqui ----------
+  const INBOX = { list: store.get('faro-inbox', []), page: 1 };
+  function addInbox(title, body, mint, level, id) {
+    const key = id || `${title}|${body}`;
+    if (INBOX.list.some((x) => x.key === key && Date.now() - x.at < 10 * 60000)) return;
+    INBOX.list.unshift({ key, title, body, mint, level, at: Date.now(), read: false });
+    INBOX.list = INBOX.list.slice(0, 200);
+    store.set('faro-inbox', INBOX.list); renderInbox();
+  }
+  function renderInbox() {
+    const unreadN = INBOX.list.filter((x) => !x.read).length;
+    const b = $('bell-n'); if (b) { b.hidden = !unreadN; b.textContent = unreadN > 99 ? '99+' : unreadN; }
+    const el = $('inbox-list'); if (!el || !$('inbox').classList.contains('show')) return;
+    const per = 10, pages = Math.max(1, Math.ceil(INBOX.list.length / per));
+    INBOX.page = Math.min(INBOX.page, pages);
+    const ico = { danger: ICON.warn, warn: ICON.warn, good: ICON.radar, info: ICON.swap };
+    el.innerHTML = INBOX.list.length ? INBOX.list.slice((INBOX.page - 1) * per, INBOX.page * per).map((x, i) => `
+      <button class="nt ${x.level} ${x.read ? '' : 'unread'}" data-nt="${(INBOX.page - 1) * per + i}">
+        <i class="nt-ico">${ico[x.level] || ICON.swap}</i>
+        <span class="nt-txt"><b>${esc(x.title)}</b><small>${esc(x.body || '')}</small></span>
+        <span class="nt-at">${ago(x.at)}<br>${hhmm(x.at)}</span>
+      </button>`).join('') + (pages > 1 ? `<div class="hpager"><button data-ntpage="-1" ${INBOX.page <= 1 ? 'disabled' : ''}>&larr;</button><span>${INBOX.page} de ${pages}</span><button data-ntpage="1" ${INBOX.page >= pages ? 'disabled' : ''}>&rarr;</button></div>` : '')
+      : `<div class="empty">${BELL_ICON}<b>Nada por aqui</b>Quando tocar um som ou aparecer um aviso, ele fica guardado nesta lista.</div>`;
+  }
+  const BELL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
+  const openInbox = () => { $('inbox').classList.add('show'); document.body.style.overflow = 'hidden'; INBOX.page = 1; renderInbox(); setTimeout(() => { INBOX.list.forEach((x) => (x.read = true)); store.set('faro-inbox', INBOX.list); renderInbox(); }, 1500); };
+  const closeInbox = () => { $('inbox').classList.remove('show'); document.body.style.overflow = ''; };
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#bell')) return openInbox();
+    if (e.target.closest('#inbox-back') || e.target.id === 'inbox') return closeInbox();
+    if (e.target.closest('#inbox-clear')) { INBOX.list = []; store.set('faro-inbox', []); return renderInbox(); }
+    const pg = e.target.closest('[data-ntpage]'); if (pg) { INBOX.page += Number(pg.dataset.ntpage); return renderInbox(); }
+    const it = e.target.closest('[data-nt]');
+    if (it) { const x = INBOX.list[Number(it.dataset.nt)]; if (x?.mint && data?.tokens?.[x.mint]) { closeInbox(); goTo(x.mint); } }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('inbox').classList.contains('show')) closeInbox(); });
+
   function notify(title, body, tag) {
+    addInbox(title, body, tag ? tag.split('-').slice(1).join('-') : null, /^Perigo|falh/i.test(title) ? 'danger' : /^Atenção/.test(title) ? 'warn' : /^Nova/.test(title) ? 'good' : 'info');
     if (!prefs.notif || !('Notification' in window) || Notification.permission !== 'granted') return;
     try { const n = new Notification(title, { body, tag, renotify: true }); n.onclick = () => { window.focus(); goTo(tag.split('-').slice(1).join('-')); n.close(); }; } catch {}
   }
@@ -764,7 +827,7 @@
     if (!seen) { seen = { approved: approved.map((t) => t.mint), alerts: alertKeys }; store.set('moeda-seen', seen); return; }
     const seenA = new Set(seen.approved), seenAl = new Set(seen.alerts);
     const events = [];
-    for (const t of approved) if (!seenA.has(t.mint)) events.push({ kind: 'nova', t });
+    for (const t of approved) if (!seenA.has(t.mint) && levelOf(t) !== 'danger') events.push({ kind: 'nova', t });
     for (const t of all) {
       if (!isMine(t)) continue;
       const fresh = (t.safety?.alerts || []).filter((a) => !seenAl.has(`${t.mint}:${a.id}`));
@@ -1795,6 +1858,7 @@
       for (const o of r.ops) {
         const t = data.tokens[o.mint];
         if (!quiet) toast(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''}`);
+        addInbox(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${t?.symbol || o.mint.slice(0, 6)}`, `${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''} por ${solFmt(Math.abs(o.sol), 4)}`, o.mint, 'info', 'tx-' + o.sig);
         if (t && CH.mint === o.mint && chartSrc === 'faro') decorate(t);
       }
       liveRender();
@@ -2397,6 +2461,7 @@
     if (!typing && !pending && !unlockWaiter) load();
   }, 60000);
   window.addEventListener('resize', () => { if (!isNarrow()) document.body.classList.remove('show-detail'); });
+  renderInbox();
   load();
 })();
 </script>
