@@ -571,6 +571,7 @@
   .ov-tools button { width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); display: grid; place-items: center; }
   .ov-tools button svg { width: 16px; height: 16px; }
   .ov-tools button:hover { color: var(--text); background: var(--panel-2); }
+  .ov-tools button:disabled { opacity: .3; cursor: not-allowed; background: transparent; color: var(--muted); }
   .ov-tools button.on { color: var(--text); background: var(--panel-3); }
   .ov-tools i { width: 20px; height: 1px; background: var(--line); margin: 2px 0; }
   .ov-ivals { position: absolute; top: 8px; left: 8px; z-index: 4; display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(12,14,17,.85); border: 1px solid #1f232a; }
@@ -2359,6 +2360,8 @@
 
   // Marcações: seu preço médio / alerta, ordens limite, seus traços e os pontos de compra (C) e venda (V)
   function decorate(t) {
+    // Metas do robô só existem para moedas que você tem: nas outras, o botão fica desabilitado
+    document.querySelectorAll('[data-metastoggle]').forEach((b) => { b.disabled = !t.held; b.title = t.held ? 'Metas do robô: +30% liga o stop móvel, +60% o stop segue o topo, +50% e +80% realiza se a alta perder força' : 'Metas do robô: só para moedas que você tem'; });
     for (const l of CH.lines) { try { CH.candle.removePriceLine(l); } catch {} }
     for (const s2 of CH.trends) { try { CH.chart.removeSeries(s2); } catch {} }
     CH.lines = []; CH.trends = [];
