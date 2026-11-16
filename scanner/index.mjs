@@ -42,7 +42,12 @@ state.config = { ...cfg, carteira: { conectada: !!cfg.carteira?.enderecoPublico 
 
 await mkdir(path.dirname(plainPath), { recursive: true });
 if (password) {
-  await writeFile(vaultPath, JSON.stringify(encrypt(state, password, salt)));
+  // A chave da Jupiter (secret JUPITER_API_KEY) vai junto, só dentro do arquivo criptografado:
+  // o painel usa ela nas ordens limite sem você precisar colar em cada aparelho.
+  const jup = (process.env.JUPITER_API_KEY || '').trim();
+  const out = jup ? { ...state, jupKey: jup } : state;
+  await writeFile(vaultPath, JSON.stringify(encrypt(out, password, salt)));
+  delete state.jupKey;
   await rm(plainPath, { force: true }); // não deixa versão aberta publicada
   console.log('Dados salvos criptografados (data.enc.json).');
 } else {

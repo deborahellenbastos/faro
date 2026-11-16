@@ -1067,7 +1067,7 @@
         </div>`;
     } else {
       const key = jupKey();
-      const keyBox = key ? '' : `<div class="keybox"><span>Ordens limite usam a Jupiter. Cole aqui sua chave grátis (crie em <a href="https://portal.jup.ag" target="_blank" rel="noopener">portal.jup.ag</a>). Ela fica só neste aparelho.</span>
+      const keyBox = key ? '' : `<div class="keybox"><span>Ordens limite usam a Jupiter. Para não colar a chave em cada aparelho, salve ela uma vez no GitHub (secret <b>JUPITER_API_KEY</b>). Ou cole aqui para usar só neste aparelho.</span>
           <form onsubmit="return false" autocomplete="off" style="display:contents"><input type="text" name="jup-api-key" class="masked" placeholder="Chave da API Jupiter" data-jupkey autocomplete="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore></form></div>`;
       const priceRow = (label, field, chips, hint) => `<div class="tbox">
           <div class="tin"><label>${label}</label><input inputmode="decimal" placeholder="${hint}" value="${esc(st[field])}" data-lfield="${field}" data-tmint="${m}"><small>US$</small></div>
@@ -1654,7 +1654,7 @@
   const TRIG = 'https://api.jup.ag/trigger/v2';
   const LIM = { orders: {}, cancelled: new Set(), busy: false, token: null, tokenExp: 0, wallet: null, loadedFor: null };
   const keyOk = (k) => /^jup_[A-Za-z0-9]{32,}$/.test(k || '');
-  const jupKey = () => { const k = String(store.get('faro-jup-key', '') || '').trim(); return keyOk(k) ? k : ''; };
+  const jupKey = () => { const k = String(store.get('faro-jup-key', '') || '').trim(); return keyOk(k) ? k : keyOk(data?.jupKey) && vaultUsed ? data.jupKey : ''; };
   const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   function b58enc(bytes) {
     let digits = [0];
@@ -1679,7 +1679,7 @@
     else {
       LIM.token = null; LIM.vault = false;
       const step = async (name, fn) => { try { return await fn(); } catch (e) { throw new Error(`${name}: ${e.status === 401 ? 'a Jupiter recusou (não autorizado). Confira se a chave da API foi colada inteira' : e.message}`); } };
-      const ch = await step('Pedido de login na Jupiter', async () => { try { return await trig('/auth/challenge', { method: 'POST', body: JSON.stringify({ walletPubkey: wallet, type: 'message' }) }); } catch (e) { if (e.status === 401) { store.set('faro-jup-key', ''); throw new Error('A Jupiter não aceitou a chave salva neste navegador. Apaguei ela: cole a chave de novo no campo acima'); } throw e; } });
+      const ch = await step('Pedido de login na Jupiter', async () => { try { return await trig('/auth/challenge', { method: 'POST', body: JSON.stringify({ walletPubkey: wallet, type: 'message' }) }); } catch (e) { if (e.status === 401) { if (store.get('faro-jup-key', '')) { store.set('faro-jup-key', ''); throw new Error('A Jupiter não aceitou a chave salva neste navegador. Apaguei ela: tente de novo'); } throw new Error('A Jupiter não aceitou a chave do GitHub (secret JUPITER_API_KEY). Confira se ela foi colada inteira lá'); } throw e; } });
 
       const signed = await ph.signMessage(new TextEncoder().encode(ch.challenge), 'utf8');
       const sig = signed?.signature || signed;
