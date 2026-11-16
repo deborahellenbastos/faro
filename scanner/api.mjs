@@ -167,6 +167,10 @@ export function parseOps(tx, owner, sig) {
     return m;
   };
   const pre = bal(meta.preTokenBalances), post = bal(meta.postTokenBalances);
+  // A conta da moeda criada na 1ª compra (ou fechada ao vender tudo) mexe ~0,002 SOL de "aluguel" que volta depois.
+  // Não é custo da moeda, então tiramos da conta (a Phantom faz o mesmo).
+  const RENT = 0.00203928;
+  const owned = (arr, mint) => (arr || []).some((b) => b.owner === owner && b.mint === mint);
   const deltas = [];
   for (const mint of new Set([...pre.keys(), ...post.keys()])) {
     const d = (post.get(mint) || 0) - (pre.get(mint) || 0);
@@ -175,7 +179,11 @@ export function parseOps(tx, owner, sig) {
     else if (!IGNORE.has(mint)) deltas.push([mint, d]);
   }
   // Só registramos troca simples (1 moeda contra SOL), que é o caso de compra/venda de memecoin
-  return deltas.length === 1 ? [{ sig, at: (tx.blockTime || 0) * 1000, mint: deltas[0][0], tokens: deltas[0][1], sol }] : [];
+  if (deltas.length !== 1) return [];
+  const mint = deltas[0][0];
+  if (!owned(meta.preTokenBalances, mint) && owned(meta.postTokenBalances, mint)) sol += RENT; // abriu a conta
+  if (owned(meta.preTokenBalances, mint) && !owned(meta.postTokenBalances, mint)) sol -= RENT; // fechou a conta
+  return [{ sig, at: (tx.blockTime || 0) * 1000, mint, tokens: deltas[0][1], sol }];
 }
 
 // Velas de 5 minutos das últimas ~6h (GeckoTerminal, grátis, sem chave)
@@ -188,4 +196,13 @@ export async function getCandles(pairAddress) {
     .map((c) => [c[0] * 1000, +c[1], +c[2], +c[3], +c[4], Math.round(+c[5])])
     .filter((c) => c.every(Number.isFinite))
     .sort((a, b) => a[0] - b[0]);
+}
+
+// Preço do SOL em dólar agora (para registrar o valor de cada compra no momento em que ela acontece)
+export async function getSolUsd() {
+  const pairs = await getJson(`${DEX}/tokens/v1/solana/So11111111111111111111111111111111111111112`);
+  const usdc = (pairs || []).filter((p) => ['USDC', 'USDT'].includes(p?.quoteToken?.symbol) && p?.baseToken?.address === 'So11111111111111111111111111111111111111112');
+  const best = (usdc.length ? usdc : pairs || []).sort((a, b) => (b?.liquidity?.usd || 0) - (a?.liquidity?.usd || 0))[0];
+  const v = Number(best?.priceUsd);
+  return Number.isFinite(v) && v > 0 ? v : null;
 }

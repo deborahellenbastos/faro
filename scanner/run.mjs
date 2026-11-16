@@ -49,11 +49,16 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       for (const t of Object.values(tokens)) if (t.held && !heldSet.has(t.mint)) { t.held = false; t.soldAt = now; }
       log(`Carteira: ${held.length} moedas encontradas`);
       // Compras e vendas (para calcular preço médio e resultado)
-      state.wallet = state.wallet && state.wallet.address === wallet ? state.wallet : { address: wallet, ops: [], lastSig: null };
+      // v2: cálculo novo (taxa de conta e preço do SOL por compra) -> relê o histórico uma vez
+      state.wallet = state.wallet && state.wallet.address === wallet && state.wallet.v === 2 ? state.wallet : { address: wallet, ops: [], lastSig: null, v: 2 };
       if (api.getSolBalance) { try { state.wallet.solBalance = await api.getSolBalance(wallet); } catch {} }
       if (api.getWalletOps) {
         try {
           const r = await api.getWalletOps(wallet, state.wallet.lastSig);
+          let solUsdNow = null;
+          if (r.ops.length && api.getSolUsd) { try { solUsdNow = await api.getSolUsd(); } catch {} }
+          // Compras recentes: registra o preço do SOL de agora (é o da hora da compra, com folga de minutos)
+          for (const o of r.ops) if (solUsdNow && !o.solUsd && now - o.at < 6 * 3600000) o.solUsd = solUsdNow;
           const seenSig = new Set(state.wallet.ops.map((o) => o.sig + o.mint));
           state.wallet.ops = [...state.wallet.ops, ...r.ops.filter((o) => !seenSig.has(o.sig + o.mint))].slice(-1500);
           state.wallet.lastSig = r.lastSig;

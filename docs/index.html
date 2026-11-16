@@ -231,6 +231,42 @@
   .mk.buy { background: var(--green); color: var(--brand-ink); }
   .mk.sell { background: var(--red); color: #1f0707; }
 
+  /* Ferramentas do gráfico */
+  .chart-tools { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); flex-wrap: wrap; }
+  .seg-sm { display: flex; gap: 2px; padding: 2px; border-radius: var(--r-2); background: var(--bg); border: 1px solid var(--line); }
+  .seg-sm button { border: 0; background: transparent; height: 28px; min-width: 32px; padding: 0 8px; border-radius: var(--r-1); color: var(--muted); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+  .seg-sm button svg { width: 15px; height: 15px; }
+  .seg-sm button.on { background: var(--panel-3); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .seg-sm button:hover { color: var(--text); }
+  .chart-hint { flex: 1; font-size: 11px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .btn-sm { height: 30px; font-size: 12px; padding: 0 10px; }
+  .lw-slot { position: relative; border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r-2) var(--r-2) 0 0; overflow: hidden; background: #0c0e11; height: var(--chart-h); }
+  .lw-host { width: 100%; height: 100%; }
+  .chart-empty { display: grid; place-items: center; height: 100%; color: var(--faint); font-size: 12px; }
+  .live { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .live.on { color: var(--green); }
+  .live.on i { background: var(--green); animation: blink 1.6s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+
+  /* Ordens limite */
+  .mode { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; border-radius: var(--r-2); background: var(--bg); border: 1px solid var(--line); }
+  .mode button { border: 0; background: transparent; height: 28px; border-radius: var(--r-1); color: var(--muted); font-size: 12px; font-weight: 700; }
+  .mode button.on { background: var(--panel-3); color: var(--text); }
+  .chips { display: flex; gap: 4px; flex-wrap: wrap; padding: 6px 10px 8px; border-top: 1px solid var(--line); }
+  .chips button { border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; height: 24px; padding: 0 8px; border-radius: 999px; }
+  .chips button:hover, .chips button.on { color: var(--text); border-color: var(--line-2); background: var(--panel-3); }
+  .tin small { color: var(--faint); font-size: 11px; font-weight: 600; }
+  .keybox { display: grid; gap: 6px; padding: var(--sp-3); border-radius: var(--r-2); background: var(--bg); border: 1px dashed var(--line-2); font-size: 12px; color: var(--muted); }
+  .keybox input { height: 32px; padding: 0 10px; border-radius: var(--r-1); border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); outline: none; font-size: 12px; }
+  .keybox a { color: var(--brand); }
+  .orders { display: grid; gap: 6px; }
+  .orders h4 { margin: 4px 0 0; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .ord { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--sp-2); align-items: center; padding: 8px 10px; border-radius: var(--r-2); background: var(--panel-2); border: 1px solid var(--line); font-size: 12px; }
+  .ord b { font-size: 13px; }
+  .ord span { color: var(--muted); }
+  .ord .btn { height: 28px; font-size: 12px; grid-row: span 2; }
+
   /* Métricas de mercado */
   .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); margin-top: var(--sp-4); }
   .tile { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--r-2); padding: var(--sp-3); min-width: 0; }
@@ -357,8 +393,8 @@
   .chart-head .ttl b { font-size: 17px; font-weight: 800; }
   .chart-head .ttl span { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chart-frame { flex: 1; position: relative; background: #0b0d12; }
-  .chart-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-  .chart-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+  .chart-frame .lw-host { position: absolute; inset: 0; height: auto; }
+  .chart-panel > .chart-tools { padding: var(--sp-2) var(--sp-4); border-bottom: 1px solid var(--line); margin: 0; }
 
   .drawer { position: fixed; inset: 0; z-index: 35; background: rgba(4,5,7,.6); display: none; justify-content: flex-end; }
   .drawer.show { display: flex; }
@@ -487,6 +523,7 @@
       <div class="brand m-brand"><div class="brand-mark"><svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><defs><linearGradient id="LG2" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop stop-color="#5BF7B8"/><stop offset=".48" stop-color="#10D27F"/><stop offset="1" stop-color="#067A49"/></linearGradient><linearGradient id="LS2" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient><linearGradient id="LW2" x1="21" y1="9" x2="10" y2="16" gradientUnits="userSpaceOnUse"><stop stop-color="#04150C" stop-opacity=".75"/><stop offset="1" stop-color="#04150C" stop-opacity="0"/></linearGradient></defs><rect width="40" height="40" rx="10" fill="url(#LG2)"/><rect x=".5" y=".5" width="39" height="39" rx="9.5" stroke="url(#LS2)"/><circle cx="20" cy="20" r="12" stroke="#04150C" stroke-width="2.2"/><circle cx="20" cy="20" r="6.5" stroke="#04150C" stroke-opacity=".28" stroke-width="1.6"/><path d="M8 20h24M20 8v24" stroke="#04150C" stroke-opacity=".16" stroke-width="1.4"/><path d="M20 20V8a12 12 0 0 0-11.3 8Z" fill="url(#LW2)"/><path d="M20 20V8.6" stroke="#04150C" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="20" r="2.2" fill="#04150C"/><circle cx="27" cy="14.5" r="2.1" fill="#fff"/><circle cx="27" cy="14.5" r="3.6" stroke="#fff" stroke-opacity=".45" stroke-width="1"/></svg></div><b>Faro</b></div>
       <div class="page-h"><h1 id="page-title">Carteira</h1><p id="hint"></p></div>
       <div class="top-tools">
+        <span class="live" id="live" title="Preços atualizados a cada 10 segundos"><i></i><span>Conectando...</span></span>
         <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="search" type="search" placeholder="Buscar moeda ou endereço" autocomplete="off"></label>
         <button class="icon-btn" id="refresh" aria-label="Atualizar" title="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
       </div>
@@ -545,7 +582,7 @@
     </div>
   </div>
 
-  <!-- Gráfico completo (DexScreener) -->
+  <!-- Gráfico completo (o mesmo gráfico do card, em tela grande, com os mesmos traços) -->
   <div class="chart-view" id="chart" role="dialog" aria-modal="true" aria-label="Gráfico da moeda">
     <div class="chart-panel">
       <div class="chart-head">
@@ -554,7 +591,7 @@
         <span class="pill" id="chart-pill"></span>
         <a class="btn" id="chart-ext" target="_blank" rel="noopener">DexScreener <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
       </div>
-      <div class="chart-frame"><div class="chart-loading">Carregando gráfico...</div><iframe id="chart-iframe" title="Gráfico" allow="clipboard-write" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+      <div class="chart-frame" id="chart-big"></div>
     </div>
   </div>
 
@@ -848,58 +885,31 @@
   const TF = [['m5', '5M'], ['h1', '1H'], ['h6', '6H'], ['h24', '24H']];
   const tfOf = (mint) => ui.tf[mint] || 'h1';
 
-  // Gráfico de velas (5 min, últimas ~6h) com seu preço médio e seus pontos de compra (C) e venda (V)
+  // Gráfico próprio (biblioteca do TradingView): arrastar, zoom, intervalos e traços salvos por moeda
+  const IVALS = [['1m', 'minute', 1, 60], ['5m', 'minute', 5, 300], ['15m', 'minute', 15, 900], ['1h', 'hour', 1, 3600]];
+  const TOOL_ICON = {
+    cursor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 4 7 17 2.5-7.5L21 11z"/></svg>',
+    h: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18"/><circle cx="7" cy="12" r="1.6" fill="currentColor"/></svg>',
+    t: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19 20 5"/><circle cx="4" cy="19" r="1.8" fill="currentColor"/><circle cx="20" cy="5" r="1.8" fill="currentColor"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
+  };
   function chartBox(t) {
-    const W = 600, H = 240, pad = 6, volH = 48;
-    const refPrice = t.position?.known ? t.position.avgPriceUsd : t.entryPriceUsd;
-    const refLabel = t.position?.known ? 'seu preço médio' : t.status === 'aprovada' ? 'preço no alerta' : 'entrada';
-    const candles = Array.isArray(t.candles) && t.candles.length >= 5 ? t.candles : null;
-    const hist = !candles && Array.isArray(t.hist) && t.hist.length >= 3 ? t.hist : null;
-    if (!candles && !hist) return `<div class="chart-box"><button class="mini empty" data-chart="${esc(t.mint)}">Gráfico detalhado disponível após algumas rodadas. Clique para abrir o do DexScreener.</button></div>`;
-    const vals = candles ? candles.flatMap((c) => [c[2], c[3]]) : hist.map((p) => p[1]);
-    if (refPrice) vals.push(refPrice);
-    const solUsd = t.position?.solUsd;
-    if (solUsd) for (const o of t.history || []) if (o.tokens) vals.push((Math.abs(o.sol) / Math.abs(o.tokens)) * solUsd);
-    let lo = Math.min(...vals), hi = Math.max(...vals); if (hi === lo) { hi *= 1.01; lo *= 0.99; }
-    const y = (v) => pad + (H - volH - pad * 2) * (1 - (v - lo) / (hi - lo));
-    let body = '';
-    for (let g = 1; g < 4; g++) body += `<line x1="0" x2="${W}" y1="${((H - volH) * g / 4).toFixed(1)}" y2="${((H - volH) * g / 4).toFixed(1)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
-    if (candles) {
-      const n = candles.length, SLOTS = Math.max(72, n), step = W / SLOTS, off = (SLOTS - n) * step, cw = Math.max(1.5, step * 0.62);
-      const vmax = Math.max(...candles.map((c) => c[5])) || 1;
-      candles.forEach((c, i) => {
-        const [, o, hh, l, cl, v] = c; const x = off + i * step + step / 2; const col = cl >= o ? 'var(--green)' : 'var(--red)';
-        const vh = (v / vmax) * (volH - 4);
-        body += `<rect x="${(x - cw / 2).toFixed(1)}" y="${(H - vh).toFixed(1)}" width="${cw.toFixed(1)}" height="${vh.toFixed(1)}" fill="${col}" opacity=".25"/>`;
-        body += `<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${y(hh).toFixed(1)}" y2="${y(l).toFixed(1)}" stroke="${col}" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
-        const top = y(Math.max(o, cl)), bot = y(Math.min(o, cl));
-        body += `<rect x="${(x - cw / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${cw.toFixed(1)}" height="${Math.max(1, bot - top).toFixed(1)}" fill="${col}"/>`;
-      });
-    } else {
-      const n = hist.length;
-      const pts = hist.map((p, i) => `${((i / (n - 1)) * W).toFixed(1)},${y(p[1]).toFixed(1)}`).join(' ');
-      body += `<polyline points="${pts}" fill="none" stroke="${hist[n - 1][1] >= hist[0][1] ? 'var(--green)' : 'var(--red)'}" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
-    }
-    const last = candles ? candles[candles.length - 1][4] : hist[hist.length - 1][1];
-    let marks = `<line x1="0" x2="${W}" y1="${y(last).toFixed(1)}" y2="${y(last).toFixed(1)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="1 3" vector-effect="non-scaling-stroke"/>`;
-    if (refPrice) marks += `<line x1="0" x2="${W}" y1="${y(refPrice).toFixed(1)}" y2="${y(refPrice).toFixed(1)}" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>`;
-    let markers = '';
-    if ((t.history || []).length && solUsd) {
-      const t1 = candles ? candles[candles.length - 1][0] + 5 * 60000 : hist[hist.length - 1][0];
-      const t0 = candles ? t1 - Math.max(72, candles.length) * 5 * 60000 : hist[0][0];
-      for (const o of t.history) {
-        if (!o.tokens || o.at < t0 || o.at > t1) continue;
-        const px = (Math.abs(o.sol) / Math.abs(o.tokens)) * solUsd;
-        const yy = Math.min(H - volH, Math.max(pad, y(px)));
-        const buy = o.tokens > 0;
-        markers += `<span class="mk ${buy ? 'buy' : 'sell'}" style="left:${(((o.at - t0) / (t1 - t0)) * 100).toFixed(2)}%;top:${((yy / H) * 100).toFixed(2)}%" title="${buy ? 'Compra' : 'Venda'} - ${dt(o.at)} - ${price(px)}">${buy ? 'C' : 'V'}</span>`;
-      }
-    }
-    return `<div class="chart-box"><button class="mini" data-chart="${esc(t.mint)}" title="Abrir gráfico completo com ferramentas">
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${body}${marks}</svg>${markers}
-      <span class="mini-l">${candles ? '5m - últimas 6h' : 'desde que o robô acompanha'}</span>${refPrice ? `<span class="mini-r"><i></i>${refLabel}</span>` : ''}
-      <span class="mini-x">${ICON.expand}Abrir gráfico completo</span>
-    </button><div class="mini-grip" data-grip title="Arraste para mudar a altura do gráfico"><i></i></div></div>`;
+    const iv = CH.interval;
+    return `<div class="chart-box">
+      <div class="chart-tools">
+        <div class="seg-sm">${IVALS.map(([k]) => `<button data-ival="${k}" class="${k === iv ? 'on' : ''}">${k}</button>`).join('')}</div>
+        <div class="seg-sm" title="Ferramentas de traço">
+          <button data-tool="cursor" class="${CH.tool === 'cursor' ? 'on' : ''}" title="Mover e dar zoom">${TOOL_ICON.cursor}</button>
+          <button data-tool="h" class="${CH.tool === 'h' ? 'on' : ''}" title="Linha horizontal (1 clique)">${TOOL_ICON.h}</button>
+          <button data-tool="t" class="${CH.tool === 't' ? 'on' : ''}" title="Linha de tendência (2 cliques)">${TOOL_ICON.t}</button>
+          <button data-tool="trash" title="Apagar os traços desta moeda">${TOOL_ICON.trash}</button>
+        </div>
+        <span class="chart-hint" id="chart-hint">${CH.tool === 'h' ? 'Clique no preço para marcar a linha' : CH.tool === 't' ? 'Clique no ponto inicial e depois no final' : 'Arraste para mover, role para dar zoom'}</span>
+        <button class="btn btn-sm" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
+      </div>
+      <div class="lw-slot" data-lwslot="${esc(t.mint)}"></div>
+      <div class="mini-grip" data-grip title="Arraste para mudar a altura do gráfico"><i></i></div>
+    </div>`;
   }
 
   function marketStats(t) {
@@ -992,47 +1002,76 @@
   // ---------- Comprar / vender ----------
   const BUY_PRESETS = [0.05, 0.1, 0.25, 0.5, 1];
   const SELL_PRESETS = [10, 25, 50, 75, 100];
-  const SLIP_PRESETS = [1, 2, 3, 5, 10];
-  const tradeState = (mint) => (ui.trade[mint] = ui.trade[mint] || { side: 'buy', amt: '', slip: 10, quote: null, msg: null, busy: false });
+  const SLIP_PRESETS = ['auto', 1, 2, 3, 5, 10];
+  const tradeState = (mint) => (ui.trade[mint] = ui.trade[mint] || { side: 'buy', mode: 'market', amt: '', slip: 'auto', quote: null, msg: null, busy: false, lTrigger: '', lTp: '', lSl: '', lDays: 7 });
+  const pctPrice = (t, p) => (t.priceUsd ? pxFmt(t.priceUsd * (1 + p / 100)) : '');
 
   function tradeBlock(t) {
     const st = tradeState(t.mint);
     if (!t.held && st.side === 'sell') st.side = 'buy';
     const buy = st.side === 'buy';
+    const limit = st.mode === 'limit';
     const solBal = data.wallet?.solBalance;
     const bal = buy ? (solBal != null ? solFmt(solBal) : '-') : `${tokFmt(t.heldAmount || 0)} ${esc(t.symbol)}`;
     const m = esc(t.mint);
     const presets = buy
       ? BUY_PRESETS.map((v) => `<button data-tp="${v}" data-tmint="${m}" class="${String(v) === String(st.amt) ? 'on' : ''}">${v}</button>`).join('')
       : SELL_PRESETS.map((v) => `<button data-tpct="${v}" data-tmint="${m}">${v}%</button>`).join('');
-    const slips = SLIP_PRESETS.map((v) => `<button data-tslip="${v}" data-tmint="${m}" class="${Number(st.slip) === v ? 'on' : ''}">${v}%</button>`).join('');
-    const q = st.quote;
-    const quote = st.msg ? `<div class="tquote ${st.msg.err ? 'err' : ''}">${st.msg.html}</div>`
-      : q ? `<div class="tquote">
-          <span>Você ${buy ? 'paga' : 'vende'} <b>${buy ? solFmt(q.inUi, 4) : `${tokFmt(q.inUi)} ${esc(t.symbol)}`}</b></span>
-          <span>Recebe aprox. <b>${buy ? `${tokFmt(q.outUi)} ${esc(t.symbol)}` : solFmt(q.outUi, 4)}</b> (mínimo ${buy ? tokFmt(q.minUi) : solFmt(q.minUi, 4)})</span>
-          <span>Impacto no preço <b>${q.impact.toFixed(2)}%</b> - slippage ${st.slip}%</span></div>` : '';
-    const label = q ? 'Confirmar na Phantom' : `${buy ? 'Comprar' : 'Vender'} ${esc(t.symbol)}`;
+    const amountBox = `<div class="tbox">
+        <div class="tin"><label>${buy ? 'SOL' : esc(t.symbol)}</label><input inputmode="decimal" placeholder="0" value="${esc(st.amt)}" data-tamt="${m}" aria-label="Quantidade"></div>
+        <div class="presets">${presets}</div></div>`;
+
+    let body = '';
+    if (!limit) {
+      const auto = st.slip === 'auto';
+      const slips = SLIP_PRESETS.map((v) => `<button data-tslip="${v}" data-tmint="${m}" class="${String(st.slip) === String(v) ? 'on' : ''}">${v === 'auto' ? 'Auto' : v + '%'}</button>`).join('');
+      const q = st.quote;
+      const quote = st.msg ? `<div class="tquote ${st.msg.err ? 'err' : ''}">${st.msg.html}</div>`
+        : q ? `<div class="tquote">
+            <span>Você ${buy ? 'paga' : 'vende'} <b>${buy ? solFmt(q.inUi, 4) : `${tokFmt(q.inUi)} ${esc(t.symbol)}`}</b></span>
+            <span>Recebe aprox. <b>${buy ? `${tokFmt(q.outUi)} ${esc(t.symbol)}` : solFmt(q.outUi, 4)}</b></span>
+            <span>Impacto no preço <b>${q.impact.toFixed(2)}%</b> - slippage ${auto ? 'automático' : st.slip + '%'}</span></div>` : '';
+      body = `${amountBox}
+        <div class="tbox">
+          <div class="tin"><label>Slippage</label>${auto ? '<small>a Jupiter escolhe o menor que funciona</small><span style="flex:1"></span><b class="num">Auto</b>' : `<input inputmode="decimal" value="${esc(st.slip)}" data-tslipin="${m}" aria-label="Slippage"><small>%</small>`}</div>
+          <div class="presets">${slips}</div>
+        </div>
+        ${quote}
+        <div class="${q ? 'tgo-row' : ''}">
+          <button class="tgo ${buy ? 'buy' : 'sell'}" data-tgo="${m}" ${st.busy ? 'disabled' : ''}>${st.busy ? 'Aguarde...' : q ? 'Confirmar na Phantom' : `${buy ? 'Comprar' : 'Vender'} ${esc(t.symbol)}`}</button>
+          ${q ? `<button class="btn" data-tcancel="${m}">Cancelar</button>` : ''}
+        </div>`;
+    } else {
+      const key = jupKey();
+      const keyBox = key ? '' : `<div class="keybox"><span>Ordens limite usam a Jupiter. Cole aqui sua chave grátis (crie em <a href="https://portal.jup.ag" target="_blank" rel="noopener">portal.jup.ag</a>). Ela fica só neste aparelho.</span>
+          <input type="password" placeholder="Chave da API Jupiter" data-jupkey autocomplete="off"></div>`;
+      const priceRow = (label, field, chips, hint) => `<div class="tbox">
+          <div class="tin"><label>${label}</label><input inputmode="decimal" placeholder="${hint}" value="${esc(st[field])}" data-lfield="${field}" data-tmint="${m}"><small>US$</small></div>
+          <div class="chips">${chips.map((c) => `<button data-lchip="${field}" data-lpct="${c}" data-tmint="${m}">${c > 0 ? '+' : ''}${c}%</button>`).join('')}<span style="flex:1"></span><small style="color:var(--faint);font-size:11px;align-self:center">agora ${price(t.priceUsd)}</small></div></div>`;
+      const fields = buy
+        ? priceRow('Comprar se chegar a', 'lTrigger', [-10, -20, -30, -50], pxFmt(t.priceUsd * 0.8))
+        : priceRow('Alvo (vender acima)', 'lTp', [25, 50, 100, 200], pxFmt(t.priceUsd * 1.5)) + priceRow('Stop (vender abaixo)', 'lSl', [-10, -20, -30, -50], pxFmt(t.priceUsd * 0.8));
+      const days = [1, 7, 30].map((d) => `<button data-ldays="${d}" data-tmint="${m}" class="${Number(st.lDays) === d ? 'on' : ''}">${d === 1 ? '1 dia' : d + ' dias'}</button>`).join('');
+      const orders = (LIM.orders[t.mint] || []).map((o) => {
+        const isBuy = o.inputMint === SOL_MINT;
+        const what = o.orderType === 'oco' ? `Alvo ${price(o.tpPriceUsd)} / Stop ${price(o.slPriceUsd)}` : `${isBuy ? 'Comprar' : 'Vender'} ${o.triggerCondition === 'above' ? 'acima de' : 'abaixo de'} ${price(o.triggerPriceUsd)}`;
+        return `<div class="ord"><b>${what}</b><button class="btn" data-lcancel="${esc(o.id)}" data-tmint="${m}">Cancelar</button><span>${o.orderState === 'executing' ? 'executando' : 'aberta'} - vale até ${dt(new Date(o.expiresAt).getTime())}</span></div>`;
+      }).join('');
+      body = `${keyBox}${amountBox}${fields}
+        <div class="tin" style="padding:0"><label style="font-size:12px;color:var(--muted)">Validade</label><span style="flex:1"></span><div class="seg-sm">${days}</div></div>
+        ${st.msg ? `<div class="tquote ${st.msg.err ? 'err' : ''}">${st.msg.html}</div>` : ''}
+        <button class="tgo ${buy ? 'buy' : 'sell'}" data-lgo="${m}" ${LIM.busy ? 'disabled' : ''}>${LIM.busy ? 'Aguarde...' : buy ? 'Criar ordem de compra' : 'Criar ordem de venda'}</button>
+        <div class="orders"><h4>Ordens abertas</h4>${LIM.token ? (orders || '<span class="meta">Nenhuma ordem aberta nesta moeda.</span>') : `<button class="btn btn-sm" data-lconnect="${m}">Conectar a Phantom para ver</button>`}</div>`;
+    }
     return `<section class="panel trade">
       <div class="tside">
         <button class="${buy ? 'on' : ''}" data-tside="buy" data-tmint="${m}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 4-4 4 4M12 16V8"/></svg>Comprar</button>
         <button class="${buy ? '' : 'on'}" data-tside="sell" data-tmint="${m}" ${t.held ? '' : 'disabled title="Você ainda não tem essa moeda"'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 12-4 4-4-4M12 8v8"/></svg>Vender</button>
       </div>
       <div class="tbody">
+        <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
         <div class="tbal"><span>Saldo</span><span class="num">${bal}</span></div>
-        <div class="tbox">
-          <div class="tin"><label>${buy ? 'SOL' : esc(t.symbol)}</label><input inputmode="decimal" placeholder="0" value="${esc(st.amt)}" data-tamt="${m}" aria-label="Quantidade"></div>
-          <div class="presets">${presets}</div>
-        </div>
-        <div class="tbox">
-          <div class="tin"><label>Slippage %</label><input inputmode="decimal" value="${esc(st.slip)}" data-tslipin="${m}" aria-label="Slippage"></div>
-          <div class="presets">${slips}</div>
-        </div>
-        ${quote}
-        <div class="${q ? 'tgo-row' : ''}">
-          <button class="tgo ${buy ? 'buy' : 'sell'}" data-tgo="${m}" ${st.busy ? 'disabled' : ''}>${st.busy ? 'Aguarde...' : label}</button>
-          ${q ? `<button class="btn" data-tcancel="${m}">Cancelar</button>` : ''}
-        </div>
+        ${body}
       </div>
     </section>`;
   }
@@ -1093,6 +1132,309 @@
     const ops = mine ? `<div class="op-grid ${ui.hist[t.mint]?.open ? 'hist-open' : ''}">${opBlock(t)}${tradeBlock(t)}</div>`
       : t.status === 'aprovada' ? tradeBlock(t) : '';
     return head + perf + ops + (mine ? alertsHtml(t) : '') + checksHtml(t, t.status !== 'aprovada');
+  }
+
+  // =========================================================
+  //  Gráfico próprio (Lightweight Charts)
+  // =========================================================
+  const CH = { lib: null, loading: null, host: null, chart: null, candle: null, vol: null, mint: null, interval: store.get('faro-ival', '5m'),
+    tool: 'cursor', pending: null, bars: [], lines: [], trends: [], fetchedAt: 0, big: false };
+  const TZ = -new Date().getTimezoneOffset() * 60; // mostra os horários no seu fuso
+  function loadLW() {
+    if (window.LightweightCharts) return Promise.resolve(window.LightweightCharts);
+    return (CH.loading = CH.loading || new Promise((ok, fail) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js';
+      sc.onload = () => ok(window.LightweightCharts); sc.onerror = () => fail(new Error('Não consegui carregar o gráfico'));
+      document.head.appendChild(sc);
+    }));
+  }
+  const pxFmt = (p) => { p = Number(p) || 0; if (p === 0) return '0'; if (p >= 1) return p.toFixed(4); const z = Math.max(0, -Math.floor(Math.log10(p)) - 1); return p.toFixed(Math.min(z + 4, 12)); };
+  const drawStore = () => store.get('faro-draw', {});
+  function saveDraw(mint, d) { const all = drawStore(); all[mint] = d; store.set('faro-draw', all); }
+  const getDraw = (mint) => ({ h: [], t: [], ...(drawStore()[mint] || {}) });
+  const ivalSec = () => (IVALS.find((x) => x[0] === CH.interval) || IVALS[1])[3];
+
+  async function buildChart() {
+    const LW = await loadLW();
+    CH.host = document.createElement('div'); CH.host.className = 'lw-host';
+    CH.chart = LW.createChart(CH.host, {
+      autoSize: true,
+      layout: { background: { type: 'solid', color: '#0c0e11' }, textColor: '#8c939f', fontFamily: 'Plus Jakarta Sans, system-ui', fontSize: 11 },
+      grid: { vertLines: { color: '#171a1f' }, horzLines: { color: '#171a1f' } },
+      rightPriceScale: { borderColor: '#22262d', scaleMargins: { top: 0.08, bottom: 0.22 } },
+      timeScale: { borderColor: '#22262d', timeVisible: true, secondsVisible: false, rightOffset: 6, barSpacing: 8 },
+      crosshair: { mode: 0, vertLine: { color: '#5d6470', labelBackgroundColor: '#1c2026' }, horzLine: { color: '#5d6470', labelBackgroundColor: '#1c2026' } },
+      localization: { locale: 'pt-BR', priceFormatter: pxFmt },
+      handleScroll: true, handleScale: true,
+    });
+    CH.candle = CH.chart.addCandlestickSeries({ upColor: '#10d27f', downColor: '#ff5b5b', borderVisible: false, wickUpColor: '#10d27f', wickDownColor: '#ff5b5b',
+      priceFormat: { type: 'custom', formatter: pxFmt, minMove: 1e-12 } });
+    CH.vol = CH.chart.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
+    CH.chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+    CH.chart.subscribeClick(onChartClick);
+  }
+
+  function candlesFromRobot(t) {
+    return (t.candles || []).map((c) => ({ time: Math.floor(c[0] / 1000), open: c[1], high: c[2], low: c[3], close: c[4], value: c[5] }));
+  }
+  async function fetchCandles(t) {
+    if (!t.pairAddress || isDemo()) return null;
+    const [, tf, agg] = IVALS.find((x) => x[0] === CH.interval) || IVALS[1];
+    const url = `https://api.geckoterminal.com/api/v2/networks/solana/pools/${t.pairAddress}/ohlcv/${tf}?aggregate=${agg}&limit=300&currency=usd`;
+    const j = await fetch(url, { headers: { accept: 'application/json;version=20230302' } }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const list = j?.data?.attributes?.ohlcv_list;
+    if (!list) return null;
+    return list.map((c) => ({ time: c[0], open: +c[1], high: +c[2], low: +c[3], close: +c[4], value: +c[5] })).sort((a, b) => a.time - b.time);
+  }
+  function applyBars(bars, keepView) {
+    CH.bars = bars;
+    const sh = (b) => ({ ...b, time: b.time + TZ });
+    CH.candle.setData(bars.map((b) => sh({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+    CH.vol.setData(bars.map((b) => ({ time: b.time + TZ, value: b.value || 0, color: b.close >= b.open ? 'rgba(16,210,127,.28)' : 'rgba(255,91,91,.28)' })));
+    if (!keepView) CH.chart.timeScale().scrollToRealTime();
+  }
+
+  // Marcações: seu preço médio / alerta, ordens limite, seus traços e os pontos de compra (C) e venda (V)
+  function decorate(t) {
+    for (const l of CH.lines) { try { CH.candle.removePriceLine(l); } catch {} }
+    for (const s2 of CH.trends) { try { CH.chart.removeSeries(s2); } catch {} }
+    CH.lines = []; CH.trends = [];
+    const add = (price, color, title, style = 2, width = 1) => { if (price > 0) CH.lines.push(CH.candle.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title })); };
+    if (t.position?.known) add(t.position.avgPriceUsd, '#a78bfa', 'preço médio', 2, 2);
+    else if (t.entryPriceUsd) add(t.entryPriceUsd, '#a78bfa', 'alerta', 2, 1);
+    for (const o of LIM.orders[t.mint] || []) {
+      if (o.tpPriceUsd) add(Number(o.tpPriceUsd), '#10d27f', 'alvo', 1, 1);
+      if (o.slPriceUsd) add(Number(o.slPriceUsd), '#ff5b5b', 'stop', 1, 1);
+      if (o.triggerPriceUsd) add(Number(o.triggerPriceUsd), '#f5b14c', o.inputMint === SOL_MINT ? 'compra limite' : 'venda limite', 1, 1);
+    }
+    const d = getDraw(t.mint);
+    for (const h of d.h) add(h, '#cfd3da', '', 0, 1);
+    for (const [t1, p1, t2, p2] of d.t) {
+      const ls = CH.chart.addLineSeries({ color: '#cfd3da', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceFormat: { type: 'custom', formatter: pxFmt, minMove: 1e-12 } });
+      const a = t1 + TZ, b = Math.max(t2, t1 + 1) + TZ;
+      ls.setData([{ time: a, value: p1 }, { time: b, value: p2 }]);
+      CH.trends.push(ls);
+    }
+    const sec = ivalSec();
+    const first = CH.bars[0]?.time || 0;
+    const marks = (t.history || []).filter((o) => o.tokens && o.at / 1000 >= first).map((o) => {
+      const buy = o.tokens > 0;
+      return { time: Math.floor(o.at / 1000 / sec) * sec + TZ, position: buy ? 'belowBar' : 'aboveBar', color: buy ? '#10d27f' : '#ff5b5b', shape: buy ? 'arrowUp' : 'arrowDown', text: buy ? 'C' : 'V' };
+    }).sort((a, b) => a.time - b.time);
+    CH.candle.setMarkers(marks);
+  }
+
+  async function showChart(t, slot) {
+    if (!slot) return;
+    if (!CH.chart) { try { await buildChart(); } catch (e) { slot.innerHTML = `<div class="chart-empty">${esc(e.message)}</div>`; return; } }
+    if (!CH.big) slot.appendChild(CH.host);
+    if (CH.mint !== t.mint || CH.ivalLoaded !== CH.interval) {
+      CH.mint = t.mint; CH.ivalLoaded = CH.interval; CH.fetchedAt = 0;
+      const seed = CH.interval === '5m' ? candlesFromRobot(t) : [];
+      applyBars(seed, false);
+      decorate(t);
+      refreshCandles(t);
+    } else decorate(t);
+  }
+  async function refreshCandles(t) {
+    const mint = t.mint, iv = CH.interval;
+    const bars = await fetchCandles(t);
+    if (!bars || CH.mint !== mint || CH.interval !== iv) return;
+    applyBars(bars, CH.fetchedAt > 0);
+    CH.fetchedAt = Date.now();
+    decorate(t);
+  }
+  // Atualiza a última vela com o preço ao vivo
+  function tickBar(t) {
+    if (!CH.chart || CH.mint !== t.mint || !t.priceUsd || !CH.bars.length) return;
+    const sec = ivalSec(); const now = Math.floor(Date.now() / 1000); const bucket = Math.floor(now / sec) * sec;
+    let last = CH.bars[CH.bars.length - 1];
+    if (bucket > last.time) { last = { time: bucket, open: last.close, high: last.close, low: last.close, close: last.close, value: 0 }; CH.bars.push(last); }
+    last.close = t.priceUsd; last.high = Math.max(last.high, t.priceUsd); last.low = Math.min(last.low, t.priceUsd);
+    CH.candle.update({ time: last.time + TZ, open: last.open, high: last.high, low: last.low, close: last.close });
+  }
+
+  function onChartClick(param) {
+    if (CH.tool === 'cursor' || !param.point || !CH.mint) return;
+    const price = CH.candle.coordinateToPrice(param.point.y);
+    if (!(price > 0)) return;
+    const d = getDraw(CH.mint);
+    if (CH.tool === 'h') { d.h.push(price); saveDraw(CH.mint, d); setTool('cursor'); toast('Linha marcada'); }
+    else if (CH.tool === 't') {
+      let time = param.time ?? CH.chart.timeScale().coordinateToTime(param.point.x);
+      if (time == null) return;
+      time = Number(time) - TZ;
+      if (!CH.pending) { CH.pending = [time, price]; $('chart-hint') && ($('chart-hint').textContent = 'Agora clique no ponto final'); return; }
+      const [t1, p1] = CH.pending; CH.pending = null;
+      const seg = t1 <= time ? [t1, p1, time, price] : [time, price, t1, p1];
+      d.t.push(seg); saveDraw(CH.mint, d); setTool('cursor'); toast('Tendência marcada');
+    }
+    decorate(data.tokens[CH.mint]);
+  }
+  function setTool(tool) {
+    CH.tool = tool; CH.pending = null;
+    if (CH.chart) CH.chart.applyOptions({ handleScroll: tool === 'cursor', handleScale: tool === 'cursor' });
+    document.querySelectorAll('[data-tool]').forEach((b) => b.classList.toggle('on', b.dataset.tool === tool));
+    const hint = $('chart-hint');
+    if (hint) hint.textContent = tool === 'h' ? 'Clique no preço para marcar a linha' : tool === 't' ? 'Clique no ponto inicial e depois no final' : 'Arraste para mover, role para dar zoom';
+  }
+  document.addEventListener('click', (e) => {
+    const tb = e.target.closest('[data-tool]');
+    if (tb) {
+      if (tb.dataset.tool === 'trash') { if (CH.mint) { saveDraw(CH.mint, { h: [], t: [] }); decorate(data.tokens[CH.mint]); toast('Traços apagados'); } return; }
+      setTool(tb.dataset.tool); return;
+    }
+    const iv = e.target.closest('[data-ival]');
+    if (iv) { CH.interval = iv.dataset.ival; store.set('faro-ival', CH.interval); document.querySelectorAll('[data-ival]').forEach((b) => b.classList.toggle('on', b.dataset.ival === CH.interval)); const t = data.tokens[CH.mint]; if (t) showChart(t, CH.host.parentElement); }
+  });
+
+  // =========================================================
+  //  Tempo real: preços do DexScreener a cada 10s, velas a cada 30s
+  // =========================================================
+  const LIVE = { at: 0, ok: false };
+  function recalcLive(t) {
+    const p = t.position;
+    if (p && t.priceNative > 0) {
+      const solUsd = t.priceUsd / t.priceNative;
+      p.solUsd = solUsd; p.amount = t.heldAmount ?? p.amount;
+      p.valueSol = p.amount * t.priceNative; p.valueUsd = p.amount * t.priceUsd;
+      if (p.known) {
+        p.openPnlUsd = p.valueUsd - p.costOpenUsd;
+        p.openPnlPct = p.costOpenUsd > 0 ? (p.openPnlUsd / p.costOpenUsd) * 100 : 0;
+        p.pnlUsd = p.valueUsd + (p.receivedUsd ?? p.receivedSol * solUsd) - p.spentUsd;
+      }
+    }
+    if (t.entryPriceUsd && t.priceUsd) {
+      t.maxPriceUsd = Math.max(t.maxPriceUsd || 0, t.priceUsd);
+      t.changePct = ((t.priceUsd - t.entryPriceUsd) / t.entryPriceUsd) * 100;
+      t.maxChangePct = ((t.maxPriceUsd - t.entryPriceUsd) / t.entryPriceUsd) * 100;
+    }
+  }
+  async function pollLive() {
+    if (!data || isDemo() || document.hidden) return;
+    const all = Object.values(data.tokens || {});
+    const want = new Set();
+    all.filter(isMine).forEach((t) => want.add(t.mint));
+    const sel = ui.sel[ui.tab]; if (sel) want.add(sel);
+    document.querySelectorAll('#list [data-sel]').forEach((r) => want.add(r.dataset.sel));
+    const mints = [...want].slice(0, 60);
+    let changed = false;
+    for (let i = 0; i < mints.length; i += 30) {
+      const chunk = mints.slice(i, i + 30);
+      const pairs = await fetch(`https://api.dexscreener.com/tokens/v1/solana/${chunk.join(',')}`).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+      const best = {};
+      for (const pr of pairs || []) { const m = pr?.baseToken?.address; if (!m || !chunk.includes(m)) continue; if (!best[m] || (pr?.liquidity?.usd || 0) > (best[m]?.liquidity?.usd || 0)) best[m] = pr; }
+      for (const [m, pr] of Object.entries(best)) {
+        const t = data.tokens[m]; if (!t) continue;
+        const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+        t.priceUsd = num(pr.priceUsd); t.priceNative = num(pr.priceNative);
+        t.liquidityUsd = num(pr?.liquidity?.usd); t.mcapUsd = num(pr.marketCap) || num(pr.fdv); t.fdvUsd = num(pr.fdv);
+        t.boosts = num(pr?.boosts?.active) || t.boosts;
+        t.periods = Object.fromEntries(['m5', 'h1', 'h6', 'h24'].map((k) => [k, { chg: num(pr?.priceChange?.[k]), buys: num(pr?.txns?.[k]?.buys), sells: num(pr?.txns?.[k]?.sells), vol: num(pr?.volume?.[k]) }]));
+        recalcLive(t); tickBar(t); changed = true;
+      }
+    }
+    LIVE.at = Date.now(); LIVE.ok = changed || LIVE.ok;
+    const typing = document.activeElement?.matches?.('input');
+    const pending = Object.values(ui.trade).some((x) => x.quote || x.busy) || LIM.busy;
+    if (changed && !typing && !pending) render();
+    else updateLivePill();
+  }
+  function updateLivePill() {
+    const el = $('live'); if (!el) return;
+    const fresh = LIVE.ok && Date.now() - LIVE.at < 30000;
+    el.className = 'live ' + (fresh ? 'on' : '');
+    el.querySelector('span').textContent = fresh ? 'Ao vivo' : 'Conectando...';
+  }
+  setInterval(pollLive, 10000);
+  setInterval(() => { const t = data?.tokens?.[CH.mint]; if (t && !document.hidden) refreshCandles(t); }, 30000);
+  setInterval(updateLivePill, 5000);
+
+  // =========================================================
+  //  Ordens limite (Jupiter Trigger V2): executam sozinhas na blockchain
+  // =========================================================
+  const TRIG = 'https://api.jup.ag/trigger/v2';
+  const LIM = { orders: {}, busy: false, token: null, tokenExp: 0, wallet: null, loadedFor: null };
+  const jupKey = () => store.get('faro-jup-key', '');
+  const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  function b58enc(bytes) {
+    let digits = [0];
+    for (const byte of bytes) { let carry = byte; for (let j = 0; j < digits.length; j++) { carry += digits[j] << 8; digits[j] = carry % 58; carry = (carry / 58) | 0; } while (carry) { digits.push(carry % 58); carry = (carry / 58) | 0; } }
+    let out = ''; for (const b of bytes) { if (b === 0) out += '1'; else break; }
+    for (let k = digits.length - 1; k >= 0; k--) out += B58[digits[k]];
+    return out;
+  }
+  async function trig(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', 'x-api-key': jupKey(), ...(LIM.token ? { Authorization: `Bearer ${LIM.token}` } : {}), ...(opts.headers || {}) };
+    const r = await fetch(TRIG + path, { ...opts, headers });
+    const txt = await r.text(); let j = null; try { j = JSON.parse(txt); } catch {}
+    if (!r.ok) { const e = new Error(j?.error || j?.message || `Jupiter respondeu ${r.status}`); e.status = r.status; throw e; }
+    return j;
+  }
+  async function trigAuth() {
+    if (LIM.token && Date.now() < LIM.tokenExp - 60000) return LIM.wallet;
+    const saved = JSON.parse(sessionStorage.getItem('faro-trig') || 'null');
+    const ph = getPhantom(); if (!ph) throw new Error('Phantom não encontrada neste navegador');
+    const { publicKey } = await ph.connect(); const wallet = publicKey.toString();
+    if (saved && saved.wallet === wallet && Date.now() < saved.exp - 60000) { Object.assign(LIM, { token: saved.token, tokenExp: saved.exp, wallet }); return wallet; }
+    LIM.token = null;
+    const ch = await trig('/auth/challenge', { method: 'POST', body: JSON.stringify({ walletPubkey: wallet, type: 'message' }) });
+    const signed = await ph.signMessage(new TextEncoder().encode(ch.challenge), 'utf8');
+    const v = await trig('/auth/verify', { method: 'POST', body: JSON.stringify({ type: 'message', walletPubkey: wallet, signature: b58enc(signed.signature || signed) }) });
+    const token = v.token || v.accessToken; const exp = v.expiresAt ? new Date(v.expiresAt).getTime() : Date.now() + (v.token ? 24 : 0.25) * 3600000;
+    Object.assign(LIM, { token, tokenExp: exp, wallet });
+    sessionStorage.setItem('faro-trig', JSON.stringify({ token, exp, wallet }));
+    try { await trig('/vault'); } catch { await trig('/vault/register', { method: 'POST', body: '{}' }); }
+    return wallet;
+  }
+  async function loadOrders(mint) {
+    if (!LIM.token) return;
+    try {
+      const r = await trig(`/orders/history?state=active&mint=${mint}&limit=50`);
+      LIM.orders[mint] = (r.orders || []).filter((o) => ['pending', 'open', 'executing'].includes(o.orderState));
+      LIM.loadedFor = mint;
+    } catch (e) { if (e.status === 401) { LIM.token = null; sessionStorage.removeItem('faro-trig'); } }
+  }
+  async function signTx(b64tx) {
+    const { VersionedTransaction } = await loadWeb3();
+    const tx = VersionedTransaction.deserialize(Uint8Array.from(atob(b64tx), (c) => c.charCodeAt(0)));
+    const signed = await getPhantom().signTransaction(tx);
+    return btoa(String.fromCharCode(...signed.serialize()));
+  }
+  async function createLimit(t, st) {
+    if (!jupKey()) throw new Error('Cole sua chave grátis da Jupiter no campo acima');
+    const buy = st.side === 'buy';
+    const amt = Number(String(st.amt).replace(',', '.'));
+    if (!(amt > 0)) throw new Error('Digite a quantidade');
+    const lp = (v) => Number(String(v || '').replace(',', '.'));
+    const trigger = lp(st.lTrigger), tp = lp(st.lTp), sl = lp(st.lSl);
+    if (buy && !(trigger > 0)) throw new Error('Digite o preço em que quer comprar');
+    if (!buy && !(tp > 0) && !(sl > 0)) throw new Error('Digite um alvo, um stop ou os dois');
+    if (!buy && tp > 0 && sl > 0 && tp <= sl) throw new Error('O alvo precisa ser maior que o stop');
+    const usdValue = buy ? amt * (t.priceUsd / (t.priceNative || 1)) : amt * (t.priceUsd || 0);
+    if (usdValue < 10) throw new Error(`A Jupiter exige no mínimo US$ 10 por ordem (esta tem ${money(usdValue)})`);
+    const wallet = await trigAuth();
+    const dec = buy ? 9 : await tokenDecimals(t);
+    const raw = String(Math.floor(amt * 10 ** dec));
+    const inputMint = buy ? SOL_MINT : t.mint, outputMint = buy ? t.mint : SOL_MINT;
+    const type = !buy && tp > 0 && sl > 0 ? 'oco' : 'single';
+    const craft = await trig('/deposit/craft', { method: 'POST', body: JSON.stringify({ inputMint, outputMint, userAddress: wallet, amount: raw, orderType: 'price', orderSubType: type }) });
+    const signed = await signTx(craft.transaction);
+    const body = { orderType: type, depositRequestId: craft.requestId, depositSignedTx: signed, userPubkey: wallet, inputMint, outputMint, inputAmount: raw, triggerMint: t.mint, expiresAt: Date.now() + (Number(st.lDays) || 7) * 86400000 };
+    if (type === 'oco') Object.assign(body, { tpPriceUsd: tp, slPriceUsd: sl });
+    else if (buy) Object.assign(body, { triggerCondition: trigger <= t.priceUsd ? 'below' : 'above', triggerPriceUsd: trigger });
+    else Object.assign(body, tp > 0 ? { triggerCondition: 'above', triggerPriceUsd: tp } : { triggerCondition: 'below', triggerPriceUsd: sl });
+    const r = await trig('/orders/price', { method: 'POST', body: JSON.stringify(body) });
+    await loadOrders(t.mint);
+    return r;
+  }
+  async function cancelLimit(t, id) {
+    await trigAuth();
+    const c = await trig(`/orders/price/cancel/${id}`, { method: 'POST', body: '{}' });
+    const signed = await signTx(c.transaction);
+    await trig(`/orders/price/confirm-cancel/${id}`, { method: 'POST', body: JSON.stringify({ signedTransaction: signed, cancelRequestId: c.requestId }) });
+    await loadOrders(t.mint);
   }
 
   // ---------- Render ----------
@@ -1178,6 +1520,7 @@
     // Detalhe
     const t = sel && data.tokens[sel];
     $('detail').innerHTML = t ? detailHtml(t) : '';
+    if (t) { showChart(t, document.querySelector('[data-lwslot]')); if (LIM.token && LIM.loadedFor !== t.mint) loadOrders(t.mint).then(() => { if (CH.mint === t.mint) decorate(t); render(); }); }
     if (!t) document.body.classList.remove('show-detail');
 
     renderRobot();
@@ -1265,11 +1608,7 @@
   syncToggles();
   setTimeout(unlockAudio, 300);
 
-  // ---------- Gráfico completo (DexScreener, com as ferramentas de traço) ----------
-  function chartUrl(t) {
-    const base = window.__DEMO_CHART || t.pairUrl || `https://dexscreener.com/solana/${encodeURIComponent(t.mint)}`;
-    return `${base}${base.includes('?') ? '&' : '?'}embed=1&theme=dark&chartTheme=dark&chartStyle=1&interval=5&trades=0&info=0`;
-  }
+  // ---------- Gráfico expandido: move o mesmo gráfico (com os mesmos traços) para a tela grande ----------
   function openChart(mint) {
     const t = data?.tokens?.[mint]; if (!t) return;
     $('chart-sym').textContent = t.symbol || mint.slice(0, 6);
@@ -1279,15 +1618,23 @@
     pill.hidden = !lvl;
     if (lvl) { pill.className = 'pill ' + (lvl === 'ok' ? '' : lvl); pill.textContent = { ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[lvl]; }
     $('chart-ext').href = dexLink(t);
-    $('chart-iframe').src = chartUrl(t);
     $('chart').classList.add('show');
     document.body.style.overflow = 'hidden';
+    CH.big = true;
+    const tools = document.querySelector('.chart-tools');
+    if (tools) { CH.toolsHome = tools.parentElement; $('chart-big').before(tools); }
+    if (CH.host) $('chart-big').appendChild(CH.host);
+    if (CH.mint !== mint) showChart(t, $('chart-big'));
   }
-  function closeChart() { $('chart').classList.remove('show'); $('chart-iframe').src = 'about:blank'; document.body.style.overflow = ''; }
+  function closeChart() {
+    $('chart').classList.remove('show'); document.body.style.overflow = '';
+    CH.big = false;
+    document.querySelectorAll('.chart-panel > .chart-tools').forEach((x) => x.remove());
+    render();
+  }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-chart]'); if (b) openChart(b.dataset.chart); });
   $('chart-back').addEventListener('click', closeChart);
   $('chart').addEventListener('click', (e) => { if (e.target.id === 'chart') closeChart(); });
-
   // ---------- Altura do gráfico (arrastar o puxador; fica salva) ----------
   { const h = store.get('faro-chart-h', null); if (h) document.documentElement.style.setProperty('--chart-h', h + 'px'); }
   document.addEventListener('pointerdown', (e) => {
@@ -1331,9 +1678,9 @@
 
   async function tokenDecimals(t) {
     if (Number.isInteger(t.decimals)) return t.decimals;
-    const r = await fetch('https://api.mainnet-beta.solana.com', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenSupply', params: [t.mint] }) }).then((x) => x.json());
-    const d = r?.result?.value?.decimals; if (!Number.isInteger(d)) throw new Error('Não consegui saber as casas decimais da moeda');
+    const r = await fetch(`https://lite-api.jup.ag/tokens/v2/search?query=${t.mint}`).then((x) => x.json()).catch(() => null);
+    const d = (Array.isArray(r) ? r.find((x) => x.id === t.mint) || r[0] : null)?.decimals;
+    if (!Number.isInteger(d)) throw new Error('Não consegui saber as casas decimais da moeda');
     t.decimals = d; return d;
   }
   let web3Promise = null;
@@ -1349,7 +1696,8 @@
   async function getQuote(t, st) {
     const buy = st.side === 'buy';
     const amt = Number(String(st.amt).replace(',', '.'));
-    const slip = Number(String(st.slip).replace(',', '.'));
+    const auto = st.slip === 'auto';
+    const slip = auto ? 5 : Number(String(st.slip).replace(',', '.')); // no automático, 5% é só o teto
     if (!(amt > 0)) throw new Error('Digite uma quantidade');
     if (!(slip > 0 && slip <= 50)) throw new Error('Slippage entre 0,1% e 50%');
     if (buy && data.wallet?.solBalance != null && amt > data.wallet.solBalance) throw new Error('Saldo de SOL insuficiente');
@@ -1371,7 +1719,7 @@
     const ph = getPhantom();
     const { publicKey } = await ph.connect();
     const sw = await fetch(`${JUP}/swap`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quoteResponse: st.quote.raw, userPublicKey: publicKey.toString(), wrapAndUnwrapSol: true, dynamicComputeUnitLimit: true, prioritizationFeeLamports: 'auto' }) }).then((r) => r.json());
+      body: JSON.stringify({ quoteResponse: st.quote.raw, userPublicKey: publicKey.toString(), wrapAndUnwrapSol: true, dynamicComputeUnitLimit: true, dynamicSlippage: st.slip === 'auto', prioritizationFeeLamports: 'auto' }) }).then((r) => r.json());
     if (!sw?.swapTransaction) throw new Error(sw?.error || 'A Jupiter não montou a transação');
     const { VersionedTransaction } = await loadWeb3();
     const tx = VersionedTransaction.deserialize(Uint8Array.from(atob(sw.swapTransaction), (c) => c.charCodeAt(0)));
@@ -1415,12 +1763,35 @@
     if (el.dataset.tside) { st.side = el.dataset.tside; st.amt = ''; st.quote = null; st.msg = null; }
     else if (el.dataset.tp) { st.amt = el.dataset.tp; st.quote = null; st.msg = null; }
     else if (el.dataset.tpct) { st.amt = String(Number(((t.heldAmount || 0) * Number(el.dataset.tpct) / 100).toPrecision(10))); st.quote = null; st.msg = null; }
-    else if (el.dataset.tslip) { st.slip = Number(el.dataset.tslip); st.quote = null; st.msg = null; }
+    else if (el.dataset.tslip) { st.slip = el.dataset.tslip === 'auto' ? 'auto' : Number(el.dataset.tslip); st.quote = null; st.msg = null; }
     else if (el.dataset.tcancel) { st.quote = null; st.msg = null; }
     else if (el.dataset.tgo) { onTradeGo(mint); return; }
     render();
   });
+  document.addEventListener('click', async (e) => {
+    const el = e.target.closest('[data-tmode],[data-lchip],[data-ldays],[data-lgo],[data-lcancel],[data-lconnect]'); if (!el) return;
+    const mint = el.dataset.tmint || el.dataset.lgo || el.dataset.lconnect; const st = tradeState(mint); const t = data.tokens[mint];
+    if (el.dataset.tmode) { st.mode = el.dataset.tmode; st.msg = null; st.quote = null; return render(); }
+    if (el.dataset.lchip) { st[el.dataset.lchip] = pctPrice(t, Number(el.dataset.lpct)); return render(); }
+    if (el.dataset.ldays) { st.lDays = Number(el.dataset.ldays); return render(); }
+    if (!isDemo() && !getPhantom()) { st.msg = { err: true, html: 'Phantom não encontrada neste navegador. No computador, instale a extensão. No celular, abra o Faro pelo navegador do app da Phantom.' }; return render(); }
+    LIM.busy = true; st.msg = null; render();
+    try {
+      if (el.dataset.lconnect) { if (!jupKey()) throw new Error('Cole primeiro a sua chave grátis da Jupiter no campo acima'); await trigAuth(); await loadOrders(mint); }
+      else if (el.dataset.lgo) {
+        if (isDemo()) { st.msg = { html: '<b>Demonstração:</b> nada foi enviado. No Faro de verdade a Phantom abre para você assinar a ordem.' }; }
+        else { await createLimit(t, st); st.msg = { html: '<b>Ordem criada.</b> Ela fica na blockchain e executa sozinha quando o preço chegar, mesmo com o Faro fechado.' }; st.amt = ''; st.lTrigger = st.lTp = st.lSl = ''; toast('Ordem limite criada'); }
+      } else if (el.dataset.lcancel) { await cancelLimit(t, el.dataset.lcancel); toast('Ordem cancelada'); }
+    } catch (err) {
+      st.msg = { err: true, html: esc(/reject|denied|cancel/i.test(err.message || '') && !el.dataset.lcancel ? 'Você cancelou na Phantom.' : err.message) };
+    } finally { LIM.busy = false; render(); if (CH.mint === mint) decorate(t); }
+  });
+  document.addEventListener('change', (e) => {
+    const k = e.target.closest('[data-jupkey]'); if (!k) return;
+    store.set('faro-jup-key', k.value.trim()); toast('Chave da Jupiter salva neste aparelho'); render();
+  });
   document.addEventListener('input', (e) => {
+    const lf = e.target.closest('[data-lfield]'); if (lf) { tradeState(lf.dataset.tmint)[lf.dataset.lfield] = lf.value; }
     const a = e.target.closest('[data-tamt]'); const sl = e.target.closest('[data-tslipin]');
     if (a) { const st = tradeState(a.dataset.tamt); st.amt = a.value; st.quote = null; }
     if (sl) { const st = tradeState(sl.dataset.tslipin); st.slip = sl.value; st.quote = null; }

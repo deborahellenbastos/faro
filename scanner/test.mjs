@@ -179,7 +179,8 @@ const fakeTx = {
 const ops = parseOps(fakeTx, 'ME', 'abc');
 assert.equal(ops.length, 1);
 assert.equal(ops[0].tokens, 1000);
-assert.ok(Math.abs(ops[0].sol + 0.25) < 1e-9);
+// a taxa de criação da conta (~0,002 SOL) não conta como custo
+assert.ok(Math.abs(ops[0].sol - (-0.25 + 0.00203928)) < 1e-9);
 
 // Compra desligada por padrão
 assert.equal(state.lastRun.autoBuy, false);

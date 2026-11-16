@@ -297,6 +297,7 @@ export function mergeSafety(prev, alerts, now) {
 }
 
 // ---------- Sua operação (a partir das transações da carteira) ----------
+const soldTokensFor = (sells) => sells.reduce((a, o) => a - o.tokens, 0);
 export function positionFrom(ops, heldAmount, priceNative, priceUsd) {
   const solUsd = priceNative > 0 ? priceUsd / priceNative : null;
   const valueSol = heldAmount * (priceNative || 0);
@@ -311,6 +312,11 @@ export function positionFrom(ops, heldAmount, priceNative, priceUsd) {
   const avg = spentSol / bought;
   const pnlSol = valueSol + receivedSol - spentSol;
   const usd = (v) => (solUsd ? v * solUsd : null);
+  // Em dólar, cada compra/venda vale pelo preço do SOL da hora em que aconteceu (quando conhecido)
+  const atUsd = (o) => Math.abs(o.sol) * (o.solUsd || solUsd || 0);
+  const spentUsdHist = buys.reduce((a, o) => a + atUsd(o), 0);
+  const receivedUsdHist = sells.reduce((a, o) => a + atUsd(o), 0);
+  const avgUsd = spentUsdHist / (buys.reduce((a, o) => a + o.tokens, 0) || 1);
   // Realizado: o que já foi vendido, comparado com o preço médio de compra
   const soldTokens = sells.reduce((a, o) => a - o.tokens, 0);
   const realizedSol = receivedSol - soldTokens * avg;
@@ -319,13 +325,17 @@ export function positionFrom(ops, heldAmount, priceNative, priceUsd) {
   const openPnlSol = valueSol - costOpenSol;
   return {
     ...base, known: true,
-    realizedSol, realizedUsd: usd(realizedSol),
-    costOpenSol, costOpenUsd: usd(costOpenSol),
-    openPnlSol, openPnlUsd: usd(openPnlSol), openPnlPct: costOpenSol > 0 ? (openPnlSol / costOpenSol) * 100 : 0,
-    spentSol, spentUsd: usd(spentSol), receivedSol,
-    avgPriceSol: avg, avgPriceUsd: usd(avg),
+    realizedSol, realizedUsd: receivedUsdHist - soldTokensFor(sells) * avgUsd,
+    receivedUsd: receivedUsdHist,
+    costOpenSol, costOpenUsd: heldAmount * avgUsd,
+    openPnlSol,
+    openPnlUsd: solUsd ? valueSol * solUsd - heldAmount * avgUsd : null,
+    openPnlPct: heldAmount * avgUsd > 0 && solUsd ? ((valueSol * solUsd - heldAmount * avgUsd) / (heldAmount * avgUsd)) * 100 : 0,
+    spentSol, spentUsd: spentUsdHist, receivedSol,
+    avgPriceSol: avg, avgPriceUsd: avgUsd,
     minPriceUsd: usd(Math.min(...prices)), maxPriceUsd: usd(Math.max(...prices)),
-    pnlSol, pnlUsd: usd(pnlSol), pnlPct: (pnlSol / spentSol) * 100,
+    pnlSol, pnlUsd: solUsd ? valueSol * solUsd + receivedUsdHist - spentUsdHist : null,
+    pnlPct: spentUsdHist ? ((valueSol * (solUsd || 0) + receivedUsdHist - spentUsdHist) / spentUsdHist) * 100 : 0,
     buys: buys.length, sells: sells.length,
     firstBuyAt: Math.min(...buys.map((o) => o.at)), lastBuyAt: Math.max(...buys.map((o) => o.at)),
   };
