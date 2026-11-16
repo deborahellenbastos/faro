@@ -241,12 +241,6 @@
 
   /* Ferramentas do gráfico */
   .chart-tools { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); flex-wrap: wrap; }
-  .chart-box:not(.max) .chart-tools.faro-only { display: none; }
-  .chart-box:not(.is-dex) .dex-only-tools { display: none; }
-  .dex-only-tools { display: inline-flex; gap: 6px; } .icon-btn.sm { width: 30px; height: 30px; } .icon-btn.sm svg { width: 15px; height: 15px; }
-  .ov-acts { position: absolute; top: 8px; right: 72px; z-index: 4; display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(12,14,17,.9); border: 1px solid #1f232a; }
-  .ov-acts button, .ov-acts a { width: 28px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
-  .ov-acts button:hover, .ov-acts a:hover { color: var(--text); background: var(--panel-2); } .ov-acts svg { width: 15px; height: 15px; }
   .seg-sm { display: flex; gap: 2px; padding: 2px; border-radius: var(--r-2); background: var(--bg); border: 1px solid var(--line); }
   .seg-sm button { border: 0; background: transparent; height: 28px; min-width: 32px; padding: 0 8px; border-radius: var(--r-1); color: var(--muted); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
   .seg-sm button svg { width: 15px; height: 15px; }
@@ -1831,12 +1825,14 @@
     const iv = CH.interval;
     const dex = chartSrc === 'dex';
     return `<div class="chart-box ${dex ? 'is-dex' : ''}">
-      <div class="chart-tools ${dexOn() ? '' : 'faro-only'}">
+      <div class="chart-tools">
         <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
         <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
         ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
         <span style="flex:1"></span>
-        ${dexOn() ? `<span class="dex-only-tools"><button class="icon-btn sm" data-askclaude="${esc(t.mint)}" title="Perguntar ao Claude (vão só os dados; a foto do gráfico sai no gráfico Faro)">${ICON.claude}</button><button class="icon-btn sm cmin-only" data-chart="${esc(t.mint)}" title="Expandir o gráfico">${ICON.expand}</button></span>` : ''}
+        ${dexOn() ? '' : `<a class="btn btn-sm" href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}Abrir na Dex</a>`}
+        <button class="btn btn-sm" data-askclaude="${esc(t.mint)}" title="Abre o Claude com os dados desta moeda e copia a foto do gráfico do Faro para você colar">${ICON.claude}Perguntar ao Claude</button>
+        <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
       </div>
       <div class="lw-slot" data-lwslot="${esc(t.mint)}"><div class="dexwrap" data-dexslot></div><div class="farowrap" data-faroslot>
         <div class="ov-tools" title="Ferramentas de traço">
@@ -1851,11 +1847,6 @@
           <button data-tool="trash" title="Apagar os traços desta moeda">${TOOL_ICON.trash}</button>
         </div>
         <div class="farohost" data-farohost>
-          <div class="ov-acts">
-            <button data-askclaude="${esc(t.mint)}" title="Perguntar ao Claude: abre o Claude com os dados desta moeda e copia a foto do gráfico">${ICON.claude}</button>
-            ${dexOn() ? '' : `<a href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}</a>`}
-            <button data-chartexp title="Expandir ou recolher o gráfico">${ICON.expand}</button>
-          </div>
           <div class="ov-ivals">${IVALS.map(([k]) => `<button data-ival="${k}" class="${k === iv ? 'on' : ''}">${k}</button>`).join('')}</div>
           <div class="ov-hint" id="chart-hint" hidden></div>
           <div class="ov-since" id="chart-since" hidden></div>
@@ -3489,7 +3480,7 @@
     const on = !dexOn(); store.set('faro-dexon', on);
     if (!on) { for (const f of DEXF.values()) f.remove(); DEXF.clear(); chartSrc = 'faro'; }
     else chartSrc = store.get('faro-chart-src', 'dex');
-    syncToggles(); toast(on ? 'Gráfico da Dex ligado' : 'Gráfico da Dex desligado: só o Faro, mais leve. O link para a Dex fica nas ferramentas do gráfico.');
+    syncToggles(); toast(on ? 'Gráfico da Dex ligado' : 'Gráfico da Dex desligado: só o Faro, mais leve. Use "Abrir na Dex" quando precisar.');
     $('detail').dataset.key = ''; render(); // remonta a tela da moeda com o novo gráfico
   });
   $('t-sound').addEventListener('click', () => {
