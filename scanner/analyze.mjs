@@ -13,7 +13,11 @@ const fmtUsd = (v) => {
 // Escolhe o par com mais liquidez de uma moeda no DexScreener e resume os dados de mercado
 export function summarizeMarket(pairs, now = Date.now()) {
   if (!Array.isArray(pairs) || pairs.length === 0) return null;
-  const best = [...pairs].sort((a, b) => num(b?.liquidity?.usd) - num(a?.liquidity?.usd))[0];
+  // Prefere pares contra SOL/USDC/USDT (onde a negociação acontece de verdade). Pares contra tokens exóticos
+  // (ex.: ações tokenizadas) podem ter liquidez alta no papel, mas quase sem negociação nem gráfico
+  const MAIN = new Set(['SOL', 'WSOL', 'USDC', 'USDT']);
+  const main = pairs.filter((p) => MAIN.has(String(p?.quoteToken?.symbol || '').toUpperCase()));
+  const best = [...(main.length ? main : pairs)].sort((a, b) => num(b?.liquidity?.usd) - num(a?.liquidity?.usd))[0];
   const created = num(best.pairCreatedAt, 0);
   const buysH1 = num(best?.txns?.h1?.buys);
   const sellsH1 = num(best?.txns?.h1?.sells);
