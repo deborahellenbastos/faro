@@ -876,9 +876,11 @@
   function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2400); }
 
   // ---------- Sons (gerados no navegador, sem arquivo) ----------
-  // Só existem dois sons, cada um com um significado:
-  //  "boa"      -> moeda nova aprovada: 3 notas SUBINDO (algo bom chegou)
-  //  "problema" -> moeda SUA piorou: uma "gota" que escorrega para baixo (algo caiu)
+  // Cada som tem um significado:
+  //  "boa"      -> moeda nova aprovada (e compra confirmada): 3 notas SUBINDO
+  //  "venda"    -> venda confirmada (sua ou do robô): "moedinha" brilhante, 2 notas agudas
+  //  "entrada"  -> sinal de boa entrada: dois toques agudos repetidos
+  //  "problema" -> moeda SUA piorou ou uma venda falhou: uma "gota" que escorrega para baixo
   let actx = null;
   function audio() {
     if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; actx = new AC(); }
@@ -914,6 +916,9 @@
         tone(c, f, t0 + at, .45, 'sine', .22);
         tone(c, f * 2, t0 + at, .25, 'sine', .05);
       });
+    } else if (kind === 'venda') {
+      // venda: "moedinha" brilhante, duas notas agudas rápidas com um brilho em cima (diferente das 3 notas de moeda nova)
+      [[1318.51, 0], [1975.53, .08]].forEach(([f, at]) => { tone(c, f, t0 + at, .5, 'sine', .2); tone(c, f * 1.5, t0 + at, .22, 'triangle', .05); });
     } else if (kind === 'entrada') {
       // boa entrada: dois toques agudos e curtos, diferentes do som de moeda nova
       [[987.77, 0], [1318.51, .12], [987.77, .3], [1318.51, .42]].forEach(([f, at]) => tone(c, f, t0 + at, .16, 'triangle', .2));
@@ -1073,8 +1078,9 @@
     // Um som por atualização: problema numa moeda sua tem prioridade (venda no lucro toca o som bom)
     const loud = events.filter((e) => !(e.kind === 'robo' && /não compensa/.test(e.alerts[0].msg)));
     if (!loud.length) return;
-    const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto' && !/stop móvel|lucro de \+/.test(e.alerts[0].msg)));
-    play(bad ? 'problema' : 'boa');
+    // Venda do robô é proteção funcionando: toca o som de venda. Só falha de venda e perigo tocam o som de problema
+    const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && /falh/i.test(e.alerts[0].msg)));
+    play(bad ? 'problema' : loud.some((e) => e.kind === 'robo') ? 'venda' : 'boa');
     for (const e of events) {
       if (e.kind === 'nova') {
         toast(`Nova no radar: ${e.t.symbol} (nota ${e.t.score})`);
@@ -2855,7 +2861,7 @@
           { sig: o.sig, kind: sold ? 'venda' : 'compra', tokens: o.tokens, sol: o.sol, solUsd: LIVE.solUsd || null, sym: t?.symbol, txAt: o.at, res: r0 ? { pnl: r0.pnl, pct: r0.pct, spent: r0.spent } : null, sinal: g0 ? `${g0.tipo === 'saida' ? 'Sinal de saída' : 'Sinal de entrada'}: ${g0.titulo}` : null });
         if (t && CH.mint === o.mint && chartSrc === 'faro') decorate(t);
       }
-      if (r.ops.length && !quiet && !SND.has(sig)) { SND.add(sig); play('boa'); }
+      if (r.ops.length && !quiet && !SND.has(sig)) { SND.add(sig); play(r.ops.some((o) => o.tokens < 0) ? 'venda' : 'boa'); }
       liveRender();
       if (r.ops.length) pollLive();
       return { ops: r.ops };
@@ -3479,7 +3485,7 @@
           else if (res === 'timeout') st.msg = { err: true, html: `Ainda sem confirmação depois de 1 minuto. Confira antes de tentar de novo: ${link}` };
           else {
             // Som e aviso na hora da confirmação (o detalhe da troca chega logo depois)
-            play('boa'); toast(`${buy ? 'Compra' : 'Venda'} de ${t.symbol} confirmada`); SND.add(sig);
+            play(buy ? 'boa' : 'venda'); toast(`${buy ? 'Compra' : 'Venda'} de ${t.symbol} confirmada`); SND.add(sig);
             const done = await handleSig(sig, true);
             pollWallet();
             let o = done?.ops?.[0];
