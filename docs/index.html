@@ -1190,7 +1190,7 @@
       const k = c.ok === true ? 'ok' : c.ok === false ? 'no' : 'na';
       return `<div class="check"><i class="ci ${k}">${c.ok === true ? '&#10003;' : c.ok === false ? '&#10005;' : '!'}</i><div><b>${esc(c.label)}</b><span>${esc(c.detail)}</span></div></div>`;
     }).join('');
-    return `<section class="panel d-card"><details class="checks"${open ? ' open' : ''}><summary><span>Análise de segurança<small>${okCount} de ${t.checks.length} ok</small></span>${ICON.chev}</summary><div class="check-list">${rows}</div></details></section>`;
+    return `<section class="panel d-card"><details class="checks" data-keep="seg:${esc(t.mint)}"${isOpen('seg:' + t.mint, open) ? ' open' : ''}><summary><span>Análise de segurança<small>${okCount} de ${t.checks.length} ok</small></span>${ICON.chev}</summary><div class="check-list">${rows}</div></details></section>`;
   }
 
   // =========================================================
@@ -1246,6 +1246,11 @@
   });
   setInterval(pollTrades, 10000);
 
+  // Seções abertas/fechadas continuam como você deixou quando a tela atualiza
+  const OPEN = new Map();
+  const isOpen = (k, def) => (OPEN.has(k) ? OPEN.get(k) : def);
+  document.addEventListener('toggle', (e) => { const d = e.target; if (d?.matches?.('details[data-keep]')) OPEN.set(d.dataset.keep, d.open); }, true);
+
   // Por que essa nota: cada critério com os pontos que ganhou
   function scoreHtml(t) {
     const parts = t.scoreParts; if (!parts?.length || t.score == null) return '';
@@ -1255,7 +1260,7 @@
         <div class="sp-bar"><i class="${f >= 0.7 ? 'g' : f >= 0.4 ? 'm' : 'w'}" style="width:${Math.round(f * 100)}%"></i></div><small>${esc(x.why)}</small></div>`;
     }).join('');
     const weak = [...parts].sort((a, b) => a.pts / a.max - b.pts / b.max).slice(0, 2).map((x) => x.label.toLowerCase());
-    return `<section class="panel d-card"><details class="checks"><summary><span>Por que nota ${t.score}<small>${t.score >= 75 ? 'forte' : t.score >= 55 ? 'média' : 'fraca'} - mais fraca em ${weak.join(' e ')}</small></span>${ICON.chev}</summary>
+    return `<section class="panel d-card"><details class="checks" data-keep="nota:${esc(t.mint)}"${isOpen('nota:' + t.mint, false) ? ' open' : ''}><summary><span>Por que nota ${t.score}<small>${t.score >= 75 ? 'forte' : t.score >= 55 ? 'média' : 'fraca'} - mais fraca em ${weak.join(' e ')}</small></span>${ICON.chev}</summary>
       <p class="sp-note">A nota mede a <b>força</b> da moeda (compras, volume, holders). Quem decide se ela entra no radar são os <b>filtros de segurança</b> abaixo: uma moeda pode ser segura e ainda ter nota média.</p>
       <div class="sp-list">${rows}</div></details></section>`;
   }
@@ -2252,11 +2257,22 @@
     const oldCard = el.querySelector('.d-card'), oldBox = el.querySelector('.chart-box');
     const newCard = tpl.content.querySelector('.d-card'), newBox = tpl.content.querySelector('.chart-box');
     if (t && el.dataset.key === key && oldCard && oldBox && newCard && newBox) {
-      for (const c of [...oldCard.children]) if (c !== oldBox) c.remove();
-      let before = true;
-      for (const c of [...newCard.children]) { if (c === newBox) { before = false; continue; } if (before) oldCard.insertBefore(c, oldBox); else oldCard.appendChild(c); }
-      for (const c of [...el.children]) if (c !== oldCard) c.remove();
-      for (const c of [...tpl.content.children]) if (c !== newCard) el.appendChild(c);
+      // Troca só o que mudou: nada pisca, nada fecha, a rolagem fica onde está
+      const patch = (oldP, newP, skipOld, skipNew) => {
+        const o = [...oldP.children].filter((c) => c !== skipOld), n = [...newP.children].filter((c) => c !== skipNew);
+        if (o.length !== n.length) return false;
+        o.forEach((oc, i) => { if (oc.outerHTML !== n[i].outerHTML) oc.replaceWith(n[i]); });
+        return true;
+      };
+      if (!patch(oldCard, newCard, oldBox, newBox)) {
+        for (const c of [...oldCard.children]) if (c !== oldBox) c.remove();
+        let before = true;
+        for (const c of [...newCard.children]) { if (c === newBox) { before = false; continue; } if (before) oldCard.insertBefore(c, oldBox); else oldCard.appendChild(c); }
+      }
+      if (!patch(el, tpl.content, oldCard, newCard)) {
+        for (const c of [...el.children]) if (c !== oldCard) c.remove();
+        for (const c of [...tpl.content.children]) if (c !== newCard) el.appendChild(c);
+      }
       return false;
     }
     if (chartIsMax()) document.body.style.overflow = '';
