@@ -260,6 +260,7 @@
   .keybox { display: grid; gap: 6px; padding: var(--sp-3); border-radius: var(--r-2); background: var(--bg); border: 1px dashed var(--line-2); font-size: 12px; color: var(--muted); }
   .keybox input { height: 32px; padding: 0 10px; border-radius: var(--r-1); border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); outline: none; font-size: 12px; }
   .keybox a { color: var(--brand); }
+  .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
   .orders h4 { margin: 4px 0 0; font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
@@ -1085,6 +1086,7 @@
         ${st.msg ? `<div class="tquote ${st.msg.err ? 'err' : ''}">${st.msg.html}</div>` : ''}
         ${buy ? '' : '<small class="lnote">Em memecoin o stop não é garantia: se a liquidez sumir de uma vez, ele pode executar bem abaixo do valor ou nem executar.</small>'}
         <button class="tgo ${buy ? 'buy' : 'sell'}" data-lgo="${m}" ${LIM.busy ? 'disabled' : ''}>${LIM.busy ? 'Aguarde...' : buy ? 'Criar ordem de compra' : 'Criar ordem de venda'}</button>
+        ${key ? `<button class="linkbtn" data-jupreset>Trocar chave da Jupiter</button>` : ''}
         <div class="orders"><h4>Ordens abertas</h4>${LIM.token ? (orders || '<span class="meta">Nenhuma ordem aberta nesta moeda.</span>') : `<button class="btn btn-sm" data-lconnect="${m}">Conectar a Phantom para ver</button>`}</div>`;
     }
     return `<section class="panel trade">
@@ -1651,7 +1653,8 @@
   // =========================================================
   const TRIG = 'https://api.jup.ag/trigger/v2';
   const LIM = { orders: {}, cancelled: new Set(), busy: false, token: null, tokenExp: 0, wallet: null, loadedFor: null };
-  const jupKey = () => store.get('faro-jup-key', '');
+  const keyOk = (k) => /^jup_[A-Za-z0-9]{32,}$/.test(k || '');
+  const jupKey = () => { const k = String(store.get('faro-jup-key', '') || '').trim(); return keyOk(k) ? k : ''; };
   const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   function b58enc(bytes) {
     let digits = [0];
@@ -1661,7 +1664,7 @@
     return out;
   }
   async function trig(path, opts = {}) {
-    const headers = { 'Content-Type': 'application/json', 'x-api-key': jupKey(), ...(LIM.token ? { Authorization: `Bearer ${LIM.token}` } : {}), ...(opts.headers || {}) };
+    const headers = { 'Content-Type': 'application/json', ...(jupKey() ? { 'x-api-key': jupKey() } : {}), ...(LIM.token ? { Authorization: `Bearer ${LIM.token}` } : {}), ...(opts.headers || {}) };
     const r = await fetch(TRIG + path, { ...opts, headers });
     const txt = await r.text(); let j = null; try { j = JSON.parse(txt); } catch {}
     if (!r.ok) { const e = new Error(j?.error || j?.message || `Jupiter respondeu ${r.status}`); e.status = r.status; throw e; }
@@ -1676,7 +1679,8 @@
     else {
       LIM.token = null; LIM.vault = false;
       const step = async (name, fn) => { try { return await fn(); } catch (e) { throw new Error(`${name}: ${e.status === 401 ? 'a Jupiter recusou (não autorizado). Confira se a chave da API foi colada inteira' : e.message}`); } };
-      const ch = await step('Pedido de login na Jupiter', () => trig('/auth/challenge', { method: 'POST', body: JSON.stringify({ walletPubkey: wallet, type: 'message' }) }));
+      const ch = await step('Pedido de login na Jupiter', async () => { try { return await trig('/auth/challenge', { method: 'POST', body: JSON.stringify({ walletPubkey: wallet, type: 'message' }) }); } catch (e) { if (e.status === 401) { store.set('faro-jup-key', ''); throw new Error('A Jupiter não aceitou a chave salva neste navegador. Apaguei ela: cole a chave de novo no campo acima'); } throw e; } });
+
       const signed = await ph.signMessage(new TextEncoder().encode(ch.challenge), 'utf8');
       const sig = signed?.signature || signed;
       const v = await step('Login na Jupiter', () => trig('/auth/verify', { method: 'POST', body: JSON.stringify({ type: 'message', walletPubkey: wallet, signature: b58enc(sig) }) }));
@@ -2150,9 +2154,11 @@
       st.msg = { err: true, html: esc(/reject|denied|cancel/i.test(err.message || '') && !el.dataset.lcancel ? 'Você cancelou na Phantom.' : err.message) };
     } finally { LIM.busy = false; render(); if (CH.mint === mint) decorate(t); }
   });
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-jupreset]')) { store.set('faro-jup-key', ''); LIM.token = null; sessionStorage.removeItem('faro-trig'); render(); } });
   document.addEventListener('change', (e) => {
     const k = e.target.closest('[data-jupkey]'); if (!k) return;
     if (k.matches(':autofill') || !k.value.trim()) { k.value = ''; return; } // preenchido pelo navegador: ignora
+    if (!keyOk(k.value.trim())) { k.value = ''; toast('Isso não parece uma chave da Jupiter (começa com jup_)'); return; }
     store.set('faro-jup-key', k.value.trim()); toast('Chave da Jupiter salva neste aparelho'); render();
   });
   document.addEventListener('input', (e) => {
