@@ -71,7 +71,8 @@ export async function getSolanaCandidates(log) {
     ['em alta (1h)', `${GT}/trending_pools?duration=1h&page=1`, 'em alta (GeckoTerminal)'],
     ['em alta (1h) 2', `${GT}/trending_pools?duration=1h&page=2`, 'em alta (GeckoTerminal)'],
     ['em alta (5min)', `${GT}/trending_pools?duration=5m&page=1`, 'em alta (GeckoTerminal)'],
-    ['migradas para a PumpSwap', `${GT}/dexes/pumpswap/pools?sort=pool_created_at_desc&page=1`, 'migrou para a PumpSwap'],
+    ['migradas para a PumpSwap', `${GT}/new_pools?page=1`, 'migrou para a PumpSwap'],
+    ['migradas para a PumpSwap 2', `${GT}/new_pools?page=2`, 'migrou para a PumpSwap'],
   ]) {
     try {
       const j = await getJson(url, { headers: { accept: 'application/json;version=20230302' }, retries: 1 });
@@ -80,7 +81,7 @@ export async function getSolanaCandidates(log) {
         const mint = String(pool?.relationships?.base_token?.data?.id || '').replace(/^solana_/, '');
         if (!mint || SKIP.has(mint) || found.has(mint)) continue;
         // pools da PumpSwap com mais de 1h já foram vistos antes (ou não interessam): só os recém-migrados
-        if (src === 'migrou para a PumpSwap' && Date.now() - Date.parse(pool?.attributes?.pool_created_at || 0) > 3600000) continue;
+        if (src === 'migrou para a PumpSwap' && (pool?.relationships?.dex?.data?.id !== 'pumpswap' || Date.now() - Date.parse(pool?.attributes?.pool_created_at || 0) > 3600000)) continue;
         found.set(mint, { mint, source: src, icon: null, description: '', links: [] });
         n++;
       }
