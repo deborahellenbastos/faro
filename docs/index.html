@@ -364,6 +364,11 @@
   .sim-op:hover { background: var(--panel-2); }
   .sim-op span { display: grid; gap: 2px; } .sim-op small { color: var(--muted); font-size: 11px; }
   #robot-seg { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .new-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #60a5fa; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(96,165,250,.18); }
+  .mini-tag.new { color: #60a5fa; background: rgba(96,165,250,.14); }
+  [data-count].has-new { color: #60a5fa !important; font-weight: 800; }
+  [data-count].has-new::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #60a5fa; margin-right: 5px; vertical-align: middle; }
+  #radar-ord button { height: 24px; font-size: 11px; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -688,6 +693,7 @@
     <div class="workspace">
       <section class="panel list-panel">
         <div class="list-head"><b id="list-title"></b>
+          <div class="seg-sm" id="radar-ord" hidden title="Ordem da lista"><button data-rord="recentes">Recentes</button><button data-rord="nota">Nota</button></div>
         </div>
         <div class="rows" id="list"></div>
         <div class="pager" id="pager" hidden>
@@ -991,7 +997,14 @@
     if (document.hidden) unread += events.length;
   }
 
+  // Moedas do radar que você ainda não abriu
+  const SEEN = new Set(store.get('faro-vistas', []));
+  function markSeen(mint) { if (SEEN.has(mint)) return; SEEN.add(mint); store.set('faro-vistas', [...SEEN].slice(-800)); }
+  const isUnseen = (t) => t.status === 'aprovada' && !SEEN.has(t.mint) && !isMine(t);
+  const radarOrd = () => store.get('faro-radar-ord', 'recentes');
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-rord]'); if (b) { store.set('faro-radar-ord', b.dataset.rord); ui.page = 1; render(); } });
   function goTo(mint) {
+    markSeen(mint);
     const t = data?.tokens?.[mint]; if (!t) return;
     ui.tab = isMine(t) ? 'minhas' : t.status; ui.sel[ui.tab] = mint; ui.page = 1;
     if (isNarrow()) document.body.classList.add('show-detail');
@@ -1071,6 +1084,8 @@
       }
       document.querySelectorAll('[data-lock]').forEach((b) => { b.hidden = !vaultUsed; });
       for (const t of Object.values(data.tokens || {})) if (levelOf(t) === 'danger' && t.score != null) t.score = 0;
+      // primeira vez com esta versão: o que já estava no radar conta como visto
+      if (!store.get('faro-vistas-init', false)) { Object.values(data.tokens || {}).filter((t) => t.status === 'aprovada').forEach((t) => SEEN.add(t.mint)); store.set('faro-vistas', [...SEEN]); store.set('faro-vistas-init', true); }
       detectEvents(data);
       applyLive(); connectWallet();
       if (!LIVE.booted) { loadLW().catch(() => {}); LIVE.booted = true; pollPrice(); pollLive(); pollWallet(); setTimeout(pollTrades, 600); }
@@ -1608,7 +1623,7 @@
     } else if (ui.tab === 'aprovada') {
       const ch = Number(t.changePct) || 0;
       const tw = twinInfo(t);
-      main = `<b>${esc(t.symbol)}${tw ? ` <i class="mini-tag ${tw.best ? 'ok' : 'warn'}">${tw.best ? 'mais forte' : 'cópia'}</i>` : ''}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}${t.shape && SHAPE[t.shape.tipo] && t.shape.tipo !== 'nova' ? ` - ${SHAPE[t.shape.tipo][0].toLowerCase()}` : ''}</small>`;
+      main = `<b>${isUnseen(t) ? '<i class="new-dot" title="Nova, você ainda não abriu"></i>' : ''}${esc(t.symbol)}${isUnseen(t) ? ' <i class="mini-tag new">nova</i>' : ''}${tw ? ` <i class="mini-tag ${tw.best ? 'ok' : 'warn'}">${tw.best ? 'mais forte' : 'cópia'}</i>` : ''}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}${t.shape && SHAPE[t.shape.tipo] && t.shape.tipo !== 'nova' ? ` - ${SHAPE[t.shape.tipo][0].toLowerCase()}` : ''}</small>`;
       side = `<div style="display:flex;align-items:center;gap:10px"><small class="num ${cls(ch)}" style="font-size:13px">${pct(ch)}</small>${scoreBadge(t.score, true)}</div>`;
     } else if (ui.tab === 'aguardando') {
       const left = t.pending ?? (t.reasons || []).length;
@@ -2498,7 +2513,8 @@
     updateSolBal();
     // Navegação
     document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === ui.tab));
-    document.querySelectorAll('[data-count]').forEach((e) => { e.textContent = (e.dataset.count === 'minhas' ? mine.length : lists[e.dataset.count].length) || ''; });
+    const unseenN = lists.aprovada.filter(isUnseen).length;
+    document.querySelectorAll('[data-count]').forEach((e) => { e.textContent = (e.dataset.count === 'minhas' ? mine.length : lists[e.dataset.count].length) || ''; e.classList.toggle('has-new', e.dataset.count === 'aprovada' && unseenN > 0); e.title = e.dataset.count === 'aprovada' && unseenN ? `${unseenN} nova${unseenN > 1 ? 's' : ''} que você ainda não abriu` : ''; });
     document.querySelectorAll('[data-dot]').forEach((e) => { e.hidden = !danger; });
     document.title = (unread ? `(${unread}) ` : '') + (danger ? `⚠ ${danger} em perigo - Faro` : 'Faro');
     $('page-title').textContent = TITLES[ui.tab][0];
@@ -2542,7 +2558,9 @@
     let items = lists[ui.tab];
     if (ui.tab === 'aprovada') {
       // Melhor nota primeiro; empate fica com a mais recente
-      items = [...items].sort((a, b) => (b.score || 0) - (a.score || 0) || (b.approvedAt || 0) - (a.approvedAt || 0));
+      items = radarOrd() === 'nota'
+        ? [...items].sort((a, b) => (b.score || 0) - (a.score || 0) || (b.approvedAt || 0) - (a.approvedAt || 0))
+        : [...items].sort((a, b) => (b.approvedAt || 0) - (a.approvedAt || 0));
     } else if (ui.tab === 'aguardando') {
       // Mais perto de ser aprovada primeiro: nota prévia, depois quem tem menos critérios faltando
       items = [...items].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (a.pending ?? 9) - (b.pending ?? 9) || (b.volumeH1 || 0) - (a.volumeH1 || 0));
@@ -2551,6 +2569,8 @@
     const q = ui.q.trim().toLowerCase();
     if (q) items = items.filter((t) => [t.symbol, t.name, t.mint].some((v) => String(v || '').toLowerCase().includes(q)));
 
+    const ro = $('radar-ord'); ro.hidden = ui.tab !== 'aprovada';
+    ro.querySelectorAll('[data-rord]').forEach((b) => b.classList.toggle('on', b.dataset.rord === radarOrd()));
     $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em observação', reprovada: 'Reprovadas' }[ui.tab]}<small>${items.length}</small>`;
     const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
     ui.page = Math.min(ui.page, pages);
@@ -2581,6 +2601,8 @@
     // Detalhe
     const t = sel && data.tokens[sel];
     const fresh = mountDetail(t);
+    // a moeda aberta no detalhe conta como vista depois de 2 segundos na tela
+    if (t && isUnseen(t) && !document.hidden) { clearTimeout(ui._seenT); ui._seenT = setTimeout(() => { if (ui.sel[ui.tab] === t.mint) { markSeen(t.mint); render(); } }, 2000); }
     mountCharts(t, fresh);
     if (t && LIM.token && LIM.loadedFor !== t.mint) { LIM.loadedFor = t.mint; loadOrders(t.mint).then(() => { if (CH.mint === t.mint && chartSrc === 'faro') decorate(t); render(); }); }
     if (!t) document.body.classList.remove('show-detail');
@@ -2658,7 +2680,7 @@
     const tab = e.target.closest('[data-tab]');
     if (tab) { ui.tab = tab.dataset.tab; ui.page = 1; save(); document.body.classList.remove('show-detail'); render(); window.scrollTo({ top: 0 }); return; }
     const row = e.target.closest('[data-sel]');
-    if (row) { ui.sel[ui.tab] = row.dataset.sel; if (isNarrow()) { document.body.classList.add('show-detail'); window.scrollTo({ top: 0 }); } render(); return; }
+    if (row) { markSeen(row.dataset.sel); ui.sel[ui.tab] = row.dataset.sel; if (isNarrow()) { document.body.classList.add('show-detail'); window.scrollTo({ top: 0 }); } render(); return; }
     if (e.target.closest('[data-back]')) { document.body.classList.remove('show-detail'); render(); return; }
     const tf = e.target.closest('[data-tf]');
     if (tf) { ui.tf[tf.dataset.tfmint] = tf.dataset.tf; render(); return; }
