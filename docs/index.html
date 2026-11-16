@@ -1153,7 +1153,7 @@
     const fs = document.querySelector('[data-farohost]');
     if (fs && (fresh || !CH.host?.isConnected || CH.host.parentElement !== fs)) {
       if (chartSrc === 'faro') showChart(t, fs);
-      else (window.requestIdleCallback || setTimeout)(() => { if (ui.sel[ui.tab] === t.mint && fs.isConnected) showChart(t, fs); }, 600);
+      else setTimeout(() => { if (ui.sel[ui.tab] === t.mint && fs.isConnected && chartSrc === 'dex') showChart(t, fs); }, 600);
     }
   }
 
