@@ -103,6 +103,15 @@ export function summarizeRug(r) {
     .sort((a, b) => b.pct - a.pct);
 
   const top10Pct = holders.slice(0, 10).reduce((s, h) => s + h.pct, 0);
+  // Bundle: muitas carteiras com fatias quase iguais (o dev compra no lançamento espalhado em várias carteiras
+  // pequenas para não aparecer no top 10, e depois vende todas juntas). Maior grupo com fatias a até 1,3x uma da outra.
+  const sizes = holders.slice(0, 25).map((h) => h.pct).filter((p) => p >= 0.5).sort((a, b) => a - b);
+  let twinCount = 0, twinPct = 0;
+  for (let i = 0, j = 0; j < sizes.length; j++) {
+    while (sizes[j] > sizes[i] * 1.3) i++;
+    const n = j - i + 1, sum = sizes.slice(i, j + 1).reduce((a, v) => a + v, 0);
+    if (n > twinCount || (n === twinCount && sum > twinPct)) { twinCount = n; twinPct = sum; }
+  }
   const maxHolderPct = holders.length ? holders[0].pct : 0;
   const devPct = creator ? holders.filter((h) => h.owner === creator || h.address === creator).reduce((s, h) => s + h.pct, 0) : null;
   const insiderHolders = holders.filter((h) => h.insider).length;
@@ -124,6 +133,7 @@ export function summarizeRug(r) {
     top10Pct,
     maxHolderPct,
     insiders: Math.max(num(r.graphInsidersDetected), insiderHolders),
+    twinCount, twinPct,
     creator,
     devPct,
     devPreviousTokens: Array.isArray(r.creatorTokens) ? r.creatorTokens.length : null,
@@ -159,6 +169,7 @@ export function runChecks(m, rug, cfg) {
   if (rug.top10Pct > f.top10MaxPct) holderProblems.push(`top 10 com ${fmtPct(rug.top10Pct)} (máx ${f.top10MaxPct}%)`);
   if (rug.maxHolderPct > f.maiorHolderMaxPct) holderProblems.push(`maior carteira com ${fmtPct(rug.maxHolderPct)} (máx ${f.maiorHolderMaxPct}%)`);
   if (rug.insiders > f.insidersMax) holderProblems.push(`${rug.insiders} carteiras ligadas entre si (insiders)`);
+  if ((rug.twinCount || 0) >= (f.bundleCarteirasMin ?? 7) && (rug.twinPct || 0) >= (f.bundlePctMin ?? 10)) holderProblems.push(`possível bundle: ${rug.twinCount} carteiras com fatias quase iguais (${fmtPct(rug.twinPct)} juntas)`);
   if (rug.totalHolders != null && rug.totalHolders < f.holdersMin) holderProblems.push(`só ${rug.totalHolders} holders (mín ${f.holdersMin})`);
   add('holders', '4. Holders bem distribuídos', holderProblems.length === 0,
     holderProblems.length ? holderProblems.join('; ') : `Top 10 com ${fmtPct(rug.top10Pct)}, sem insiders detectados`,
@@ -276,6 +287,7 @@ export function analyze(m, rugReport, cfg) {
       top10Pct: rug.top10Pct,
       lpLockedPct: rug.lpLockedPct,
       creator: rug.creator,
+      twinCount: rug.twinCount, twinPct: rug.twinPct,
     },
   };
 }
@@ -286,7 +298,7 @@ export function analyze(m, rugReport, cfg) {
 export function baselineFrom(sum) {
   return {
     lpLockedPct: sum.lpLockedPct, top10Pct: sum.top10Pct, maxHolderPct: sum.maxHolderPct,
-    devPct: sum.devPct, insiders: sum.insiders, scoreNormalised: sum.scoreNormalised,
+    devPct: sum.devPct, insiders: sum.insiders, scoreNormalised: sum.scoreNormalised, twinCount: sum.twinCount, twinPct: sum.twinPct,
     dangerNames: sum.dangerRisks.map((d) => d.name),
     mint: sum.mintAuthority != null, freeze: sum.freezeAuthority != null,
   };

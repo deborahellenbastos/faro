@@ -327,6 +327,17 @@ assert.equal(state.lastRun.autoCompra, null);
   assert.ok(0.0000422 > tr.stop, 'a mínima da correção não teria vendido');
 }
 
+// Bundle (GTAHUB 16/11): 16 carteiras com 1,0% a 1,5% cada, vendidas juntas. Top 10 só 23%, sem insiders.
+{
+  const { summarizeRug } = await import('./analyze.mjs');
+  const bundle = [1.02, 1.49, 1.37, 1.53, 1.41, 1.2, 1.3, 1.45, 1.1, 1.25, 1.33, 1.18, 1.4, 1.22, 1.5, 1.28];
+  const rep = (pcts) => ({ topHolders: pcts.map((p, i) => ({ address: 'A' + i, owner: 'O' + i, pct: p })), markets: [] });
+  const b = summarizeRug(rep([4, 2.5, ...bundle, 0.3, 0.2]));
+  assert.ok(b.twinCount >= 7 && b.twinPct >= 10, `bundle detectado (${b.twinCount} carteiras, ${b.twinPct.toFixed(1)}%)`);
+  const normal = summarizeRug(rep([6, 4.1, 3.2, 2.4, 1.9, 1.5, 1.1, 0.9, 0.8, 0.7, 0.6, 0.55]));
+  assert.ok(normal.twinCount < 7, `distribuição normal não é bundle (${normal.twinCount})`);
+}
+
 // O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais
 {
   const norm = (x) => x.replace(/export /g, '').replace(/\s+/g, ' ').trim();

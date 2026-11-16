@@ -224,3 +224,13 @@ O robô compra sozinho quando aparece uma **Boa entrada** no Radar, sem precisar
    - O robô lê o aviso na rodada seguinte e confere se foi a sua carteira que assinou. Assim ninguém consegue ligar no seu lugar.
 
 **Simulação:** ela compra nos mesmos sinais, mas de mentira. Vende pelas mesmas regras do robô de verdade, e o resultado aparece na aba Simulação do Robô.
+
+## Bundle (carteiras com fatias iguais)
+
+Alguns devs compram a moeda no lançamento espalhando a compra em várias carteiras pequenas. Assim nenhuma delas aparece no top 10. Depois vendem todas juntas, e o preço vai a zero em um minuto. Foi o caso da GTAHUB em 16/11:
+- 16 carteiras, cada uma com 1,0% a 1,5% da moeda.
+- Inclusive a do criador, que saiu com US$ 1,8 mil.
+- Venderam juntas às 15:06.
+- O top 10 mostrava só 23% e o RugCheck não viu insiders.
+
+O robô agora mede o maior grupo de carteiras com fatias quase iguais (até 1,3x uma da outra). Ele reprova no item "Holders" quando acha 7 ou mais carteiras assim, somando 10% ou mais. Ajuste em `filtros.bundleCarteirasMin` e `filtros.bundlePctMin`.
