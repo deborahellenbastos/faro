@@ -2058,6 +2058,13 @@
     const fell = (t) => t.status === 'aprovada' && levelOf(t) === 'danger';
     const lists = { minhas: [...mine, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t)), aguardando: by('aguardando'), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => fell(t) && !isSold(t))] };
 
+    // Moeda aberta que você acabou de comprar: o Faro vai junto com ela para a Carteira
+    const opened = ui.sel[ui.tab];
+    if (opened && ui.tab !== 'minhas' && !lists[ui.tab].some((x) => x.mint === opened) && lists.minhas.some((x) => x.mint === opened)) {
+      ui.tab = 'minhas'; ui.sel.minhas = opened; ui.page = 1; save();
+      toast(`${data.tokens[opened]?.symbol || 'A moeda'} agora está na sua Carteira`);
+    }
+
     // Navegação
     document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === ui.tab));
     document.querySelectorAll('[data-count]').forEach((e) => { e.textContent = (e.dataset.count === 'minhas' ? mine.length : lists[e.dataset.count].length) || ''; });
