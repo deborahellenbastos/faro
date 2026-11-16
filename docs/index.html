@@ -2424,8 +2424,8 @@
       const col = a.level === 'danger' ? '#ff5b5b' : a.level === 'warn' ? '#f5b14c' : '#8c939f';
       marks.push({ time: Math.floor(a.at / 1000 / sec) * sec + TZ, position: 'aboveBar', color: col, shape: 'circle', text: `! ${SIG[a.id] || 'alerta'}` });
     }
-    // A = momento do alerta (quando a moeda entrou no radar)
-    if (t.approvedAt && t.approvedAt / 1000 >= first) marks.push({ time: Math.floor(t.approvedAt / 1000 / sec) * sec + TZ, position: 'aboveBar', color: '#60a5fa', shape: 'arrowDown', text: 'A' });
+    // R = momento em que a moeda entrou no radar (mesma cor da linha "radar")
+    if (t.approvedAt && t.approvedAt / 1000 >= first) marks.push({ time: Math.floor(t.approvedAt / 1000 / sec) * sec + TZ, position: 'aboveBar', color: '#a78bfa', shape: 'arrowDown', text: 'R' });
     marks.sort((a, b) => a.time - b.time);
     CH.candle.setMarkers(marks);
     updateSince(t);
