@@ -33,7 +33,7 @@
     "impactoPrecoMaxPct": 5
   },
   "venda": {
-    "automatica": false,
+    "automatica": true,
     "slippageMaxPct": 30
   }
 }
