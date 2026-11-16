@@ -1672,15 +1672,28 @@
     const saved = JSON.parse(sessionStorage.getItem('faro-trig') || 'null');
     const ph = getPhantom(); if (!ph) throw new Error('Phantom não encontrada neste navegador');
     const { publicKey } = await ph.connect(); const wallet = publicKey.toString();
-    if (saved && saved.wallet === wallet && Date.now() < saved.exp - 60000) { Object.assign(LIM, { token: saved.token, tokenExp: saved.exp, wallet }); return wallet; }
-    LIM.token = null;
-    const ch = await trig('/auth/challenge', { method: 'POST', body: JSON.stringify({ walletPubkey: wallet, type: 'message' }) });
-    const signed = await ph.signMessage(new TextEncoder().encode(ch.challenge), 'utf8');
-    const v = await trig('/auth/verify', { method: 'POST', body: JSON.stringify({ type: 'message', walletPubkey: wallet, signature: b58enc(signed.signature || signed) }) });
-    const token = v.token || v.accessToken; const exp = v.expiresAt ? new Date(v.expiresAt).getTime() : Date.now() + (v.token ? 24 : 0.25) * 3600000;
-    Object.assign(LIM, { token, tokenExp: exp, wallet });
-    sessionStorage.setItem('faro-trig', JSON.stringify({ token, exp, wallet }));
-    try { await trig('/vault'); } catch { await trig('/vault/register', { method: 'POST', body: '{}' }); }
+    if (saved && saved.wallet === wallet && Date.now() < saved.exp - 60000) Object.assign(LIM, { token: saved.token, tokenExp: saved.exp, wallet, vault: saved.vault });
+    else {
+      LIM.token = null; LIM.vault = false;
+      const step = async (name, fn) => { try { return await fn(); } catch (e) { throw new Error(`${name}: ${e.status === 401 ? 'a Jupiter recusou (não autorizado). Confira se a chave da API foi colada inteira' : e.message}`); } };
+      const ch = await step('Pedido de login na Jupiter', () => trig('/auth/challenge', { method: 'POST', body: JSON.stringify({ walletPubkey: wallet, type: 'message' }) }));
+      const signed = await ph.signMessage(new TextEncoder().encode(ch.challenge), 'utf8');
+      const sig = signed?.signature || signed;
+      const v = await step('Login na Jupiter', () => trig('/auth/verify', { method: 'POST', body: JSON.stringify({ type: 'message', walletPubkey: wallet, signature: b58enc(sig) }) }));
+      const token = v.token || v.accessToken; const exp = v.expiresAt ? new Date(v.expiresAt).getTime() : Date.now() + (v.token ? 24 : 0.25) * 3600000;
+      if (!token) throw new Error('Login na Jupiter: resposta sem token');
+      Object.assign(LIM, { token, tokenExp: exp, wallet });
+    }
+    // Cofre da Jupiter: onde a ordem guarda o valor até executar. Cria uma vez (GET /vault/register).
+    if (!LIM.vault) {
+      try { await trig('/vault'); }
+      catch (e) {
+        if (e.status === 401) { LIM.token = null; sessionStorage.removeItem('faro-trig'); throw new Error('Sessão da Jupiter expirou. Clique de novo para entrar.'); }
+        try { await trig('/vault/register'); } catch (e2) { if (e2.status !== 409) throw new Error(`Criar cofre na Jupiter: ${e2.message}`); }
+      }
+      LIM.vault = true;
+    }
+    sessionStorage.setItem('faro-trig', JSON.stringify({ token: LIM.token, exp: LIM.tokenExp, wallet, vault: LIM.vault }));
     return wallet;
   }
   async function loadOrders(mint) {
