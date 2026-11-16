@@ -142,3 +142,7 @@ A vigia também relê a carteira a cada 30 s, então moedas recém-compradas ent
 ## Modo simulação
 
 O robô "opera de mentira" com as mesmas regras do plano de trade: entra em moedas recém-aprovadas com nota 70+, formato não morto/reto e risco/retorno 1:2 ou melhor, usando o valor base (0,05 SOL). Fecha no alvo, no stop (com 5% de slippage extra), se a moeda virar perigo ou depois de 24 h. Taxa (1%) e slippage (2%) entram nos dois lados. Travas: até 2 abertas, até 5 por dia e pausa se perder 3x o valor base no dia. Resultado em **Robô e filtros > Simulação**. Para avançar para compras de verdade: 30 operações simuladas com resultado positivo.
+
+## Valor por operação cresce com a banca
+
+Banca = SOL na carteira + valor das moedas abertas. Faixas (config.json, `compra.faixas`): até US$ 30 → US$ 3,50 por operação; US$ 30+ → US$ 10; US$ 100+ → US$ 25; US$ 300+ → US$ 50. O robô recalcula a cada rodada e converte para SOL pelo preço do momento. Vale para a simulação e, quando ligada, para a compra automática.

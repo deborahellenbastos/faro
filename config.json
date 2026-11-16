@@ -30,7 +30,25 @@
     "maxComprasPorDia": 5,
     "scoreMinimo": 70,
     "slippagePct": 10,
-    "impactoPrecoMaxPct": 5
+    "impactoPrecoMaxPct": 5,
+    "faixas": [
+      {
+        "bancaMinUsd": 0,
+        "usd": 3.5
+      },
+      {
+        "bancaMinUsd": 30,
+        "usd": 10
+      },
+      {
+        "bancaMinUsd": 100,
+        "usd": 25
+      },
+      {
+        "bancaMinUsd": 300,
+        "usd": 50
+      }
+    ]
   },
   "venda": {
     "automatica": true,
@@ -53,7 +71,7 @@
   },
   "perfil": "equilibrado",
   "banca": {
-    "usd": 20,
+    "usd": 10,
     "riscoPorOperacaoPct": 2
   },
   "simulacao": {

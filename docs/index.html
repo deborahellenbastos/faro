@@ -2638,6 +2638,8 @@
       ['Compra automática', c.ativada ? `ligada (${c.solPorCompra} SOL, até ${c.maxComprasPorDia}/dia)` : 'desligada'],
       ['Venda automática por golpe', data.lastRun?.autoSell ? 'ligada (vende 100% se o contrato mudar para golpe)' : 'desligada'],
       ['Perfil', data.config?.perfil === 'equilibrado' ? 'Equilibrado' : 'Conservador'],
+      ['Valor por operação', data.banca?.faixaUsd ? `US$ ${data.banca.faixaUsd} (${data.banca.solPorCompra} SOL) - banca de ${money(data.banca.usd || 0)}` : `${c.solPorCompra} SOL`],
+      ['Faixas', (c.faixas || []).map((f) => `${f.bancaMinUsd ? 'banca US$ ' + f.bancaMinUsd + '+' : 'até US$ ' + ((c.faixas.find((x) => x.bancaMinUsd > 0) || {}).bancaMinUsd || '')}: US$ ${f.usd}`).join(' - ')],
       ['Simulação', data.config?.simulacao?.ligado ? `ligada (${c.solPorCompra} SOL de mentira por operação, até ${data.config.simulacao.maxAbertas} abertas)` : 'desligada'],
       ['Venda no lucro', data.lastRun?.takeProfit ? `ligada (posições abaixo de US$ ${data.lastRun.takeProfit.ateUsd}: vende 100% com +${data.lastRun.takeProfit.alvoPct}%)` : 'desligada'],
     ];

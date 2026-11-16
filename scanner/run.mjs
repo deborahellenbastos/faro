@@ -366,6 +366,17 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: a.skipped ? 'info' : lvl, at: a.at, msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
   }
 
+  // 6c2. Valor por operação conforme a banca: SOL na carteira + valor das moedas abertas, em dólar
+  {
+    const solUsd = Object.values(tokens).map((t) => (t.priceNative > 0 ? t.priceUsd / t.priceNative : 0)).find((v) => v > 0) || 0;
+    const held = Object.values(tokens).filter((t) => t.held).reduce((a, t) => a + (t.heldAmount || 0) * (t.priceUsd || 0), 0);
+    const bancaUsd = state.wallet?.solBalance != null && solUsd ? state.wallet.solBalance * solUsd + held : null;
+    const faixas = [...(cfg.compra?.faixas || [])].sort((a, b) => b.bancaMinUsd - a.bancaMinUsd);
+    const faixa = bancaUsd != null ? faixas.find((f) => bancaUsd >= f.bancaMinUsd) : null;
+    if (faixa && solUsd) cfg.compra.solPorCompra = +(faixa.usd / solUsd).toFixed(4);
+    state.banca = { usd: bancaUsd, faixaUsd: faixa?.usd ?? null, solPorCompra: cfg.compra?.solPorCompra, at: now };
+  }
+
   // 6d. Modo simulação (opera de mentira com o plano de trade e mede o resultado)
   try { simStep({ state, tokens, newlyApproved, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
 
