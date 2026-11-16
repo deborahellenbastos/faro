@@ -45,7 +45,10 @@
       "ligado": true,
       "quedaDoPicoPct": 40,
       "quedaLiquidezPct": 30,
-      "janelaLiquidezMin": 5
+      "janelaLiquidezMin": 5,
+      "quedaSemConfirmacaoPct": 60,
+      "confirmaLiquidezPct": 15,
+      "confirmaVendasPct": 60
     }
   }
 }

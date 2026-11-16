@@ -40,6 +40,9 @@ mem.peak = mem.peak || {}; mem.liq = mem.liq || {}; mem.sold = mem.sold || {};
 const save = () => writeFile(MEM, JSON.stringify(mem)).catch(() => {});
 
 const dropPct = V.quedaDoPicoPct ?? 40;
+const hardDrop = V.quedaSemConfirmacaoPct ?? 60;
+const confLiq = V.confirmaLiquidezPct ?? 15;
+const confSells = V.confirmaVendasPct ?? 60;
 const liqPct = V.quedaLiquidezPct ?? 30;
 const liqWin = (V.janelaLiquidezMin ?? 5) * 60000;
 const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
@@ -130,7 +133,7 @@ for (const t of held) {
 }
 await refreshHoldings(); lastHoldings = Date.now();
 if (!held.length && !wallet) { await idle(); process.exit(0); }
-log(`vigiando ${held.map((t) => t.symbol).join(', ') || '(carteira vazia)'}: golpe ${golpeOn ? 'sim' : 'não'}, queda -${dropPct}% do pico ou liquidez -${liqPct}% em ${liqWin / 60000} min, lucro ${lucroOn ? `+${L.alvoPct}%` : 'não'}`);
+log(`vigiando ${held.map((t) => t.symbol).join(', ') || '(carteira vazia)'}: golpe ${golpeOn ? 'sim' : 'não'}, queda -${dropPct}% do pico com confirmação (ou -${hardDrop}% sem), liquidez -${liqPct}% em ${liqWin / 60000} min, lucro ${lucroOn ? `+${L.alvoPct}%` : 'não'}`);
 
 while (Date.now() < until) {
   if (Date.now() - lastHoldings >= 30000) { lastHoldings = Date.now(); await refreshHoldings(); }
@@ -158,7 +161,16 @@ while (Date.now() < until) {
       const cost = t.position?.known ? t.position.costOpenUsd : 0;
       const gain = cost > 0 ? ((t.heldAmount * px) / cost - 1) * 100 : null;
       if (scam[t.mint]) await sell(t, `golpe no contrato: ${scam[t.mint]}`, 'golpe', px);
-      else if (fromPeak >= dropPct) await sell(t, `preço caiu ${fromPeak.toFixed(0)}% do pico desde a compra`, 'vigia', px);
+      else if (fromPeak >= dropPct) {
+        // Correção saudável x despejo: na queda de 40% só vende com confirmação (liquidez saindo ou vendas dominando);
+        // sem confirmação, só a partir da queda maior (60%)
+        const b5 = Number(p?.txns?.m5?.buys) || 0, s5 = Number(p?.txns?.m5?.sells) || 0;
+        const sellsPct = b5 + s5 >= 10 ? (s5 / (b5 + s5)) * 100 : 0;
+        const confirm = liqDrop >= confLiq ? `liquidez saindo (-${liqDrop.toFixed(0)}%)` : sellsPct >= confSells ? `vendas dominando (${sellsPct.toFixed(0)}% nos últimos 5 min)` : null;
+        if (confirm) await sell(t, `preço caiu ${fromPeak.toFixed(0)}% do pico e ${confirm}`, 'vigia', px);
+        else if (fromPeak >= hardDrop) await sell(t, `preço caiu ${fromPeak.toFixed(0)}% do pico desde a compra`, 'vigia', px);
+        else if (!mem.calm?.[t.mint]) { (mem.calm = mem.calm || {})[t.mint] = now; log(`${t.symbol}: caiu ${fromPeak.toFixed(0)}% do pico, mas sem sinal de despejo (liquidez estável, compras ativas). Segurando.`); }
+      }
       else if (liqDrop >= liqPct) await sell(t, `liquidez caiu ${liqDrop.toFixed(0)}% em poucos minutos`, 'vigia', px);
       else if (lucroOn && cost > 0 && cost < (L.ateUsd ?? 10) && gain >= (L.alvoPct ?? 100)) await sell(t, `lucro de +${gain.toFixed(0)}% (investido US$ ${cost.toFixed(2)})`, 'lucro', px);
     }
