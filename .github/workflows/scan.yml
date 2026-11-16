@@ -21,6 +21,7 @@ jobs:
     env:
       AUTO_BUY: ${{ vars.AUTO_BUY }}
       AUTO_SELL: ${{ vars.AUTO_SELL }}
+      LUCRO_AUTO: ${{ vars.LUCRO_AUTO }}
       SOLANA_PRIVATE_KEY: ${{ secrets.SOLANA_PRIVATE_KEY }}
       JUPITER_API_KEY: ${{ secrets.JUPITER_API_KEY }}
       SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
@@ -37,7 +38,7 @@ jobs:
           node-version: 22
 
       - name: Instalar bibliotecas de compra/venda (só se alguma estiver ligada)
-        if: ${{ vars.AUTO_BUY == 'true' || vars.AUTO_SELL == 'true' }}
+        if: ${{ vars.AUTO_BUY == 'true' || vars.AUTO_SELL == 'true' || vars.LUCRO_AUTO != 'false' }}
         run: npm install --no-save --no-audit --no-fund @solana/web3.js@1 bs58@6
 
       - name: Rodar o robô a cada 5 minutos, por ~55 minutos

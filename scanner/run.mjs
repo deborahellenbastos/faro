@@ -285,6 +285,32 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     }
   }
 
+  // 6b. Venda no lucro: posições pequenas (sem ordem limite possível) vendem 100% ao bater o alvo
+  if (trader?.canTakeProfit) {
+    const L = cfg.venda.lucro;
+    for (const t of Object.values(tokens)) {
+      const p = t.position;
+      if (!t.held || !p?.known || t.takeProfit?.ok || (t.takeProfit?.tries || 0) >= 3) continue;
+      if (!(p.costOpenUsd > 0) || p.costOpenUsd >= L.ateUsd || !(p.openPnlPct >= L.alvoPct)) continue;
+      log(`LUCRO em ${t.symbol}: +${p.openPnlPct.toFixed(0)}% (investido US$ ${p.costOpenUsd.toFixed(2)}). Vendendo 100%...`);
+      try {
+        const r = await trader.sellAll(t.mint);
+        t.takeProfit = { ok: true, at: now, sig: r.sig, outSol: r.outSol, pct: p.openPnlPct };
+        log(r.nada ? `Nada de ${t.symbol} para vender.` : `VENDEU 100% de ${t.symbol} no lucro por ${r.outSol.toFixed(4)} SOL (tx ${r.sig.slice(0, 8)}...)`);
+      } catch (e) {
+        t.takeProfit = { ok: false, at: now, tries: (t.takeProfit?.tries || 0) + 1, erro: e.message };
+        log(`Venda no lucro de ${t.symbol} falhou: ${e.message}`, true);
+      }
+    }
+  }
+  for (const t of Object.values(tokens)) {
+    const a = t.takeProfit; if (!a || !t.safety) continue;
+    const alert = a.ok
+      ? { id: 'lucro-auto', level: 'warn', msg: `Robô vendeu 100% no lucro (+${a.pct.toFixed(0)}%)${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}`, sig: a.sig }
+      : { id: 'lucro-auto', level: 'warn', msg: `Bateu o alvo de lucro, mas a venda falhou: ${a.erro}. Venda manualmente!` };
+    t.safety = mergeSafety(t.safety, [alert, ...t.safety.alerts.filter((x) => x.id !== 'lucro-auto')], now);
+  }
+
   // 7. Limpeza
   const rejected = Object.values(tokens).filter((t) => t.status === 'reprovada').sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));
   for (const t of rejected.slice(MAX_REJECTED_KEPT)) delete tokens[t.mint];
@@ -312,6 +338,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     counts,
     autoBuy: !!trader?.canBuy,
     autoSell: !!trader?.canSell,
+    takeProfit: trader?.canTakeProfit ? { alvoPct: cfg.venda.lucro.alvoPct, ateUsd: cfg.venda.lucro.ateUsd } : null,
     wallet: wallet ? `${wallet.slice(0, 4)}...${wallet.slice(-4)}` : null,
     logs: logs.slice(-30),
   };

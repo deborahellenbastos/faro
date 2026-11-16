@@ -15,7 +15,9 @@ const JUP = 'https://api.jup.ag/swap/v1';
 export async function createTrader(cfg, log) {
   const buyOn = cfg?.compra?.ativada === true && process.env.AUTO_BUY === 'true';
   const sellOn = cfg?.venda?.automatica === true && process.env.AUTO_SELL === 'true';
-  if (!buyOn && !sellOn) return null;
+  // Venda no lucro (posições pequenas): liga/desliga pela variável LUCRO_AUTO do GitHub
+  const profitOn = cfg?.venda?.lucro?.ligado === true && process.env.LUCRO_AUTO !== 'false';
+  if (!buyOn && !sellOn && !profitOn) return null;
   const key = process.env.SOLANA_PRIVATE_KEY;
   const jupKey = process.env.JUPITER_API_KEY;
   if (!key || !jupKey) {
@@ -31,8 +33,11 @@ export async function createTrader(cfg, log) {
   const me = wallet.publicKey.toBase58();
   // Venda só na carteira vigiada pelo Faro: se a chave for de outra carteira, não vende nada
   const watched = (cfg?.carteira?.enderecoPublico || '').trim();
-  const canSell = sellOn && !!watched && watched === me;
-  if (sellOn && !canSell) log('Venda automática NÃO ativada: a chave SOLANA_PRIVATE_KEY não é da carteira vigiada (FARO_WALLET).', true);
+  const mine = !!watched && watched === me;
+  const canSell = sellOn && mine;
+  const canTakeProfit = profitOn && mine;
+  if ((sellOn || profitOn) && !mine) log('Venda automática NÃO ativada: a chave SOLANA_PRIVATE_KEY não é da carteira vigiada (FARO_WALLET).', true);
+  if (canTakeProfit) log(`Venda no lucro LIGADA (posições abaixo de US$ ${cfg.venda.lucro.ateUsd}, vende 100% com +${cfg.venda.lucro.alvoPct}%)`);
   if (buyOn) log(`Compra automática LIGADA (carteira ${me.slice(0, 6)}...)`);
   if (canSell) log(`Venda automática por golpe LIGADA (carteira ${me.slice(0, 6)}...)`);
 
@@ -99,6 +104,7 @@ export async function createTrader(cfg, log) {
   return {
     canBuy: buyOn,
     canSell,
+    canTakeProfit,
     sellAll,
     async maybeBuy(approved, state, cfg2, log2) {
       if (!buyOn) return [];

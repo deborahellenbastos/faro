@@ -1915,6 +1915,7 @@
       ['Compras na última hora', `mín ${f.comprasSobreTotalH1MinPct}%`],
       ['Compra automática', c.ativada ? `ligada (${c.solPorCompra} SOL, até ${c.maxComprasPorDia}/dia)` : 'desligada'],
       ['Venda automática por golpe', data.lastRun?.autoSell ? 'ligada (vende 100% se o contrato mudar para golpe)' : 'desligada'],
+      ['Venda no lucro', data.lastRun?.takeProfit ? `ligada (posições abaixo de US$ ${data.lastRun.takeProfit.ateUsd}: vende 100% com +${data.lastRun.takeProfit.alvoPct}%)` : 'desligada'],
     ];
     $('cfg').innerHTML = rows.map(([k, v]) => `<span>${esc(k)}</span><span class="num">${esc(v)}</span>`).join('');
     const r = data.lastRun || {};

@@ -35,6 +35,11 @@
   "venda": {
     "automatica": true,
     "slippageMaxPct": 30,
-    "valorMinimoUsd": 1
+    "valorMinimoUsd": 1,
+    "lucro": {
+      "ligado": true,
+      "alvoPct": 100,
+      "ateUsd": 10
+    }
   }
 }
