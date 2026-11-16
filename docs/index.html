@@ -315,6 +315,21 @@
   .nt.good .nt-ico { background: rgba(16,210,127,.14); color: var(--green); }
   .nt-txt { display: grid; gap: 2px; min-width: 0; } .nt-txt b { font-size: 13px; } .nt-txt small { color: var(--muted); font-size: 12px; line-height: 1.4; }
   .nt-at { color: var(--faint); font-size: 11px; text-align: right; white-space: nowrap; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag, .soc { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid var(--line); color: var(--muted); text-decoration: none; background: var(--panel-2); }
+  .tag.ok { color: var(--green); border-color: rgba(16,210,127,.35); background: rgba(16,210,127,.08); }
+  .tag.danger, .soc.warn { color: var(--red); border-color: rgba(255,91,91,.35); background: rgba(255,91,91,.08); }
+  .tag.warn { color: #f5b14c; border-color: rgba(245,177,76,.35); background: rgba(245,177,76,.08); }
+  a.soc:hover { color: var(--text); border-color: var(--line-2); }
+  .mini-tag { font-style: normal; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 999px; margin-left: 4px; vertical-align: middle; }
+  .mini-tag.ok { color: var(--green); background: rgba(16,210,127,.12); } .mini-tag.warn { color: #f5b14c; background: rgba(245,177,76,.12); }
+  .chips.fib { border-top: 0; padding-top: 0; align-items: center; }
+  .chips.fib small { color: var(--faint); font-size: 11px; margin-right: 2px; }
+  .twins { display: grid; gap: 6px; }
+  .twin { display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-3); align-items: center; padding: 8px 12px; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--panel-2); color: var(--text); text-align: left; font-size: 12px; }
+  .twin.on { border-color: var(--line-2); box-shadow: inset 3px 0 0 var(--brand); }
+  .twin span { color: var(--muted); } .twin code { color: var(--faint); font-size: 11px; }
+  .linkbtn.plan { margin-top: 6px; color: var(--brand); font-size: 12px; font-weight: 700; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -952,6 +967,34 @@
   }
   const DEX_NAMES = { pumpswap: 'PumpSwap', pumpfun: 'Pump.fun', raydium: 'Raydium', meteora: 'Meteora', orca: 'Orca', launchlab: 'LaunchLab', fluxbeam: 'FluxBeam' };
   const launchpad = (mint) => (/pump$/i.test(mint) ? 'Pump.fun' : /bonk$/i.test(mint) ? 'LetsBonk' : /bags$/i.test(mint) ? 'Bags' : null);
+  const SHAPE = { morta: ['Morta', 'danger'], reta: ['Subida reta', 'danger'], organica: ['Orgânica', 'ok'], lateral: ['Sem tendência', 'muted'], nova: ['Gráfico novo', 'muted'] };
+  // Moedas com o mesmo nome/ticker (vamps): agrupa e diz qual é a mais forte
+  const normSym = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  function twins(t) {
+    const k = normSym(t.symbol); if (!k) return [];
+    return Object.values(data.tokens || {}).filter((x) => x.mint !== t.mint && normSym(x.symbol) === k && (x.status !== 'reprovada' || x.held));
+  }
+  function twinInfo(t) {
+    const o = twins(t); if (!o.length) return null;
+    const all = [t, ...o].sort((a, b) => (b.liquidityUsd || 0) - (a.liquidityUsd || 0) || (b.rug?.totalHolders || 0) - (a.rug?.totalHolders || 0));
+    return { n: all.length, best: all[0].mint === t.mint, all };
+  }
+  function socialsHtml(t) {
+    const L = (t.links || []).filter((x) => x.url);
+    if (!L.length) return `<span class="soc warn" title="Sem site, X ou Telegram: confira a narrativa com cuidado">Sem rede social</span>`;
+    const name = (x) => { const u = x.url.toLowerCase(); return /x\.com|twitter/.test(u) ? 'X' : /t\.me|telegram/.test(u) ? 'Telegram' : /discord/.test(u) ? 'Discord' : 'Site'; };
+    return L.slice(0, 4).map((x) => `<a class="soc" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${name(x)}</a>`).join('');
+  }
+  // Níveis de Fibonacci do último movimento (fundo -> topo), para comprar na correção
+  function fibLevels(t) {
+    const c = CH.mint === t.mint && CH.bars.length > 6 ? CH.bars.map((b) => [b.time * 1000, b.open, b.high, b.low, b.close]) : t.candles || [];
+    if (c.length < 6) return [];
+    let iHi = 0; c.forEach((x, i) => { if (x[2] >= c[iHi][2]) iHi = i; });
+    let iLo = 0; for (let i = 0; i <= iHi; i++) if (c[i][3] <= c[iLo][3]) iLo = i;
+    const hi = c[iHi][2], lo = c[iLo][3];
+    if (!(hi > lo * 1.2)) return [];
+    return [0.382, 0.5, 0.618].map((r) => ({ r, px: hi - (hi - lo) * r })).filter((x) => x.px < t.priceUsd);
+  }
   function coinHead(t, metaHtml) {
     const dex = t.dexId ? (DEX_NAMES[t.dexId] || t.dexId) : null;
     const lp = t.launchpad || launchpad(t.mint);
@@ -964,6 +1007,8 @@
       </div>
       <div class="route">${esc(route)}</div>
       ${metaHtml ? `<div class="meta">${metaHtml}</div>` : ''}
+      ${metaHtml ? (() => { const sh = t.shape && SHAPE[t.shape.tipo]; const tw = twinInfo(t);
+        return `<div class="tags">${sh ? `<span class="tag ${sh[1]}" title="${esc(t.shape.msg)}">${sh[0]}</span>` : ''}${tw ? `<span class="tag ${tw.best ? 'ok' : 'warn'}" title="Existem ${tw.n} moedas com esse nome">${tw.best ? `A mais forte de ${tw.n} com esse nome` : `Cópia: há ${tw.n} com esse nome`}</span>` : ''}${socialsHtml(t)}</div>`; })() : ''}
     </div>`;
   }
   function scoreBadge(n, small, preview) {
@@ -1265,9 +1310,12 @@
       const priceRow = (label, field, chips, hint) => `<div class="tbox">
           <div class="tin"><label>${label}</label><input inputmode="decimal" placeholder="${hint}" value="${esc(st[field])}" data-lfield="${field}" data-tmint="${m}"><small>US$</small></div>
           <div class="chips">${chips.map((c) => `<button data-lchip="${field}" data-lpct="${c}" data-tmint="${m}">${c > 0 ? '+' : ''}${c}%</button>`).join('')}<span style="flex:1"></span><small style="color:var(--faint);font-size:11px;align-self:center">agora ${price(t.priceUsd)}</small></div></div>`;
+      const fib = buy ? fibLevels(t) : [];
+      const fibRow = fib.length ? `<div class="chips fib"><small>Fibonacci do último movimento:</small>${fib.map((x) => `<button data-lfib="${x.px}" data-tmint="${m}" title="${price(x.px)}">${(x.r * 100).toFixed(x.r === 0.5 ? 0 : 1).replace('.', ',')}%</button>`).join('')}</div>` : '';
+      const entry = t.position?.known ? t.position.avgPriceUsd : 0;
       const fields = buy
-        ? priceRow('Comprar se chegar a', 'lTrigger', [-10, -20, -30, -50], pxFmt(t.priceUsd * 0.8))
-        : priceRow('Alvo (vender acima)', 'lTp', [25, 50, 100, 200], pxFmt(t.priceUsd * 1.5)) + priceRow('Stop (vender abaixo)', 'lSl', [-10, -20, -30, -50], pxFmt(t.priceUsd * 0.8));
+        ? priceRow('Comprar se chegar a', 'lTrigger', [-10, -20, -30, -50], pxFmt(t.priceUsd * 0.8)).replace(/<\/div><\/div>$/, `</div>${fibRow}</div>`)
+        : priceRow('Alvo (vender acima)', 'lTp', [25, 50, 100, 200], pxFmt(t.priceUsd * 1.5)).replace(/<\/div><\/div>$/, entry ? `</div><div class="chips fib"><small>Da sua entrada (${price(entry)}):</small>${[25, 50, 100].map((p2) => `<button data-lfib="${entry * (1 + p2 / 100)}" data-lfield2="lTp" data-tmint="${m}">+${p2}%</button>`).join('')}</div></div>` : '</div></div>') + priceRow('Stop (vender abaixo)', 'lSl', [-10, -20, -30, -50], pxFmt(t.priceUsd * 0.8));
       const days = [1, 7, 30].map((d) => `<button data-ldays="${d}" data-tmint="${m}" class="${Number(st.lDays) === d ? 'on' : ''}">${d === 1 ? '1 dia' : d + ' dias'}</button>`).join('');
       const orders = (LIM.orders[t.mint] || []).map((o) => {
         const isBuy = o.inputMint === SOL_MINT;
@@ -1311,7 +1359,8 @@
       }
     } else if (ui.tab === 'aprovada') {
       const ch = Number(t.changePct) || 0;
-      main = `<b>${esc(t.symbol)}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}</small>`;
+      const tw = twinInfo(t);
+      main = `<b>${esc(t.symbol)}${tw ? ` <i class="mini-tag ${tw.best ? 'ok' : 'warn'}">${tw.best ? 'mais forte' : 'cópia'}</i>` : ''}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}${t.shape && SHAPE[t.shape.tipo] && t.shape.tipo !== 'nova' ? ` - ${SHAPE[t.shape.tipo][0].toLowerCase()}` : ''}</small>`;
       side = `<div style="display:flex;align-items:center;gap:10px"><small class="num ${cls(ch)}" style="font-size:13px">${pct(ch)}</small>${scoreBadge(t.score, true)}</div>`;
     } else if (ui.tab === 'aguardando') {
       const left = t.pending ?? (t.reasons || []).length;
@@ -1362,7 +1411,10 @@
       </div>` : '';
     const ops = mine ? `<div class="op-grid ${ui.hist[t.mint]?.open ? 'hist-open' : ''}">${opBlock(t)}${tradeBlock(t)}</div>`
       : t.status === 'aprovada' ? tradeBlock(t) : '';
-    return head + perf + ops + (mine ? alertsHtml(t) : '') + scoreHtml(t) + checksHtml(t, t.status !== 'aprovada');
+    const tw = twinInfo(t);
+    const twinBox = tw ? `<section class="panel d-card twins"><h3 class="sec-title">Moedas com o mesmo nome</h3><p class="sp-note">${tw.best ? 'Esta é a mais forte (mais liquidez) entre as que têm esse nome.' : 'Existe outra com esse nome e mais liquidez. Cópias (vamps) costumam ser a versão mais fraca: confira qual é a original antes de comprar.'}</p>
+      ${tw.all.map((x) => `<button class="twin ${x.mint === t.mint ? 'on' : ''}" data-goto="${esc(x.mint)}"><b>${esc(x.symbol)}</b><span>liquidez ${usd(x.liquidityUsd)} - ${x.rug?.totalHolders ? int(x.rug.totalHolders) + ' holders' : 'holders ?'} - ${{ aprovada: 'no radar', aguardando: 'observando', reprovada: 'reprovada', carteira: 'na carteira' }[x.status] || x.status}</span><code>${esc(x.mint.slice(0, 4) + '...' + x.mint.slice(-4))}</code></button>`).join('')}</section>` : '';
+    return head + perf + ops + (mine ? alertsHtml(t) : '') + twinBox + scoreHtml(t) + checksHtml(t, t.status !== 'aprovada');
   }
 
   // =========================================================
@@ -1858,6 +1910,11 @@
       for (const o of r.ops) {
         const t = data.tokens[o.mint];
         if (!quiet) toast(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''}`);
+        if (o.tokens > 0 && (LIM.orders[o.mint] || []).some((x) => x.inputMint === o.mint)) {
+          const msg = 'Sua ordem limite de venda vale só para a quantidade da época. A compra nova não está coberta: crie outra ordem para o restante.';
+          toast(`${t?.symbol || ''}: a ordem de venda não cobre a compra nova`);
+          addInbox(`Ordem de venda desatualizada: ${t?.symbol || o.mint.slice(0, 6)}`, msg, o.mint, 'warn', 'ord-' + o.sig);
+        }
         addInbox(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${t?.symbol || o.mint.slice(0, 6)}`, `${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''} por ${solFmt(Math.abs(o.sol), 4)}`, o.mint, 'info', 'tx-' + o.sig);
         if (t && CH.mint === o.mint && chartSrc === 'faro') decorate(t);
       }
@@ -2400,6 +2457,7 @@
             let o = done?.ops?.[0];
             for (let i = 0; i < 10 && !o; i++) { o = WAL.ops.find((x) => x.sig === sig); if (!o) await new Promise((r) => setTimeout(r, 500)); }
             st.msg = { html: o ? `<b>${buy ? 'Compra' : 'Venda'} confirmada.</b> ${buy ? 'Recebeu' : 'Vendeu'} ${tokFmt(Math.abs(o.tokens))} ${esc(t.symbol)} por ${solFmt(Math.abs(o.sol), 4)}. ${link}` : `<b>${buy ? 'Compra' : 'Venda'} confirmada.</b> ${link}` };
+            if (buy) st.msg.html += `<br><button class="linkbtn plan" data-planexit="${esc(t.mint)}">Programar a saída agora (alvo +25%)</button>`;
             toast(`${buy ? 'Compra' : 'Venda'} de ${t.symbol} confirmada`);
           }
         }
@@ -2429,6 +2487,11 @@
     render();
   });
   document.addEventListener('click', async (e) => {
+    const fb = e.target.closest('[data-lfib]');
+    if (fb) { const st2 = tradeState(fb.dataset.tmint); st2[fb.dataset.lfield2 || 'lTrigger'] = pxFmt(Number(fb.dataset.lfib)); return render(); }
+    const pe = e.target.closest('[data-planexit]');
+    if (pe) { const t2 = data.tokens[pe.dataset.planexit]; const st2 = tradeState(pe.dataset.planexit); Object.assign(st2, { side: 'sell', mode: 'limit', amt: String(t2.heldAmount || ''), lTp: t2.position?.avgPriceUsd ? pxFmt(t2.position.avgPriceUsd * 1.25) : '', msg: null }); return render(); }
+    const gt = e.target.closest('[data-goto]'); if (gt) { goTo(gt.dataset.goto); return; }
     const el = e.target.closest('[data-tmode],[data-lchip],[data-ldays],[data-lgo],[data-lcancel],[data-lconnect]'); if (!el) return;
     const mint = el.dataset.tmint || el.dataset.lgo || el.dataset.lconnect; const st = tradeState(mint); const t = data.tokens[mint];
     if (el.dataset.tmode) { st.mode = el.dataset.tmode; st.msg = null; st.quote = null; return render(); }

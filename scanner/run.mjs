@@ -1,5 +1,5 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
-import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, scamSignals, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
+import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
 const RECHECK_MIN = 5;      // moedas da carteira: rechecagem de segurança toda rodada (5 min)
@@ -168,6 +168,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   }
 
   let rugCalls = 0;
+  let shapeCalls = 0;
   let paused = false;
   const fetchRug = async (t) => {
     rugCalls++;
@@ -244,6 +245,19 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       }
     }
     const res = analyze(m, report, cfg);
+    // Passou em tudo: antes de aprovar, olha o desenho do gráfico (morta ou subida reta = fora)
+    if (res.status === 'aprovada' && t.pairAddress && api.getCandles) {
+      try {
+        if (shapeCalls++ && api.sleep) await api.sleep(6500);
+        const c = await api.getCandles(t.pairAddress);
+        if (c && c.length) { t.candles = c; t.candlesAt = now; }
+      } catch (e) { log(`Velas de ${t.symbol} indisponíveis: ${e.message}`, true); }
+      const sh = chartShape(t.candles);
+      t.shape = sh;
+      const bad = sh.tipo === 'morta' || sh.tipo === 'reta';
+      res.checks.push({ id: 'formato', label: 'Formato do gráfico', ok: sh.tipo === 'nova' ? null : !bad, detail: sh.msg, permanent: sh.tipo === 'morta' });
+      if (bad) { res.status = sh.tipo === 'morta' ? 'reprovada' : 'aguardando'; res.reasons = [`Formato do gráfico: ${sh.msg}`]; }
+    }
     t.status = res.status;
     t.checks = res.checks;
     t.reasons = res.reasons;
@@ -283,6 +297,15 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         if (e.rateLimited) break;
       }
       if (api.sleep) await api.sleep(6500); // respeita o limite do GeckoTerminal
+    }
+  }
+  // Formato atualizado; aprovada que "morreu" sai do radar
+  for (const t of Object.values(tokens)) {
+    if (!t.candles || !(t.status === 'aprovada' || t.held)) continue;
+    t.shape = chartShape(t.candles);
+    if (!t.held && t.status === 'aprovada' && t.shape.tipo === 'morta' && !newlyApproved.includes(t)) {
+      t.status = 'reprovada'; t.rejectedAt = now; t.reasons = [`Formato do gráfico: ${t.shape.msg}`];
+      log(`SAIU DO RADAR: ${t.symbol} (${t.shape.msg})`);
     }
   }
 

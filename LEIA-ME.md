@@ -130,3 +130,11 @@ Por enquanto o robô só compra. A venda continua manual.
 | Lucro (posições < US$ 10) | +100% sobre o investido | a cada ~10 s | variável `LUCRO_AUTO` = `false` desliga |
 
 A vigia também relê a carteira a cada 30 s, então moedas recém-compradas entram logo. Nenhuma vende se a posição valer menos de US$ 1. Os números ficam no `config.json` (bloco `venda`).
+
+## Checagens inspiradas nos vídeos (mojak e Bruno Trenches)
+
+- **Formato do gráfico:** antes de aprovar, o robô olha as velas. "Morta" (50%+ abaixo do topo há 30 min ou mais) é reprovada; "subida reta" (150%+ sem correção de 10%) fica em observação. Aprovada que morre depois sai do radar.
+- **Cópias (vamps):** moedas com o mesmo nome são marcadas; o painel mostra qual tem mais liquidez.
+- **Redes sociais:** links do X/Telegram/site no detalhe; "Sem rede social" quando não há.
+- **Fibonacci:** na ordem limite de compra, atalhos nos níveis 38,2%, 50% e 61,8% do último movimento. Na venda, atalhos de +25/+50/+100% sobre a sua entrada.
+- **Ordem de venda desatualizada:** se você comprar de novo uma moeda com ordem de venda aberta, o Faro avisa que a ordem não cobre a compra nova.

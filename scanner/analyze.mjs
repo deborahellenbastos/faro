@@ -226,6 +226,30 @@ export function scoreParts(m, rug) {
   ];
 }
 
+// Formato do gráfico (velas de 5 min: [ms, abre, máx, mín, fecha, vol])
+//  - morta: caiu 50%+ do topo e o topo ficou para trás há 30 min ou mais
+//  - reta: subiu 150%+ sem nenhuma correção de 10% no caminho (desenho típico de rug)
+//  - organica: sobe, corrige (recuos de 10%+) e segura acima de 60% do topo
+//  - lateral / nova: o resto, ou pouca vela para dizer
+export function chartShape(c) {
+  if (!Array.isArray(c) || c.length < 6) return { tipo: 'nova', msg: 'Pouco gráfico ainda para avaliar o formato' };
+  let iHi = 0; c.forEach((x, i) => { if (x[2] >= c[iHi][2]) iHi = i; });
+  const hi = c[iHi][2], last = c[c.length - 1][4];
+  const fromTop = (1 - last / hi) * 100;
+  const minsSinceTop = (c[c.length - 1][0] - c[iHi][0]) / 60000;
+  let iLo = 0; for (let i = 0; i <= iHi; i++) if (c[i][3] <= c[iLo][3]) iLo = i;
+  const lo = c[iLo][3], rise = lo > 0 ? (hi / lo - 1) * 100 : 0;
+  // maior correção durante a subida (do fundo até o topo)
+  let peak = 0, pull = 0;
+  for (let i = iLo; i <= iHi; i++) { peak = Math.max(peak, c[i][2]); pull = Math.max(pull, (1 - c[i][3] / peak) * 100); }
+  const p0 = (v) => `${Math.round(v)}%`;
+  if (fromTop >= 50 && minsSinceTop >= 30) return { tipo: 'morta', msg: `Já passou do auge: está ${p0(fromTop)} abaixo do topo de ${Math.round(minsSinceTop)} min atrás` };
+  if (rise >= 150 && pull < 10 && iHi - iLo >= 4) return { tipo: 'reta', msg: `Subiu ${p0(rise)} em linha reta, sem correção (maior recuo ${p0(pull)}): cara de rug` };
+  if (rise >= 30 && pull >= 10 && fromTop <= 40) return { tipo: 'organica', msg: `Sobe e corrige (recuos de até ${p0(pull)}), ${p0(fromTop)} abaixo do topo` };
+  return { tipo: 'lateral', msg: `Sem tendência clara (${p0(fromTop)} abaixo do topo)` };
+}
+export const SHAPE_LABEL = { morta: 'Morta', reta: 'Subida reta', organica: 'Orgânica', lateral: 'Lateral', nova: 'Nova' };
+
 // Junta tudo e decide o status
 export function analyze(m, rugReport, cfg) {
   const rug = summarizeRug(rugReport);
