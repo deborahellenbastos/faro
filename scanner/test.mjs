@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce } from './run.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
-import { entrySignal, exitSignal, trailStop, weakSignals, realizeCheck } from './signals.mjs';
+import { entrySignal, exitSignal, trailStop, weakSignals, realizeCheck, breakoutSignal } from './signals.mjs';
 
 const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
 const now = Date.UTC(2026, 10, 15, 21, 0, 0);
@@ -372,6 +372,18 @@ assert.equal(state.lastRun.autoCompra, null);
   const sig = { tipo: 'entrada', fase: 'entrada', boa: true, stop: 0.8, alvo: 1.6, rr: 3, at: 1000 };
   const tk = { C: { mint: 'C', status: 'aguardando', score: 90, dexId: 'pumpfun', sinal: sig, priceUsd: 1 }, P: { mint: 'P', status: 'aprovada', score: 90, dexId: 'pumpswap', sinal: sig, priceUsd: 1 } };
   assert.deepEqual(entryCandidates(tk, { compra: {}, simulacao: {} }, 1000).map((t) => t.mint), ['P']);
+}
+
+// Rompimento: pausa perto do topo e rompe a máxima com volume (sim); sem volume ou já esticada, não
+{
+  const T0 = Date.now() - 20 * 300000; const c = [];
+  const push = (o, h, l, cl, v) => c.push([T0 + c.length * 300000, o, h, l, cl, v]);
+  [[9, 10.2, 8.8, 10, 800], [10, 12, 9.5, 11.5, 900], [11.5, 14, 11, 13.6, 1500], [13.6, 16, 13, 15.5, 1800], [15.5, 16.2, 14.2, 14.8, 700], [14.8, 15.9, 14.3, 15.4, 600], [15.4, 16, 14.6, 15.2, 650]].forEach((x) => push(...x));
+  push(15.2, 17.4, 15.1, 17.2, 1400);
+  const b = breakoutSignal(c, { buys5: 70, sells5: 30 });
+  assert.ok(b && b.fase === 'rompimento' && b.stop < 14.3 && b.rr === 2.5, 'rompimento com volume');
+  c[c.length - 1][5] = 500; assert.equal(breakoutSignal(c, {}), null, 'sem volume não');
+  c[c.length - 1][5] = 1400; assert.equal(breakoutSignal(c, { px: 19.5 }), null, 'já esticada não');
 }
 
 // O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais

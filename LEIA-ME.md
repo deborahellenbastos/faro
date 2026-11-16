@@ -283,3 +283,18 @@ Todas passam pelos mesmos filtros de segurança.
   - mint e freeze revogados, holders sem bundle, dev limpo e RugCheck ok.
 
   Liquidez e LP não são checados, porque na curva ainda não existe pool. Elas entram no sinal de boa entrada da mesma forma. A compra de verdade **nunca** entra na curva. O resultado aparece separado na aba Simulação, marcado como "curva". Desligue em `curva.ligado`.
+
+## Sinal de rompimento (só simulação)
+
+Serve para moeda forte que corrige pouco e continua subindo (casos goldie e RESPECT em 16/11). O sinal dispara nas velas de 5 min quando:
+- a moeda faz uma pausa de 3 velas perto do topo (recuo de até 25%, andando de lado);
+- rompe a máxima com a vela verde;
+- o volume sobe 20% ou mais;
+- tem 60% ou mais de compras;
+- não subiu mais de 15% além do ponto de rompimento.
+
+O stop fica abaixo da pausa, e o alvo em 2,5x o risco.
+
+Por enquanto só a simulação usa esse sinal. Aparece com a etiqueta "rompimento" e com o resultado separado na aba Simulação.
+
+Limitação: o robô roda a cada 5 min. Altas muito rápidas, como a da goldie (+38% em 2 minutos), podem passar do limite de 15% antes da rodada. Nesse caso o robô não persegue.

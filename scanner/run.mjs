@@ -1,7 +1,7 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { simStep } from './sim.mjs';
 import { entryCandidates, readSwitch, buyLimits } from './autobuy.mjs';
-import { entrySignal, exitSignal, trailStop } from './signals.mjs';
+import { entrySignal, exitSignal, trailStop, breakoutSignal } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
@@ -398,6 +398,10 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (x) sig = { tipo: 'saida', ...x };
     } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t) || curveOn(t)) {
       sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };
+      // Rompimento (só simulação): guarda à parte, não mexe no sinal principal nem na compra real
+      const br = breakoutSignal(t.candles, ctx);
+      if (br) { if (!t.romp || t.romp.key !== br.key) { t.romp = { ...br, at: now }; log(`ROMPIMENTO (simulação): ${t.symbol}`); } }
+      else if (t.romp && now - t.romp.at > 15 * 60000) delete t.romp;
     }
     if (!sig) { delete t.sinal; continue; }
     // "desde" muda só quando a fase muda (para o painel avisar uma vez)
@@ -475,7 +479,9 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   const buyList = entryCandidates(tokens, cfg, now);
   // Simulação: os mesmos sinais da compra real + (modo curva) moedas na curva da pump.fun com boa entrada
   const curveList = Object.values(tokens).filter((t) => curveOn(t) && !t.held && t.sinal?.tipo === 'entrada' && t.sinal.boa && now - (t.sinal.at || 0) <= 10 * 60000).map((t) => Object.assign(t, { _simCurva: true }));
-  try { simStep({ state, tokens, candidates: [...buyList, ...curveList.filter((t) => !buyList.includes(t))], cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
+  // rompimentos frescos (até 10 min) em moedas do radar, com as mesmas travas de segurança da lista de compra
+  const rompList = Object.values(tokens).filter((t) => t.romp && now - t.romp.at <= 10 * 60000 && !t.held && t.status === 'aprovada' && t.safety?.level !== 'danger' && t.dexId !== 'pumpfun' && !buyList.includes(t));
+  try { simStep({ state, tokens, candidates: [...buyList, ...curveList.filter((t) => !buyList.includes(t))], rompidas: rompList, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
   if (trader?.canBuy && state.autoCompra?.on && buyList.length) {
     try {
       const limits = buyLimits(state, tokens, cfg, now);

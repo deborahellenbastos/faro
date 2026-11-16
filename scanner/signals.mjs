@@ -151,3 +151,28 @@ export function realizeCheck(gain, weak, o = {}) {
   const count = f.sinais <= 1 ? weak.filter((w) => w.forte).length : weak.length;
   return { sell: count >= f.sinais, faixa: f, count };
 }
+
+// Rompimento (só simulação por enquanto): moeda forte que corrige pouco, faz uma pausa perto do topo
+// e rompe a máxima com volume e compra (casos goldie e RESPECT em 16/11). Velas de 5 min.
+// ctx: { px, buys5, sells5 }
+export function breakoutSignal(c, ctx = {}) {
+  if (!Array.isArray(c) || c.length < 8) return null;
+  const n = c.length, last = c[n - 1];
+  const px = ctx.px > 0 ? ctx.px : last[4];
+  const prior = c.slice(Math.max(0, n - 8), n - 1);           // ~35 min antes da vela atual
+  const H = Math.max(...prior.map((x) => x[2]));               // topo a romper
+  const pause = c.slice(n - 4, n - 1);                         // as 3 velas antes da atual
+  const pHi = Math.max(...pause.map((x) => x[2])), pLo = Math.min(...pause.map((x) => x[3]));
+  if (pHi / pLo > 1.3 || pLo < H * 0.75) return null;          // pausa curta e perto do topo (recuo de até 25%)
+  if (!(px > H * 1.01 && px <= H * 1.15)) return null;         // rompeu, mas sem já ter disparado demais
+  if (!(last[4] >= last[1])) return null;                      // vela atual verde
+  const vols = pause.map((x) => x[5]).filter((v) => v > 0);
+  const avgV = vols.length ? vols.reduce((a, v) => a + v, 0) / vols.length : 0;
+  if (avgV && !(last[5] >= avgV * 1.2)) return null;           // volume subindo no rompimento
+  const b = ctx.buys5 || 0, s = ctx.sells5 || 0;
+  if (b + s >= 10 && b / (b + s) < 0.6) return null;           // 60%+ de compras
+  const stop = pLo * 0.97;
+  if ((px - stop) / px > 0.25) return null;                    // stop longe demais: não vale
+  const alvo = px + 2.5 * (px - stop);
+  return { tipo: 'entrada', fase: 'rompimento', titulo: 'Rompimento', boa: true, msg: `Fez uma pausa perto do topo e rompeu a máxima com volume e compra.`, stop, alvo, rr: 2.5, key: `${c[n - 1][0]}` };
+}

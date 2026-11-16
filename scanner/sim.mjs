@@ -23,7 +23,7 @@ export function planFor(t, cfg) {
   return { entry: E, stop, tp, rr };
 }
 
-export function simStep({ state, tokens, candidates, cfg, now, log }) {
+export function simStep({ state, tokens, candidates, rompidas = [], cfg, now, log }) {
   const S = cfg.simulacao || {};
   if (S.ligado === false) return;
   const sim = (state.sim = state.sim || { open: [], closed: [], startedAt: now });
@@ -70,7 +70,7 @@ export function simStep({ state, tokens, candidates, cfg, now, log }) {
   const todayPnl = todayClosed.reduce((a, x) => a + x.pnlSol, 0);
   const todayOpened = [...sim.open, ...sim.closed].filter((x) => x.at > day).length;
   const lossCap = -(S.perdaMaxDiaVezesBase ?? 3) * base;
-  for (const t of candidates || []) {
+  for (const t of [...(candidates || []), ...rompidas.map((t) => ({ ...t, sinal: t.romp, _romp: true }))]) {
     if (sim.open.length >= (S.maxAbertas ?? 2)) break;
     if (todayOpened + sim.open.filter((x) => x.at === now).length >= (cfg.compra?.maxComprasPorDia ?? 5)) break;
     if (todayPnl <= lossCap) { log('SIMULAÇÃO: perda máxima do dia atingida, sem novas entradas'); break; }
@@ -83,8 +83,8 @@ export function simStep({ state, tokens, candidates, cfg, now, log }) {
     const g = t.sinal, E = t.priceUsd;
     if (!(E > 0) || !(g.stop > 0 && g.stop < E)) continue;
     const tp = E * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);
-    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}) });
-    log(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de boa entrada a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
+    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}), ...(t._romp ? { romp: true } : {}) });
+    log(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de ${t._romp ? 'rompimento' : 'boa entrada'} a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
   }
 
   // 3. Resumo
@@ -100,5 +100,7 @@ export function simStep({ state, tokens, candidates, cfg, now, log }) {
     base,
   };
   const cv = c.filter((x) => x.curva);
+  const rp = c.filter((x) => x.romp);
+  sim.stats.romp = { ops: rp.length, winRate: rp.length ? (rp.filter((x) => x.pnlPct > 0).length / rp.length) * 100 : 0, pnlSol: rp.reduce((a, x) => a + x.pnlSol, 0) };
   sim.stats.curva = { ops: cv.length, winRate: cv.length ? (cv.filter((x) => x.pnlPct > 0).length / cv.length) * 100 : 0, pnlSol: cv.reduce((a, x) => a + x.pnlSol, 0) };
 }
