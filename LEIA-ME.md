@@ -263,3 +263,11 @@ Quando o robô vende no stop (stop de perda, stop móvel ou queda forte), a moed
 Além disso, a liquidez precisa estar em pelo menos 70% da de antes (golpe tira a liquidez) e não pode haver alerta de perigo.
 
 Com a compra automática ligada, o robô pode reentrar sozinho quantas vezes o fundo se confirmar depois de um stop. Ele respeita sempre as travas do dia: 2 abertas, 5 compras e perda máxima de 3x. A simulação faz o mesmo. Ajuste a janela em `compra.reentradaHoras`.
+
+## Fontes de moedas
+
+O robô procura moedas em duas fontes:
+- **DexScreener:** perfis novos, boosts, as mais impulsionadas e community takeovers.
+- **GeckoTerminal:** as que estão em alta na última hora e nos últimos 5 minutos. Essa fonte pega as que sobem forte mesmo sem pagar perfil. Em 16/11, FLOOR (+934%) e MEOWL (+913%) só apareceram no DexScreener depois do pico.
+
+Todas passam pelos mesmos filtros de segurança.

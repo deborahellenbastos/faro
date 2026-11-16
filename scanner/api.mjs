@@ -62,6 +62,25 @@ export async function getSolanaCandidates(log) {
       log(`Falha em DexScreener ${label}: ${e.message}`, true);
     }
   }
+  // Em alta no GeckoTerminal: pega moedas que estão subindo forte mesmo sem perfil pago no DexScreener
+  // (casos FLOOR e MEOWL em 16/11: o robô só viu depois do pico)
+  const SKIP = new Set(['So11111111111111111111111111111111111111112', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB']);
+  for (const [label, q] of [['em alta (1h)', 'duration=1h&page=1'], ['em alta (1h) 2', 'duration=1h&page=2'], ['em alta (5min)', 'duration=5m&page=1']]) {
+    try {
+      const j = await getJson(`https://api.geckoterminal.com/api/v2/networks/solana/trending_pools?${q}`, { headers: { accept: 'application/json;version=20230302' }, retries: 1 });
+      let n = 0;
+      for (const pool of j?.data || []) {
+        const mint = String(pool?.relationships?.base_token?.data?.id || '').replace(/^solana_/, '');
+        if (!mint || SKIP.has(mint) || found.has(mint)) continue;
+        found.set(mint, { mint, source: 'em alta (GeckoTerminal)', icon: null, description: '', links: [] });
+        n++;
+      }
+      log(`GeckoTerminal ${label}: ${n} moedas novas`);
+    } catch (e) {
+      log(`Falha em GeckoTerminal ${label}: ${e.message}`, true);
+      if (e.rateLimited) break;
+    }
+  }
   return [...found.values()];
 }
 
