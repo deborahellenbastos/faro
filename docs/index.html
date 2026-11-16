@@ -3642,8 +3642,11 @@
     }
     st.busy = true; render();
     try {
-      if (!st.quote) st.quote = await getQuote(t, st);
-      else {
+      // Um clique só: cota na hora e já abre a Phantom. Só para no meio se o impacto no preço for alto (aí mostra e pede outro clique)
+      const confirmed = !!st.quote;
+      st.quote = await getQuote(t, st);
+      if (!confirmed && !st.quote.demo && st.quote.impact > 10) { st.msg = { err: true, html: `Impacto no preço alto (${st.quote.impact.toFixed(1)}%): você receberia bem menos do que o preço mostrado. Confira e clique de novo para confirmar.` }; return; }
+      {
         if (!isDemo()) {
           const { publicKey } = await getPhantom().connect();
           if (data.wallet?.address && publicKey.toString() !== data.wallet.address) {
