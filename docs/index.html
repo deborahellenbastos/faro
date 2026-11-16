@@ -3291,7 +3291,8 @@
         stat('Em transações abertas', money(value), `${mine.length} em aberto${dead.length ? ` - ${dead.length} ${dead.length === 1 ? 'morta' : 'mortas'}` : ''} - hoje: <span class="${cls(D.pnl)}">${signedMoney(D.pnl)}</span>${D.spent ? ` (${pct((D.pnl / D.spent) * 100)})` : ''}`, `hero ${D.n ? (D.pnl > 0.005 ? '' : D.pnl < -0.005 ? 'neg' : 'flat') : 'flat'}`),
         stat('Total na carteira', W.total != null ? money(W.total) : '-', 'transações abertas + disponível para comprar'),
         stat('Disponível para comprar', W.sol != null ? solFmt(W.sol, 4) : '-', W.solUsd != null ? `aprox. ${money(W.solUsd)}${W.buys != null ? ` - dá para ${W.buys} ${W.buys === 1 ? 'compra' : 'compras'}` : ''}` : 'saldo em SOL'),
-        stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, spent ? `${pct((pnl / spent) * 100)} sobre ${money(spent)} investidos` : ''),
+        // "Investido" somava todas as compras (o mesmo dinheiro girando várias vezes) e confundia: mostra a média por operação
+        stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, (() => { const n = ps.length + shut.length; return n ? `${n} ${n === 1 ? 'operação' : 'operações'} - média de ${pct((pnl / spent) * 100)} por operação` : ''; })()),
       ].join('');
     } else {
       const recent = approved.filter((t) => t.approvedAt > day);
