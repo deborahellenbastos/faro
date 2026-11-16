@@ -1514,12 +1514,14 @@
   // =========================================================
   const TR = { mint: null, list: [], at: 0, page: 1, seen: new Set(), fresh: new Set(), busy: false };
   const agoShort = (ts) => { const s2 = Math.max(0, (Date.now() - ts) / 1000); return s2 < 60 ? `${Math.round(s2)}s` : s2 < 3600 ? `${Math.round(s2 / 60)}m` : `${Math.round(s2 / 3600)}h`; };
+  const GK = { until: 0, candles: 0 }; // GeckoTerminal: velas do gráfico têm prioridade sobre a lista de transações
   async function pollTrades() {
     const mint = ui.sel[ui.tab] || CH.mint; const t = data?.tokens?.[mint];
-    if (!t?.pairAddress || isDemo() || document.hidden || TR.busy) return;
+    if (!t?.pairAddress || isDemo() || document.hidden || TR.busy || GK.candles || Date.now() < GK.until) return;
     TR.busy = true;
     try {
       const j = await fetch(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${t.pairAddress}/trades?trade_volume_in_usd_greater_than=0`, { headers: { accept: 'application/json;version=20230302' } }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (!j) GK.until = Date.now() + 20000;
       if (!j?.data) return;
       if (TR.mint !== mint) { TR.mint = mint; TR.page = 1; TR.seen = new Set(); }
       const me = data.wallet?.address;
@@ -1560,7 +1562,7 @@
     TR.page += Number(b.dataset.trpage); const t = data.tokens[TR.mint];
     const box = document.querySelector('[data-trades]'); if (box && t) box.outerHTML = tradesHtml(t);
   });
-  setInterval(pollTrades, 10000);
+  setInterval(pollTrades, 15000);
 
   // Seções abertas/fechadas continuam como você deixou quando a tela atualiza
   const OPEN = new Map();
@@ -1898,10 +1900,13 @@
     if (!t.pairAddress || isDemo()) return null;
     const [, tf, agg] = IVALS.find((x) => x[0] === iv) || IVALS[1];
     const url = `https://api.geckoterminal.com/api/v2/networks/solana/pools/${t.pairAddress}/ohlcv/${tf}?aggregate=${agg}&limit=300&currency=usd`;
-    for (let i = 0; i < 3; i++) {
+    GK.candles++;
+    try {
+    for (let i = 0; i < 5; i++) {
       const r = await fetch(url, { headers: { accept: 'application/json;version=20230302' } }).catch(() => null);
-      if (r?.status === 429) { await new Promise((ok) => setTimeout(ok, 1500 * (i + 1))); continue; } // limite do GeckoTerminal: tenta de novo logo
-      const j = r?.ok ? await r.json().catch(() => null) : null;
+      // Limite do GeckoTerminal: a resposta 429 vem sem CORS, então chega como falha de rede. Pausa as transações e tenta de novo
+      if (!r || r.status === 429) { GK.until = Date.now() + 20000; await new Promise((ok) => setTimeout(ok, 1200 * 2 ** i)); continue; }
+      const j = r.ok ? await r.json().catch(() => null) : null;
       const list = j?.data?.attributes?.ohlcv_list;
       if (!list) return null;
       const bars = list.map((c) => ({ time: c[0], open: +c[1], high: +c[2], low: +c[3], close: +c[4], value: +c[5] })).sort((a, b) => a.time - b.time);
@@ -1910,13 +1915,14 @@
       return bars;
     }
     return null;
+    } finally { GK.candles--; }
   }
   // Enquanto a busca não volta: velas guardadas, ou as do robô (5 min) agrupadas no intervalo escolhido
   function seedBars(t, iv) {
     const hit = CANDLE_CACHE.get(`${t.mint}|${iv}`); if (hit) return hit.bars;
     const base = candlesFromRobot(t); if (!base.length) return [];
     const sec = (IVALS.find((x) => x[0] === iv) || IVALS[1])[3];
-    if (sec <= 300) return iv === '5m' ? base : [];
+    if (sec <= 300) return base; // 1 min: mostra as velas de 5 min do robô até as de 1 min chegarem
     const out = [];
     for (const b of base) {
       const k = Math.floor(b.time / sec) * sec; const last = out[out.length - 1];
