@@ -477,7 +477,10 @@
   .ov-ivals button { border: 0; background: transparent; height: 24px; min-width: 32px; padding: 0 6px; border-radius: 6px; color: var(--muted); font-size: 12px; font-weight: 700; }
   .ov-ivals button:hover { color: var(--text); }
   .ov-ivals button.on { color: var(--text); background: var(--panel-3); }
+  .ov-since { position: absolute; top: 44px; left: 8px; z-index: 4; display: grid; grid-template-columns: auto auto; gap: 2px 10px; padding: 6px 10px; border-radius: 8px; background: rgba(12,14,17,.88); border: 1px solid #1f232a; font-size: 11px; color: var(--muted); pointer-events: none; }
+  .ov-since b { text-align: right; font-size: 12px; } .ov-since b.pos { color: var(--green); } .ov-since b.neg { color: var(--red); }
   .ov-hint { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 4; padding: 4px 10px; border-radius: 999px; background: rgba(12,14,17,.9); border: 1px solid #1f232a; color: var(--muted); font-size: 11px; font-weight: 600; pointer-events: none; }
+  .seg-sm button:focus, .ov-tools button:focus, .ov-ivals button:focus { outline: none; }
   .seg-sm button:focus:not(:focus-visible), .ov-tools button:focus:not(:focus-visible), .ov-ivals button:focus:not(:focus-visible) { outline: none; }
   .chart-box.is-dex .farowrap, .chart-box:not(.is-dex) .dexwrap { visibility: hidden; pointer-events: none; }
   .chart-box.is-dex .faro-only, .chart-box:not(.is-dex) .dex-only { display: none !important; }
@@ -1063,6 +1066,7 @@
     h: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18"/><circle cx="7" cy="12" r="1.6" fill="currentColor"/></svg>',
     t: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19 20 5"/><circle cx="4" cy="19" r="1.8" fill="currentColor"/><circle cx="20" cy="5" r="1.8" fill="currentColor"/></svg>',
     r: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4"/><path d="M17 12h4M3 12h4"/></svg>',
+    reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
     trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
   };
   const chartUrl = (t) => {
@@ -1088,11 +1092,13 @@
           <button data-tool="t" class="${CH.tool === 't' ? 'on' : ''}" title="Linha de tendência (2 cliques)">${TOOL_ICON.t}</button>
           <button data-tool="r" class="${CH.tool === 'r' ? 'on' : ''}" title="Régua de porcentagem (2 cliques)">${TOOL_ICON.r}</button>
           <i></i>
+          <button data-chartreset title="Voltar o gráfico para a posição normal">${TOOL_ICON.reset}</button>
           <button data-tool="trash" title="Apagar os traços desta moeda">${TOOL_ICON.trash}</button>
         </div>
         <div class="farohost" data-farohost>
           <div class="ov-ivals">${IVALS.map(([k]) => `<button data-ival="${k}" class="${k === iv ? 'on' : ''}">${k}</button>`).join('')}</div>
           <div class="ov-hint" id="chart-hint" hidden></div>
+          <div class="ov-since" id="chart-since" hidden></div>
         </div>
       </div></div>
       <div class="mini-grip faro-only" data-grip title="Arraste para mudar a altura do gráfico"><i></i></div>
@@ -1591,6 +1597,7 @@
     if (t.approvedAt && t.approvedAt / 1000 >= first) marks.push({ time: Math.floor(t.approvedAt / 1000 / sec) * sec + TZ, position: 'aboveBar', color: '#60a5fa', shape: 'arrowDown', text: 'A' });
     marks.sort((a, b) => a.time - b.time);
     CH.candle.setMarkers(marks);
+    updateSince(t);
   }
 
   async function showChart(t, slot) {
@@ -1599,6 +1606,7 @@
     if (CH.host.parentElement !== slot) slot.appendChild(CH.host);
     if (CH.mint !== t.mint || CH.ivalLoaded !== CH.interval) {
       CH.mint = t.mint; CH.ivalLoaded = CH.interval; CH.fetchedAt = 0;
+      CH.chart.priceScale('right').applyOptions({ autoScale: true });
       const seed = CH.interval === '5m' ? candlesFromRobot(t) : [];
       applyBars(seed, false);
       decorate(t);
@@ -1615,6 +1623,7 @@
   }
   // Atualiza a última vela com o preço ao vivo
   function tickBar(t) {
+    if (CH.mint === t.mint) updateSince(t);
     if (!CH.chart || CH.mint !== t.mint || !t.priceUsd || !CH.bars.length) return;
     const sec = ivalSec(); const now = Math.floor(Date.now() / 1000); const bucket = Math.floor(now / sec) * sec;
     let last = CH.bars[CH.bars.length - 1];
@@ -1649,6 +1658,27 @@
     if (!el) { el = document.createElement('div'); el.className = 'ruler-tip'; CH.host.appendChild(el); }
     el.hidden = false; el.textContent = text; el.className = 'ruler-tip ' + (up ? 'up' : 'down');
     el.style.left = Math.min(pt.x + 14, CH.host.clientWidth - 150) + 'px'; el.style.top = Math.max(pt.y - 34, 4) + 'px';
+  }
+  function resetChart() {
+    if (!CH.chart) return;
+    CH.chart.priceScale('right').applyOptions({ autoScale: true });
+    CH.chart.timeScale().resetTimeScale();
+    CH.chart.timeScale().applyOptions({ rightOffset: 6, barSpacing: 8 });
+    CH.chart.timeScale().scrollToRealTime();
+    setTool('cursor');
+  }
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-chartreset]')) resetChart(); });
+  // Variação desde a sua entrada (e desde a saída, se já vendeu), atualizada com o preço ao vivo
+  function updateSince(t) {
+    const el = $('chart-since'); if (!el) return;
+    if (!t || CH.mint !== t.mint || !t.position?.known || !(t.priceUsd > 0)) { el.hidden = true; return; }
+    const p = t.position;
+    const sells = (t.history || []).filter((o) => o.tokens < 0);
+    const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
+    const exit = soldTok > 0 && p.receivedUsd > 0 ? p.receivedUsd / soldTok : 0;
+    const row = (label, ref) => { const c = (t.priceUsd / ref - 1) * 100; return `<span>${label}</span><b class="${c >= 0 ? 'pos' : 'neg'}">${c >= 0 ? '+' : ''}${c.toFixed(Math.abs(c) < 10 ? 2 : 1).replace('.', ',')}%</b>`; };
+    el.innerHTML = (p.avgPriceUsd > 0 ? row('Desde a entrada', p.avgPriceUsd) : '') + (exit ? row('Desde a saída', exit) : '');
+    el.hidden = !el.innerHTML;
   }
   function setTool(tool) {
     CH.tool = tool; CH.pending = null;
