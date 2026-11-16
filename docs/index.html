@@ -2692,6 +2692,7 @@
     // Moeda aberta que você acabou de comprar: o Faro vai junto com ela para a Carteira
     const opened = ui.sel[ui.tab];
     if (opened && ui.tab !== 'minhas' && !lists[ui.tab].some((x) => x.mint === opened) && lists.minhas.some((x) => x.mint === opened)) {
+      ui.sel[ui.tab] = null; // senão, ao voltar para a aba antiga, o Faro levava de novo para a Carteira
       ui.tab = 'minhas'; ui.sel.minhas = opened; ui.page = 1; save();
       toast(`${data.tokens[opened]?.symbol || 'A moeda'} agora está na sua Carteira`);
     }
