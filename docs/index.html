@@ -330,6 +330,9 @@
   .twin.on { border-color: var(--line-2); box-shadow: inset 3px 0 0 var(--brand); }
   .twin span { color: var(--muted); } .twin code { color: var(--faint); font-size: 11px; }
   .linkbtn.plan { margin-top: 6px; color: var(--brand); font-size: 12px; font-weight: 700; }
+  .obs-note { display: grid; grid-template-columns: 16px 1fr; gap: 8px; padding: 10px 12px; border-radius: var(--r-2); background: rgba(245,177,76,.08); border: 1px solid rgba(245,177,76,.3); color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .obs-note svg { width: 16px; height: 16px; color: #f5b14c; margin-top: 1px; }
+  .obs-note b { color: #f5b14c; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -1387,6 +1390,7 @@
         <button class="${buy ? '' : 'on'}" data-tside="sell" data-tmint="${m}" ${t.held ? '' : 'disabled title="Você ainda não tem essa moeda"'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16 12-4 4-4-4M12 8v8"/></svg>Vender</button>
       </div>
       <div class="tbody">
+        ${t.status === 'aguardando' && !t.held ? `<div class="obs-note">${ICON.warn}<span><b>Ainda em observação</b> (nota ${t.score}). ${(t.pending ?? (t.reasons || []).length) ? `Falta${(t.pending ?? t.reasons.length) > 1 ? 'm' : ''} ${t.pending ?? t.reasons.length} critério${(t.pending ?? t.reasons.length) > 1 ? 's' : ''}: ${esc((t.reasons || [])[0] || '')}` : 'Ainda na fila de checagem.'}</span></div>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
         <div class="tbal"><span>Saldo</span><span class="num">${bal}</span></div>
@@ -1461,7 +1465,8 @@
         <div class="tile"><span>Preço no alerta</span><b class="num">${price(t.entryPriceUsd)}</b></div>
       </div>` : '';
     const ops = mine ? `<div class="op-grid ${ui.hist[t.mint]?.open ? 'hist-open' : ''}">${opBlock(t)}${tradeBlock(t)}</div>`
-      : t.status === 'aprovada' ? tradeBlock(t) : '';
+      : t.status === 'aprovada' ? tradeBlock(t)
+      : t.status === 'aguardando' && (t.score || 0) >= 75 && levelOf(t) !== 'danger' ? tradeBlock(t) : '';
     const tw = twinInfo(t);
     const twinBox = tw ? `<section class="panel d-card twins"><h3 class="sec-title">Moedas com o mesmo nome</h3><p class="sp-note">${tw.best ? 'Esta é a mais forte (mais liquidez) entre as que têm esse nome.' : 'Existe outra com esse nome e mais liquidez. Cópias (vamps) costumam ser a versão mais fraca: confira qual é a original antes de comprar.'}</p>
       ${tw.all.map((x) => `<button class="twin ${x.mint === t.mint ? 'on' : ''}" data-goto="${esc(x.mint)}"><b>${esc(x.symbol)}</b><span>liquidez ${usd(x.liquidityUsd)} - ${x.rug?.totalHolders ? int(x.rug.totalHolders) + ' holders' : 'holders ?'} - ${{ aprovada: 'no radar', aguardando: 'observando', reprovada: 'reprovada', carteira: 'na carteira' }[x.status] || x.status}</span><code>${esc(x.mint.slice(0, 4) + '...' + x.mint.slice(-4))}</code></button>`).join('')}</section>` : '';
