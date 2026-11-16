@@ -253,20 +253,12 @@
   .chart-empty { display: grid; place-items: center; height: 100%; color: var(--faint); font-size: 12px; }
   .live { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
   .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
-  .autowrap { position: relative; display: inline-flex; }
-  .autoctl { display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px 0 12px; border-radius: var(--r-2); background: var(--panel); border: 1px solid var(--line-2); }
-  .autoctl[hidden] { display: none; }
-  .ac-txt { display: grid; line-height: 1.15; } .ac-txt b { font-size: 12px; } .ac-txt small { font-size: 11px; color: var(--muted); }
-  .autoctl.on { border-color: rgba(16,210,127,.45); background: rgba(16,210,127,.08); } .autoctl.on .ac-txt small { color: var(--green); font-weight: 700; }
-  .autoctl.pend { border-color: rgba(245,177,76,.45); } .autoctl.pend .ac-txt small { color: #f5b14c; }
-  .autoctl .switch:disabled { opacity: .6; cursor: progress; } .autoctl .switch { cursor: pointer; }
-  .auto-pop { position: absolute; top: 46px; left: 0; z-index: 60; width: 340px; max-width: calc(100vw - 32px); padding: var(--sp-4); background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r-3); box-shadow: 0 12px 40px rgba(0,0,0,.5); display: grid; gap: 10px; font-size: 12px; color: var(--muted); line-height: 1.5; }
-  .auto-pop[hidden] { display: none; }
-  .auto-pop h4 { margin: 0; color: var(--text); font-size: 14px; } .auto-pop ul { margin: 0; padding-left: 16px; } .auto-pop b { color: var(--text); }
-  .auto-pop .ap-go { height: 36px; border-radius: var(--r-2); border: 0; font-weight: 800; cursor: pointer; background: var(--green); color: #04150c; }
-  .auto-pop .ap-go.off { background: rgba(255,91,91,.14); color: var(--red); border: 1px solid rgba(255,91,91,.4); }
-  .auto-pop .ap-warn { color: #f5b14c; }
-  .page-h .auto-pop p { display: block; margin: 0; font-size: 12px; }
+  .sw-row[hidden] { display: none; }
+  .autorow .info-btn { vertical-align: -2px; }
+  .autorow small[data-autostate] { color: var(--muted); font-weight: 600; } .autorow.on small[data-autostate] { color: var(--green); } .autorow.pend small[data-autostate] { color: #f5b14c; }
+  .autorow .switch:disabled { opacity: .6; cursor: progress; }
+  .autorow.in-drawer { padding: 12px 14px; margin-bottom: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg); }
+  .ntm-card .ap-warn { color: #f5b14c; }
   .live.on { color: var(--green); }
   .live.on i { background: var(--green); animation: blink 1.6s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: .3; } }
@@ -729,6 +721,7 @@
       <div class="sw-row"><div><span id="t-sound-label">Sons</span><small id="t-sound-hint" hidden>Clique para liberar</small></div><button class="switch" id="t-sound" role="switch" aria-checked="false" aria-label="Sons"></button></div>
       <div class="sw-row"><span>Notificações</span><button class="switch" id="t-notif" role="switch" aria-checked="false" aria-label="Notificações"></button></div>
       <div class="sw-row"><div><span>Gráfico da Dex</span><small>Desligado, o painel fica mais leve</small></div><button class="switch" id="t-dex" role="switch" aria-checked="true" aria-label="Gráfico da Dex"></button></div>
+      <div class="sw-row autorow" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
       <button class="lock-btn" data-lock hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Bloquear painel</button>
     </div>
   </aside>
@@ -740,11 +733,6 @@
       <div class="page-h"><div class="title-row"><h1 id="page-title">Carteira</h1>
           <span class="solbal" id="solbal" hidden title="Saldo de SOL na sua carteira, lido direto da blockchain"></span>
           <span class="live" id="live" title="Preços atualizados a cada 10 segundos"><i></i><span>Conectando...</span></span>
-          <span class="autowrap"><span class="autoctl" id="autopill" hidden>
-            <span class="ac-txt"><b>Compra automática</b><small id="autostate">desligada</small></span>
-            <button class="switch" id="autosw" role="switch" aria-checked="false" aria-label="Compra automática" title="Liga ou desliga a compra automática (assina na Phantom)"></button>
-            <button class="info-btn" id="autoinfo" aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
-          </span><div class="auto-pop" id="auto-pop" hidden></div></span>
         </div><p id="hint"></p></div>
       <div class="top-tools">
         <button class="icon-btn bell" id="bell" aria-label="Central de notificações" title="Central de notificações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><i class="badge" id="bell-n" hidden></i></button>
@@ -807,6 +795,7 @@
         <button data-rt="sim" aria-pressed="false">Simulação</button>
       </div>
       <div class="drawer-body">
+        <div class="sw-row autorow in-drawer" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
         <div id="rt-filtros">
           <div class="kv" id="cfg"></div>
           <p class="note">Para mudar, edite o arquivo <b>config.json</b> no GitHub. A próxima rodada já usa os valores novos.</p>
@@ -2810,25 +2799,28 @@
     return { on: !!robot?.on, pend, canBuy: !!data?.lastRun?.autoBuy };
   }
   function updateAutoPill() {
-    const el = $('autopill'); if (!el) return;
-    if (!data || isDemo()) { el.hidden = true; return; }
-    const A = autoState(); el.hidden = false;
-    el.className = 'autoctl ' + (A.pend ? 'pend' : A.on ? 'on' : '');
-    const sw = $('autosw'); sw.setAttribute('aria-checked', String(A.pend ? A.pend.on : A.on)); sw.disabled = !!A.pend;
-    $('autostate').textContent = A.pend ? (A.pend.on ? 'ligando... (até 5 min)' : 'desligando... (até 5 min)') : A.on ? (A.canBuy ? 'ligada' : 'ligada - falta AUTO_BUY') : 'desligada';
-    if (!$('auto-pop').hidden) renderAutoPop();
+    const rows = document.querySelectorAll('[data-autorow]'); if (!rows.length) return;
+    const show = !!data && !isDemo();
+    const A = show ? autoState() : null;
+    rows.forEach((r) => {
+      r.hidden = !show; if (!show) return;
+      r.classList.toggle('on', !!A.on && !A.pend); r.classList.toggle('pend', !!A.pend);
+      const sw = r.querySelector('[data-autosw]'); sw.setAttribute('aria-checked', String(A.pend ? A.pend.on : A.on)); sw.disabled = !!A.pend;
+      r.querySelector('[data-autostate]').textContent = A.pend ? (A.pend.on ? 'ligando... (até 5 min)' : 'desligando... (até 5 min)') : A.on ? (A.canBuy ? 'ligada: compra nos sinais' : 'ligada, mas falta AUTO_BUY no GitHub') : 'desligada';
+    });
   }
-  function renderAutoPop() {
+  function openAutoInfo() {
     const A = autoState(), c = data.config?.compra || {}, S = data.config?.simulacao || {}, st = data.sim?.stats;
     const per = data.banca?.faixaUsd ? `US$ ${Number(data.banca.faixaUsd).toFixed(2).replace('.', ',')}` : `${c.solPorCompra} SOL`;
-    $('auto-pop').innerHTML = `<h4>Compra automática no sinal</h4>
-      <p>Quando aparecer uma <b>Boa entrada</b> no Radar, o robô compra sozinho, sem Phantom. As proteções de venda continuam valendo.</p>
-      <ul><li>${per} por compra (a faixa da sua banca)</li><li>Até ${S.maxAbertas ?? 2} abertas e ${c.maxComprasPorDia ?? 5} compras por dia</li>
+    const m = $('ntm');
+    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Compra automática</b><button class="icon-btn" data-ntmclose aria-label="Fechar">&times;</button></div>
+      <p>Quando aparecer uma <b>Boa entrada</b> (ou <b>Boa reentrada</b> depois de um stop), o robô compra sozinho, sem a Phantom. As proteções de venda continuam valendo.</p>
+      <h5>Travas</h5><ul class="ntm-list"><li>${per} por compra (a faixa da sua banca)</li><li>Até ${S.maxAbertas ?? 2} abertas e ${c.maxComprasPorDia ?? 5} compras por dia</li>
         <li>Para no dia se perder ${S.perdaMaxDiaVezesBase ?? 3}x o valor por compra</li><li>Só nota ${c.scoreMinimo ?? 70}+, risco/retorno 1:${S.riscoRetornoMin ?? 2}+ e sem perigo</li></ul>
-      <p>Simulação até agora: <b>${st?.ops || 0} operações</b>${st?.ops ? `, ${Math.round(st.winRate)}% de acerto, ${(st.pnlSol >= 0 ? '+' : '') + solFmt(st.pnlSol, 4)}` : ''}.</p>
-      ${A.canBuy ? '' : `<p class="ap-warn">Falta uma trava que só você liga, uma vez: no GitHub, em Settings > Secrets and variables > Actions > Variables, crie <b>AUTO_BUY</b> com o valor <b>true</b>. Sem ela o robô não compra mesmo com o botão ligado.</p>`}
-      ${A.pend ? `<p>Pedido enviado. O robô confirma na próxima rodada (até 5 min).</p>` : `<button class="ap-go ${A.on ? 'off' : ''}" data-autoset="${A.on ? 'off' : 'on'}">${A.on ? 'Desligar compra automática' : 'Ligar compra automática'}</button>
-        <small>Abre a Phantom para você assinar um aviso para o robô (custa uma taxa de rede mínima, menos de US$ 0,01). Não movimenta dinheiro.</small>`}`;
+      <h5>Como ligar e desligar</h5><p>Pelo switch. A Phantom abre para você assinar um aviso para o robô (menos de US$ 0,01 de taxa, não movimenta dinheiro) e ele passa a valer na próxima rodada, em até 5 min.</p>
+      ${A.canBuy ? '' : '<p class="ap-warn">Falta a variável <b>AUTO_BUY = true</b> no GitHub (Settings > Secrets and variables > Actions > Variables). Ela só vale a partir da próxima rodada de trabalho do robô.</p>'}
+      <h5>Simulação até agora</h5><p><b>${st?.ops || 0} operações</b>${st?.ops ? `, ${Math.round(st.winRate)}% de acerto, ${(st.pnlSol >= 0 ? '+' : '') + solFmt(st.pnlSol, 4)}` : ''}.</p></div>`;
+    m.hidden = false;
   }
   async function sendAutoSwitch(on) {
     const ph = getPhantom(); if (!ph) throw new Error('Phantom não encontrada neste navegador');
@@ -2843,20 +2835,19 @@
     return res.signature;
   }
   document.addEventListener('click', async (e) => {
-    if (e.target.closest('#autoinfo')) { const pop = $('auto-pop'); pop.hidden = !pop.hidden; if (!pop.hidden) renderAutoPop(); return; }
-    const go = e.target.closest('[data-autoset], #autosw');
+    if (e.target.closest('[data-autoinfo]')) { e.preventDefault(); openAutoInfo(); return; }
+    const go = e.target.closest('[data-autosw]');
     if (go && !go.disabled) {
-      const on = go.id === 'autosw' ? !autoState().on : go.dataset.autoset === 'on';
-      go.disabled = true; if (go.id !== 'autosw') go.textContent = 'Assine na Phantom...'; else $('autostate').textContent = 'assine na Phantom...';
+      const on = !autoState().on;
+      go.disabled = true; const stEl = go.closest('[data-autorow]')?.querySelector('[data-autostate]'); if (stEl) stEl.textContent = 'assine na Phantom...';
       try {
         const sig = await sendAutoSwitch(on);
         store.set('faro-auto-pend', { on, sig, at: Date.now() });
         toast(on ? 'Pedido para ligar enviado. O robô liga na próxima rodada.' : 'Pedido para desligar enviado. O robô desliga na próxima rodada.');
         play('boa');
       } catch (err) { toast(err?.message?.includes('User rejected') ? 'Cancelado na Phantom' : `Não deu: ${err.message}`); }
-      go.disabled = false; updateAutoPill(); if (!$('auto-pop').hidden) renderAutoPop(); return;
+      go.disabled = false; updateAutoPill(); return;
     }
-    if (!e.target.closest('#auto-pop')) { const pop = $('auto-pop'); if (pop && !pop.hidden) pop.hidden = true; }
   });
 
   function updateLivePill() {
