@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce } from './run.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
-import { entrySignal, exitSignal, trailStop } from './signals.mjs';
+import { entrySignal, exitSignal, trailStop, weakSignals, realizeCheck } from './signals.mjs';
 
 const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
 const now = Date.UTC(2026, 10, 15, 21, 0, 0);
@@ -278,6 +278,18 @@ assert.equal(cfg.compra.ativada, false);
   const lower = trailStop(c.slice(0, 6), { entryPx: 1, entryAt: T0 }, {}, tr.stop);
   assert.ok(lower.stop >= tr.stop, 'nunca desce');
   assert.equal(exitSignal(c, { entryPx: 1, entryAt: T0 }, { px: tr.stop * 0.98, trail: tr }).fase, 'sair');
+}
+
+// Realização: +50% com 2 sinais de fraqueza, +80% com 1 sinal forte, senão segura
+{
+  const forte = [{ id: 'vendas', forte: true }], fraco = [{ id: 'recuo', forte: false }];
+  assert.equal(realizeCheck(40, [...forte, ...fraco]).sell, false);
+  assert.equal(realizeCheck(60, forte).sell, false);
+  assert.equal(realizeCheck(60, [...forte, ...fraco]).sell, true);
+  assert.equal(realizeCheck(85, fraco).sell, false);
+  assert.equal(realizeCheck(85, forte).sell, true);
+  const w = weakSignals({ buys5: 4, sells5: 8, vol5: 10, volH1: 1200, fromPeak: 16 });
+  assert.deepEqual(w.map((x) => x.id), ['vendas', 'volume', 'recuo']);
 }
 
 // O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais

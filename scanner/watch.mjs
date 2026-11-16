@@ -10,6 +10,7 @@ import { decrypt } from './vault.mjs';
 import { createTrader } from './trader.mjs';
 import { getRugReport, getWalletHoldings } from './api.mjs';
 import { summarizeRug, scamSignals } from './analyze.mjs';
+import { weakSignals, realizeCheck } from './signals.mjs';
 
 const seconds = Math.max(0, Number(process.argv[2]) || 0);
 const until = Date.now() + seconds * 1000;
@@ -48,6 +49,8 @@ const liqWin = (V.janelaLiquidezMin ?? 5) * 60000;
 const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
 const SM = cfg.venda?.stopMovel || {};
 const trailOn = SM.ligado === true;
+const RZ = cfg.venda?.realizar || {};
+const realizeOn = RZ.ligado === true && process.env.LUCRO_AUTO !== 'false';
 
 // Moedas que você tem agora, com o pico desde a compra (velas do robô + o que a vigia já viu)
 // Uma venda feita antes de uma nova compra da mesma moeda não conta mais
@@ -135,7 +138,7 @@ for (const t of held) {
 }
 await refreshHoldings(); lastHoldings = Date.now();
 if (!held.length && !wallet) { await idle(); process.exit(0); }
-log(`vigiando ${held.map((t) => t.symbol).join(', ') || '(carteira vazia)'}: golpe ${golpeOn ? 'sim' : 'não'}, queda -${dropPct}% do pico com confirmação (ou -${hardDrop}% sem), liquidez -${liqPct}% em ${liqWin / 60000} min, lucro ${lucroOn ? `+${L.alvoPct}%` : 'não'}, stop móvel ${trailOn ? `a partir de +${SM.ativarPct ?? 30}%` : 'não'}`);
+log(`vigiando ${held.map((t) => t.symbol).join(', ') || '(carteira vazia)'}: golpe ${golpeOn ? 'sim' : 'não'}, queda -${dropPct}% do pico com confirmação (ou -${hardDrop}% sem), liquidez -${liqPct}% em ${liqWin / 60000} min, lucro ${lucroOn ? `+${L.alvoPct}%` : 'não'}, stop móvel ${trailOn ? `a partir de +${SM.ativarPct ?? 30}%` : 'não'}, realizar ${realizeOn ? 'com +50%/+80% se perder força' : 'não'}`);
 
 while (Date.now() < until) {
   if (Date.now() - lastHoldings >= 30000) { lastHoldings = Date.now(); await refreshHoldings(); }
@@ -170,6 +173,10 @@ while (Date.now() < until) {
       }
       if (scam[t.mint]) await sell(t, `golpe no contrato: ${scam[t.mint]}`, 'golpe', px);
       else if (trailPx && px < trailPx) await sell(t, `stop móvel: caiu abaixo de US$ ${trailPx.toPrecision(4)} (garantindo +${((trailPx / t.position.avgPriceUsd - 1) * 100).toFixed(0)}%)`, 'stop-movel', px);
+      else if (realizeOn && gain != null && gain >= 50 && gain < (L.alvoPct ?? 100) && (() => {
+        const weak = weakSignals({ candles: t.candles, entryAt: t.position?.lastBuyAt || t.heldSince || 0, buys5: Number(p?.txns?.m5?.buys) || 0, sells5: Number(p?.txns?.m5?.sells) || 0, vol5: Number(p?.volume?.m5), volH1: Number(p?.volume?.h1), fromPeak });
+        const r = realizeCheck(gain, weak, RZ); t._rz = r.sell ? `lucro de +${gain.toFixed(0)}% e a alta perdendo força: ${weak.map((w) => w.msg).join(', ')}` : null; return r.sell;
+      })()) await sell(t, t._rz, 'realizar', px);
       else if (fromPeak >= dropPct) {
         // Correção saudável x despejo: na queda de 40% só vende com confirmação (liquidez saindo ou vendas dominando);
         // sem confirmação, só a partir da queda maior (60%)

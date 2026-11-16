@@ -125,3 +125,24 @@ export function exitSignal(c, pos, ctx = {}) {
   if (gain >= 40 && wicks >= 2 && sells) return { ...base, fase: 'exaustao', titulo: 'Sinais de exaustão', msg: 'Velas com pavio longo em cima e mais venda que compra. Considere realizar parte.', ruim: true };
   return { ...base, fase: 'segurar', titulo: 'Dentro do plano', msg: ctx.trail?.ativo ? `Nada a fazer. O stop móvel já garante +${Math.round(ctx.trail.travadoPct)}% e sobe junto se ela subir.` : 'Nada a fazer: o preço está entre o stop e o alvo.' };
 }
+
+// Sinais de que a alta está perdendo força (usados para realizar o lucro antes do +100%)
+// m: { candles, entryAt, buys5, sells5, vol5, volH1, fromPeak }
+export function weakSignals(m) {
+  const out = [];
+  const b = m.buys5 || 0, s = m.sells5 || 0;
+  if (b + s >= 10 && s / (b + s) >= 0.55) out.push({ id: 'vendas', forte: true, msg: `vendas dominando (${Math.round((s / (b + s)) * 100)}% nos últimos 5 min)` });
+  if (m.volH1 > 0 && m.vol5 != null && m.vol5 < (m.volH1 / 12) * 0.4) out.push({ id: 'volume', forte: true, msg: 'volume secando (5 min bem abaixo da média da hora)' });
+  const h = trendHealth(m.candles || [], { entryAt: m.entryAt || 0 }, {});
+  if (h.lows.length >= 2 && !h.rising) out.push({ id: 'fundo', forte: true, msg: 'fez um fundo mais baixo' });
+  if (m.fromPeak >= 10) out.push({ id: 'recuo', forte: m.fromPeak >= 15, msg: `recuou ${Math.round(m.fromPeak)}% do topo` });
+  return out;
+}
+// Realização em faixas: com +50% vende se 2 sinais de fraqueza; com +80%, basta 1 sinal forte; senão segura até o +100%
+export function realizeCheck(gain, weak, o = {}) {
+  const faixas = [...(o.faixas || [{ lucroPct: 50, sinais: 2 }, { lucroPct: 80, sinais: 1 }])].sort((a, b) => b.lucroPct - a.lucroPct);
+  const f = faixas.find((x) => gain >= x.lucroPct);
+  if (!f) return { sell: false, faixa: null };
+  const count = f.sinais <= 1 ? weak.filter((w) => w.forte).length : weak.length;
+  return { sell: count >= f.sinais, faixa: f, count };
+}

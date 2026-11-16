@@ -184,3 +184,20 @@ O stop móvel protege o lucro de uma moeda que você tem e que está subindo.
 - **No gráfico:** aparece a linha laranja "stop móvel +X%".
 - **No quadro "Como está a alta":** mostra o stop, se os fundos estão subindo, se tem mais compra que venda e a distância do topo.
 - **Para ajustar:** em `config.json`, `venda.stopMovel`.
+
+## Realizar o lucro antes do +100%
+
+O robô vende 100% antes do alvo de +100% quando a alta perde força:
+
+- **Com +50% ou mais:** vende se aparecerem 2 sinais de fraqueza juntos.
+- **Com +80% ou mais:** vende no primeiro sinal forte.
+- **Se nada disso acontecer:** segura até o +100%, como antes.
+
+Os sinais de fraqueza são:
+
+- **Vendas dominando:** 55% ou mais das transações nos últimos 5 min (forte).
+- **Volume secando:** os últimos 5 min abaixo de 40% da média da hora (forte).
+- **Fundo mais baixo:** o último fundo ficou abaixo do anterior (forte).
+- **Recuo do topo:** 10% ou mais. Conta como forte a partir de 15%.
+
+A vigia confere a cada 10 s. Ajuste em `config.json`, `venda.realizar`.

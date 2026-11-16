@@ -1004,7 +1004,7 @@
     // Um som por atualização: problema numa moeda sua tem prioridade (venda no lucro toca o som bom)
     const loud = events.filter((e) => !(e.kind === 'robo' && /não compensa/.test(e.alerts[0].msg)));
     if (!loud.length) return;
-    const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto' && !/stop móvel/.test(e.alerts[0].msg)));
+    const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && e.alerts[0].id !== 'lucro-auto' && !/stop móvel|lucro de \+/.test(e.alerts[0].msg)));
     play(bad ? 'problema' : 'boa');
     for (const e of events) {
       if (e.kind === 'nova') {
@@ -1381,6 +1381,27 @@
     if (gain >= 40 && wicks >= 2 && sells) return { ...base, fase: 'exaustao', titulo: 'Sinais de exaustão', msg: 'Velas com pavio longo em cima e mais venda que compra. Considere realizar parte.', ruim: true };
     return { ...base, fase: 'segurar', titulo: 'Dentro do plano', msg: ctx.trail?.ativo ? `Nada a fazer. O stop móvel já garante +${Math.round(ctx.trail.travadoPct)}% e sobe junto se ela subir.` : 'Nada a fazer: o preço está entre o stop e o alvo.' };
   }
+
+  // Sinais de que a alta está perdendo força (usados para realizar o lucro antes do +100%)
+  // m: { candles, entryAt, buys5, sells5, vol5, volH1, fromPeak }
+  function weakSignals(m) {
+    const out = [];
+    const b = m.buys5 || 0, s = m.sells5 || 0;
+    if (b + s >= 10 && s / (b + s) >= 0.55) out.push({ id: 'vendas', forte: true, msg: `vendas dominando (${Math.round((s / (b + s)) * 100)}% nos últimos 5 min)` });
+    if (m.volH1 > 0 && m.vol5 != null && m.vol5 < (m.volH1 / 12) * 0.4) out.push({ id: 'volume', forte: true, msg: 'volume secando (5 min bem abaixo da média da hora)' });
+    const h = trendHealth(m.candles || [], { entryAt: m.entryAt || 0 }, {});
+    if (h.lows.length >= 2 && !h.rising) out.push({ id: 'fundo', forte: true, msg: 'fez um fundo mais baixo' });
+    if (m.fromPeak >= 10) out.push({ id: 'recuo', forte: m.fromPeak >= 15, msg: `recuou ${Math.round(m.fromPeak)}% do topo` });
+    return out;
+  }
+  // Realização em faixas: com +50% vende se 2 sinais de fraqueza; com +80%, basta 1 sinal forte; senão segura até o +100%
+  function realizeCheck(gain, weak, o = {}) {
+    const faixas = [...(o.faixas || [{ lucroPct: 50, sinais: 2 }, { lucroPct: 80, sinais: 1 }])].sort((a, b) => b.lucroPct - a.lucroPct);
+    const f = faixas.find((x) => gain >= x.lucroPct);
+    if (!f) return { sell: false, faixa: null };
+    const count = f.sinais <= 1 ? weak.filter((w) => w.forte).length : weak.length;
+    return { sell: count >= f.sinais, faixa: f, count };
+  }
   // </fim-sinais>
 
   // Ícone de informação: toca para abrir/fechar a explicação (funciona no celular, sem depender de passar o mouse)
@@ -1446,6 +1467,15 @@
     const rows = [];
     if (tr?.ativo) rows.push(['ok', 'Stop móvel ligado', `Se cair até ${price(tr.stop)}, o robô vende e você garante <b>+${Math.round(tr.travadoPct)}%</b>. Ele sobe junto se ela subir e nunca desce.`]);
     else if (SM?.ligado && tr) rows.push(['wait', 'Stop móvel', `Liga sozinho quando ela chegar a +${SM.ativarPct}% (em ${price(tr.ativarPx)}). Aí o lucro fica protegido.`]);
+    const RZ = data?.config?.venda?.realizar, gain = t.position.openPnlPct;
+    if (RZ?.ligado && gain != null) {
+      const weak = weakSignals({ candles: c, entryAt, buys5: P5.buys, sells5: P5.sells, vol5: P5.vol, volH1: P1.vol, fromPeak: h.fromTop });
+      const r = realizeCheck(gain, weak, RZ), f = r.faixa;
+      const lista = weak.length ? ` Agora: ${weak.map((w) => w.msg).join(', ')}.` : ' Agora: nenhum sinal de fraqueza.';
+      rows.push(!f ? ['wait', 'Realizar o lucro', `Com +${RZ.faixas[0].lucroPct}% ou mais, o robô vende se a alta perder força (vendas dominando, volume secando, fundo mais baixo, recuo do topo). Até lá, segura.`]
+        : r.sell ? ['warn', 'Perdendo força', `Lucro de +${Math.round(gain)}% e a alta enfraquecendo: o robô vai vender para garantir.${lista}`]
+        : ['ok', `Lucro acima de +${f.lucroPct}%`, f.sinais <= 1 ? `O robô vende no primeiro sinal forte de fraqueza. Se tudo seguir bem, segura até +100%.${lista}` : `O robô vende se aparecerem ${f.sinais} sinais de fraqueza juntos. Se tudo seguir bem, segura.${lista}`]);
+    }
     rows.push(h.lows.length < 2 ? ['wait', 'Fundos', 'Ainda pouco gráfico desde a compra para ver os fundos.']
       : h.rising ? ['ok', 'Fundos subindo', `Os ${h.lows.length} últimos fundos foram cada um mais alto que o anterior. É o desenho de uma alta saudável.`]
       : ['warn', 'Fez um fundo mais baixo', 'O último fundo ficou abaixo do anterior. Não é motivo para vender, mas a alta perdeu força.']);
@@ -2978,6 +3008,7 @@
       ['Valor por operação', data.banca?.faixaUsd ? `US$ ${data.banca.faixaUsd} (${data.banca.solPorCompra} SOL) - banca de ${money(data.banca.usd || 0)}` : `${c.solPorCompra} SOL`],
       ['Faixas', (c.faixas || []).map((f) => `${f.bancaMinUsd ? 'banca US$ ' + f.bancaMinUsd + '+' : 'até US$ ' + ((c.faixas.find((x) => x.bancaMinUsd > 0) || {}).bancaMinUsd || '')}: US$ ${f.usd}`).join(' - ')],
       ['Simulação', data.config?.simulacao?.ligado ? `ligada (${c.solPorCompra} SOL de mentira por operação, até ${data.config.simulacao.maxAbertas} abertas)` : 'desligada'],
+      ['Realizar o lucro', data.config?.venda?.realizar?.ligado && data.lastRun?.watch ? `ligado (com +${(data.config.venda.realizar.faixas || [])[0]?.lucroPct ?? 50}% vende se 2 sinais de fraqueza; com +${(data.config.venda.realizar.faixas || [])[1]?.lucroPct ?? 80}%, no primeiro sinal forte; senão segura até +100%)` : 'desligado'],
       ['Stop móvel', data.config?.venda?.stopMovel?.ligado && data.lastRun?.watch ? `ligado (a partir de +${data.config.venda.stopMovel.ativarPct}%: o stop sobe junto e garante pelo menos +${data.config.venda.stopMovel.minimoTravadoPct}%)` : 'desligado'],
       ['Venda no lucro', data.lastRun?.takeProfit ? `ligada (posições abaixo de US$ ${data.lastRun.takeProfit.ateUsd}: vende 100% com +${data.lastRun.takeProfit.alvoPct}%)` : 'desligada'],
     ];
