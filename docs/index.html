@@ -371,6 +371,8 @@
   .alerts h3 { margin: 0 0 2px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
   .alerts h3 svg { width: 16px; height: 16px; }
   .alerts.danger h3 { color: var(--red); } .alerts.warn h3 { color: var(--amber); }
+  .alerts.info { background: var(--panel); border: 1px solid var(--line); } .alerts.info h3 { color: var(--muted); }
+  .alerts li.info span { color: var(--text); }
   .alerts li { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: 13px; }
   .alerts li.danger span { color: #ffb3b3; } .alerts li.warn span { color: #ffd9a0; }
   .alerts li small { color: var(--muted); white-space: nowrap; }
@@ -1235,7 +1237,8 @@
     const al = t.safety?.alerts || [];
     if (!al.length) return '';
     const lvl = levelOf(t);
-    return `<ul class="alerts ${lvl}"><h3>${ICON.warn}${lvl === 'danger' ? 'Perigo: algo piorou desde a compra' : 'Atenção: vale ficar de olho'}</h3>
+    const head = lvl === 'danger' ? 'Perigo: algo piorou desde a compra' : lvl === 'warn' ? 'Atenção: vale ficar de olho' : 'Avisos do robô';
+    return `<ul class="alerts ${lvl === 'ok' ? 'info' : lvl}"><h3>${ICON.warn}${head}</h3>
       ${al.map((a) => `<li class="${a.level}"><span>${esc(a.msg)}${a.sig ? ` <a href="https://solscan.io/tx/${esc(a.sig)}" target="_blank" rel="noopener">Ver no Solscan</a>` : ''}</span><small>${ago(a.at)}</small></li>`).join('')}</ul>`;
   }
 

@@ -342,6 +342,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     const alert = a.ok
       ? { id: 'lucro-auto', level: 'warn', msg: `Robô vendeu 100% no lucro (+${a.pct.toFixed(0)}%)${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}`, sig: a.sig }
       : { id: 'lucro-auto', level: 'warn', msg: `Bateu o alvo de lucro, mas a venda falhou: ${a.erro}. Venda manualmente!` };
+    if (a.ok) alert.level = 'info';
     t.safety = mergeSafety(t.safety, [alert, ...t.safety.alerts.filter((x) => x.id !== 'lucro-auto')], now);
   }
 
@@ -358,7 +359,9 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     const msg = a.skipped ? `Queda forte (${a.why}), mas a posição vale menos de US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender`
       : a.ok ? `Robô vendeu 100%${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`
       : `Vigia rápida tentou vender (${a.why}) e falhou: ${a.erro}. Venda manualmente!`;
-    t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: a.kind === 'lucro' ? 'warn' : 'danger', msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
+    // Golpe no contrato = perigo; queda de liquidez = atenção; queda de preço ou lucro = só aviso (a moeda pode seguir viva)
+    const lvl = a.kind === 'golpe' ? 'danger' : /liquidez/.test(a.why || '') ? 'warn' : 'info';
+    t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: lvl, msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
   }
 
   // 7. Limpeza

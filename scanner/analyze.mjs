@@ -357,7 +357,8 @@ export function rugAlerts(base, sum, cfg) {
 export function mergeSafety(prev, alerts, now) {
   const firstSeen = new Map((prev?.alerts || []).map((a) => [a.id, a.at]));
   const list = alerts.map((a) => ({ ...a, at: firstSeen.get(a.id) || now }));
-  const level = list.some((a) => a.level === 'danger') ? 'danger' : list.length ? 'warn' : 'ok';
+  // 'info' (ex.: o robô vendeu numa queda de preço) não muda o nível de risco da moeda
+  const level = list.some((a) => a.level === 'danger') ? 'danger' : list.some((a) => a.level === 'warn') ? 'warn' : 'ok';
   return { level, alerts: list, checkedAt: now };
 }
 
