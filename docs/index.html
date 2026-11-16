@@ -241,6 +241,12 @@
 
   /* Ferramentas do gráfico */
   .chart-tools { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); flex-wrap: wrap; }
+  .chart-box:not(.max) .chart-tools.faro-only { display: none; }
+  .chart-box:not(.is-dex) .dex-only-tools { display: none; }
+  .dex-only-tools { display: inline-flex; gap: 6px; } .icon-btn.sm { width: 30px; height: 30px; } .icon-btn.sm svg { width: 15px; height: 15px; }
+  .ov-acts { position: absolute; top: 8px; right: 72px; z-index: 4; display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(12,14,17,.9); border: 1px solid #1f232a; }
+  .ov-acts button, .ov-acts a { width: 28px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+  .ov-acts button:hover, .ov-acts a:hover { color: var(--text); background: var(--panel-2); } .ov-acts svg { width: 15px; height: 15px; }
   .seg-sm { display: flex; gap: 2px; padding: 2px; border-radius: var(--r-2); background: var(--bg); border: 1px solid var(--line); }
   .seg-sm button { border: 0; background: transparent; height: 28px; min-width: 32px; padding: 0 8px; border-radius: var(--r-1); color: var(--muted); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
   .seg-sm button svg { width: 15px; height: 15px; }
@@ -724,6 +730,7 @@
       <div class="side-sep"></div>
       <div class="sw-row"><div><span id="t-sound-label">Sons</span><small id="t-sound-hint" hidden>Clique para liberar</small></div><button class="switch" id="t-sound" role="switch" aria-checked="false" aria-label="Sons"></button></div>
       <div class="sw-row"><span>Notificações</span><button class="switch" id="t-notif" role="switch" aria-checked="false" aria-label="Notificações"></button></div>
+      <div class="sw-row"><div><span>Gráfico da Dex</span><small>Desligado, o painel fica mais leve</small></div><button class="switch" id="t-dex" role="switch" aria-checked="true" aria-label="Gráfico da Dex"></button></div>
       <button class="lock-btn" data-lock hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Bloquear painel</button>
     </div>
   </aside>
@@ -870,6 +877,7 @@
   const save = () => store.set('moeda-ui', { tab: ui.tab, sort: ui.sort });
   const isNarrow = () => window.matchMedia('(max-width: 1099px)').matches;
   const ICON = {
+    ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
     claude: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>',
     chev: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>',
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
@@ -1823,13 +1831,12 @@
     const iv = CH.interval;
     const dex = chartSrc === 'dex';
     return `<div class="chart-box ${dex ? 'is-dex' : ''}">
-      <div class="chart-tools">
+      <div class="chart-tools ${dexOn() ? '' : 'faro-only'}">
         <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
         <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
-        <div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>
+        ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
         <span style="flex:1"></span>
-        <button class="btn btn-sm" data-askclaude="${esc(t.mint)}" title="Abre o Claude com os dados desta moeda e copia a foto do gráfico do Faro para você colar">${ICON.claude}Perguntar ao Claude</button>
-        <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
+        ${dexOn() ? `<span class="dex-only-tools"><button class="icon-btn sm" data-askclaude="${esc(t.mint)}" title="Perguntar ao Claude (vão só os dados; a foto do gráfico sai no gráfico Faro)">${ICON.claude}</button><button class="icon-btn sm cmin-only" data-chart="${esc(t.mint)}" title="Expandir o gráfico">${ICON.expand}</button></span>` : ''}
       </div>
       <div class="lw-slot" data-lwslot="${esc(t.mint)}"><div class="dexwrap" data-dexslot></div><div class="farowrap" data-faroslot>
         <div class="ov-tools" title="Ferramentas de traço">
@@ -1844,6 +1851,11 @@
           <button data-tool="trash" title="Apagar os traços desta moeda">${TOOL_ICON.trash}</button>
         </div>
         <div class="farohost" data-farohost>
+          <div class="ov-acts">
+            <button data-askclaude="${esc(t.mint)}" title="Perguntar ao Claude: abre o Claude com os dados desta moeda e copia a foto do gráfico">${ICON.claude}</button>
+            ${dexOn() ? '' : `<a href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}</a>`}
+            <button data-chartexp title="Expandir ou recolher o gráfico">${ICON.expand}</button>
+          </div>
           <div class="ov-ivals">${IVALS.map(([k]) => `<button data-ival="${k}" class="${k === iv ? 'on' : ''}">${k}</button>`).join('')}</div>
           <div class="ov-hint" id="chart-hint" hidden></div>
           <div class="ov-since" id="chart-since" hidden></div>
@@ -1865,6 +1877,7 @@
   const moveNode = (parent, node) => { if (node.parentElement === parent) return; try { if (parent.moveBefore && node.isConnected) return parent.moveBefore(node, null); } catch {} parent.appendChild(node); };
   const dexVault = () => { let v = $('dex-vault'); if (!v) { v = document.createElement('div'); v.id = 'dex-vault'; document.body.appendChild(v); } return v; };
   function mountDex(t) {
+    if (!dexOn()) return;
     const slot = document.querySelector('[data-dexslot]'); if (!slot) return;
     const url = chartUrl(t);
     let f = DEXF.get(t.mint);
@@ -2269,7 +2282,9 @@
   // =========================================================
   //  Gráfico próprio (Lightweight Charts)
   // =========================================================
-  let chartSrc = store.get('faro-chart-src', 'dex');
+  // Gráfico da Dex pode ser desligado (lado esquerdo, em Sons/Notificações): fica tudo mais leve
+  const dexOn = () => store.get('faro-dexon', true);
+  let chartSrc = dexOn() ? store.get('faro-chart-src', 'dex') : 'faro';
   const CH = { lib: null, loading: null, host: null, chart: null, candle: null, vol: null, mint: null, interval: store.get('faro-ival', '5m'),
     tool: 'cursor', pending: null, bars: [], lines: [], trends: [], fetchedAt: 0, big: false };
   const TZ = -new Date().getTimezoneOffset() * 60; // mostra os horários no seu fuso
@@ -3467,8 +3482,16 @@
   // ---------- Sons e notificações ----------
   const syncToggles = () => {
     $('t-sound').setAttribute('aria-checked', prefs.sound);
+    $('t-dex') && $('t-dex').setAttribute('aria-checked', dexOn());
     $('t-notif').setAttribute('aria-checked', !!(prefs.notif && 'Notification' in window && Notification.permission === 'granted'));
   };
+  $('t-dex')?.addEventListener('click', () => {
+    const on = !dexOn(); store.set('faro-dexon', on);
+    if (!on) { for (const f of DEXF.values()) f.remove(); DEXF.clear(); chartSrc = 'faro'; }
+    else chartSrc = store.get('faro-chart-src', 'dex');
+    syncToggles(); toast(on ? 'Gráfico da Dex ligado' : 'Gráfico da Dex desligado: só o Faro, mais leve. O link para a Dex fica nas ferramentas do gráfico.');
+    $('detail').dataset.key = ''; render(); // remonta a tela da moeda com o novo gráfico
+  });
   $('t-sound').addEventListener('click', () => {
     if ($('t-sound').classList.contains('locked')) { unlockAudio(); toast('Sons liberados'); return; }
     prefs.sound = !prefs.sound; store.set('moeda-prefs', prefs); syncToggles(); unlockAudio(); toast(prefs.sound ? 'Sons ligados' : 'Sons desligados');
@@ -3497,6 +3520,7 @@
   }
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-chart]')) return setChartMax(true);
+    if (e.target.closest('[data-chartexp]')) { const box = document.querySelector('.chart-box'); return setChartMax(!box?.classList.contains('max')); }
     if (e.target.closest('[data-chartmin]')) return setChartMax(false);
     const c = e.target.closest('[data-csrc]');
     if (c && c.dataset.csrc !== chartSrc) {
