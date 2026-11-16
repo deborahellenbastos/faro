@@ -284,6 +284,24 @@
   .lw-host { position: relative; }
   .ruler-tip { position: absolute; z-index: 5; pointer-events: none; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 800; color: #0b0d10; white-space: nowrap; }
   .ruler-tip.up { background: #10d27f; } .ruler-tip.down { background: #ff5b5b; }
+  .trades { margin-top: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-3); overflow: hidden; }
+  .trades-h { display: flex; align-items: baseline; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); }
+  .trades-h b { font-size: 14px; } .trades-h small { color: var(--faint); font-size: 11px; }
+  .thead, .trow { display: grid; grid-template-columns: 52px 70px 1fr 1.2fr 1fr 1.1fr 92px; gap: var(--sp-2); padding: 7px var(--sp-4); font-size: 12px; align-items: center; }
+  .thead { color: var(--faint); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 10px; border-bottom: 1px solid var(--line); }
+  .thead span:nth-child(n+3), .trow span:nth-child(n+3) { text-align: right; }
+  .trow { text-decoration: none; color: var(--text); border-bottom: 1px solid var(--line); }
+  .trow:last-of-type { border-bottom: 0; }
+  .trow:hover { background: var(--panel-2); }
+  .trow > span:first-child { color: var(--faint); }
+  .trow.b .tk, .trow.b span:nth-child(n+3):not(.who) { color: var(--green); }
+  .trow.s .tk, .trow.s span:nth-child(n+3):not(.who) { color: var(--red); }
+  .trow .who { color: var(--muted); }
+  .trow.me { box-shadow: inset 3px 0 0 #a78bfa; } .trow.me .who { color: #a78bfa; font-weight: 800; }
+  .trow.new { animation: trnew 1.6s ease-out; }
+  @keyframes trnew { from { background: rgba(255,255,255,.08); } to { background: transparent; } }
+  .trades .hpager { padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--line); }
+  @media (max-width: 700px) { .thead, .trow { grid-template-columns: 40px 56px 1fr 1fr 0 1fr 0; } .thead span:nth-child(5), .trow span:nth-child(5), .thead span:nth-child(7), .trow span:nth-child(7) { display: none; } }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -850,7 +868,7 @@
       for (const t of Object.values(data.tokens || {})) if (levelOf(t) === 'danger' && t.score != null) t.score = 0;
       detectEvents(data);
       applyLive(); connectWallet();
-      if (!LIVE.booted) { LIVE.booted = true; pollPrice(); pollLive(); pollWallet(); }
+      if (!LIVE.booted) { LIVE.booted = true; pollPrice(); pollLive(); pollWallet(); setTimeout(pollTrades, 600); }
       render();
       if (manual) toast('Atualizado');
     } catch (e) {
@@ -977,6 +995,59 @@
     }).join('');
     return `<section class="panel d-card"><details class="checks"${open ? ' open' : ''}><summary><span>Análise de segurança<small>${okCount} de ${t.checks.length} ok</small></span>${ICON.chev}</summary><div class="check-list">${rows}</div></details></section>`;
   }
+
+  // =========================================================
+  //  Transações da moeda ao vivo (GeckoTerminal, a cada ~8s)
+  // =========================================================
+  const TR = { mint: null, list: [], at: 0, page: 1, seen: new Set(), fresh: new Set(), busy: false };
+  const agoShort = (ts) => { const s2 = Math.max(0, (Date.now() - ts) / 1000); return s2 < 60 ? `${Math.round(s2)}s` : s2 < 3600 ? `${Math.round(s2 / 60)}m` : `${Math.round(s2 / 3600)}h`; };
+  async function pollTrades() {
+    const mint = ui.sel[ui.tab] || CH.mint; const t = data?.tokens?.[mint];
+    if (!t?.pairAddress || isDemo() || document.hidden || TR.busy) return;
+    TR.busy = true;
+    try {
+      const j = await fetch(`https://api.geckoterminal.com/api/v2/networks/solana/pools/${t.pairAddress}/trades?trade_volume_in_usd_greater_than=0`, { headers: { accept: 'application/json;version=20230302' } }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (!j?.data) return;
+      if (TR.mint !== mint) { TR.mint = mint; TR.page = 1; TR.seen = new Set(); }
+      const me = data.wallet?.address;
+      TR.fresh = new Set();
+      TR.list = j.data.map((x) => {
+        const a = x.attributes; const buy = a.kind === 'buy';
+        const id = a.tx_hash + (a.block_number || '');
+        if (TR.seen.size && !TR.seen.has(id)) TR.fresh.add(id);
+        return { id, at: new Date(a.block_timestamp).getTime(), buy, usd: Number(a.volume_in_usd), tok: Number(buy ? a.to_token_amount : a.from_token_amount),
+          quote: Number(buy ? a.from_token_amount : a.to_token_amount), px: Number(buy ? a.price_to_in_usd : a.price_from_in_usd),
+          who: a.tx_from_address, tx: a.tx_hash, mine: !!me && a.tx_from_address === me };
+      }).sort((a, b) => b.at - a.at);
+      TR.list.forEach((x) => TR.seen.add(x.id));
+      TR.at = Date.now();
+      const box = document.querySelector('[data-trades]');
+      if (box && box.dataset.trades === mint && !busyUi()) box.outerHTML = tradesHtml(t);
+    } finally { TR.busy = false; }
+  }
+  function tradesHtml(t) {
+    if (!t.pairAddress) return '';
+    const own = TR.mint === t.mint;
+    const list = own ? TR.list : [];
+    const per = 10, pages = Math.max(1, Math.ceil(list.length / per));
+    TR.page = Math.min(TR.page, pages);
+    const q = esc(t.quoteSymbol || 'SOL');
+    const rows = list.slice((TR.page - 1) * per, TR.page * per).map((x) => `<a class="trow ${x.buy ? 'b' : 's'} ${TR.fresh.has(x.id) ? 'new' : ''} ${x.mine ? 'me' : ''}" href="https://solscan.io/tx/${esc(x.tx)}" target="_blank" rel="noopener">
+        <span class="num">${agoShort(x.at)}</span><span class="tk">${x.buy ? 'Compra' : 'Venda'}</span>
+        <span class="num">${money(x.usd)}</span><span class="num">${tokFmt(x.tok)}</span><span class="num">${solFmt(x.quote, 4).replace(' SOL', '')}</span>
+        <span class="num">${price(x.px)}</span><span class="num who">${x.mine ? 'Você' : esc(x.who.slice(0, 4) + '...' + x.who.slice(-3))}</span></a>`).join('');
+    return `<div class="trades" data-trades="${esc(t.mint)}">
+      <div class="trades-h"><b>Transações</b><small>${own && TR.at ? `ao vivo - atualizado há ${agoShort(TR.at)}` : isDemo() ? 'na demonstração não há transações reais' : 'carregando...'}</small></div>
+      ${list.length ? `<div class="thead"><span>Quando</span><span>Tipo</span><span>USD</span><span>${esc(t.symbol || '')}</span><span>${q}</span><span>Preço</span><span>Trader</span></div>${rows}
+      ${pages > 1 ? `<div class="hpager"><button data-trpage="-1" ${TR.page <= 1 ? 'disabled' : ''}>&larr;</button><span>${TR.page} de ${pages}</span><button data-trpage="1" ${TR.page >= pages ? 'disabled' : ''}>&rarr;</button></div>` : ''}` : ''}
+    </div>`;
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-trpage]'); if (!b) return;
+    TR.page += Number(b.dataset.trpage); const t = data.tokens[TR.mint];
+    const box = document.querySelector('[data-trades]'); if (box && t) box.outerHTML = tradesHtml(t);
+  });
+  setInterval(pollTrades, 8000);
 
   // Por que essa nota: cada critério com os pontos que ganhou
   function scoreHtml(t) {
@@ -1216,6 +1287,7 @@
       </div>
       ${chartBox(t)}
       ${t.periods ? marketStats(t) : ''}
+      ${tradesHtml(t)}
       ${canMark || (t.status === 'aprovada' && !mine) ? `<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
         ${canMark ? `<button class="btn ${manualMine.has(t.mint) ? 'mine-on' : ''}" data-mine="${esc(t.mint)}">${manualMine.has(t.mint) ? '&#10003; Comprei' : 'Marcar como comprei'}</button>` : ''}
       </div>` : ''}
