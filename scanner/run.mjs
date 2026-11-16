@@ -5,7 +5,8 @@ const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas po
 const RECHECK_MIN = 15;     // moedas da carteira: rechecagem de segurança a cada 15 min
 const RECHECK_APPROVED_MIN = 30; // aprovadas que você não comprou: a cada 30 min
 const MAX_REJECTED_KEPT = 300;
-const MAX_CANDLE_CALLS = 20;
+const MAX_CANDLE_CALLS = 8;         // GeckoTerminal grátis aceita poucas consultas por minuto
+const CANDLE_REFRESH_MIN = 15;      // aprovadas: velas atualizadas a cada 15 min (as da carteira, toda rodada)
 
 export async function runOnce({ api, cfg, state, now = Date.now(), trader = null }) {
   const started = Date.now();
@@ -191,7 +192,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   if (api.getCandles) {
     const want = Object.values(tokens)
       .filter((t) => t.pairAddress && (monitored(t) || newlyApproved.includes(t)))
-      .sort((a, b) => (b.held ? 1 : 0) - (a.held ? 1 : 0) || (b.approvedAt || 0) - (a.approvedAt || 0))
+      .filter((t) => t.held || !t.candlesAt || now - t.candlesAt >= CANDLE_REFRESH_MIN * 60000)
+      .sort((a, b) => (b.held ? 1 : 0) - (a.held ? 1 : 0) || (a.candlesAt || 0) - (b.candlesAt || 0))
       .slice(0, MAX_CANDLE_CALLS);
     for (const t of want) {
       try {
@@ -201,7 +203,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         log(`Velas de ${t.symbol} indisponíveis: ${e.message}`, true);
         if (e.rateLimited) break;
       }
-      if (api.sleep) await api.sleep(2100); // GeckoTerminal: ~30 consultas por minuto
+      if (api.sleep) await api.sleep(6500); // respeita o limite do GeckoTerminal
     }
   }
 

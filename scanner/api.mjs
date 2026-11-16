@@ -136,12 +136,24 @@ export async function getWalletOps(owner, lastSig, maxTx = 40) {
   const batch = fresh.slice(-maxTx).reverse(); // as mais antigas das novas, em ordem cronológica
   const ops = [];
   for (const x of batch) {
-    const tx = await rpc('getTransaction', [x.signature, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0, commitment: 'confirmed' }]);
+    const tx = await getTx(x.signature);
     if (tx && !tx.meta?.err) ops.push(...parseOps(tx, owner, x.signature));
     await sleep(150);
   }
   const newest = batch.length ? batch[batch.length - 1].signature : (sigs?.[0]?.signature || lastSig || null);
   return { ops, lastSig: newest, pending: Math.max(0, fresh.length - batch.length) };
+}
+
+// Transações novas da Solana podem vir em versões mais recentes; pedimos a maior que o RPC aceitar
+let txVersion = 1;
+async function getTx(signature) {
+  try {
+    return await rpc('getTransaction', [signature, { encoding: 'jsonParsed', maxSupportedTransactionVersion: txVersion, commitment: 'confirmed' }]);
+  } catch (e) {
+    const m = /version \((\d+)\)/i.exec(e.message || '');
+    if (m && Number(m[1]) > txVersion) { txVersion = Number(m[1]); return getTx(signature); }
+    throw e;
+  }
 }
 
 export function parseOps(tx, owner, sig) {
