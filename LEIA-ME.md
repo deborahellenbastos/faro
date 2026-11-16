@@ -262,4 +262,4 @@ Quando o robô vende no stop (stop de perda, stop móvel ou queda forte), a moed
 
 Além disso, a liquidez precisa estar em pelo menos 70% da de antes (golpe tira a liquidez) e não pode haver alerta de perigo.
 
-Com a compra automática ligada, o robô pode reentrar sozinho uma vez por moeda no dia. A simulação faz o mesmo. Ajuste a janela em `compra.reentradaHoras`.
+Com a compra automática ligada, o robô pode reentrar sozinho quantas vezes o fundo se confirmar depois de um stop. Ele respeita sempre as travas do dia: 2 abertas, 5 compras e perda máxima de 3x. A simulação faz o mesmo. Ajuste a janela em `compra.reentradaHoras`.

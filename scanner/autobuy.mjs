@@ -57,7 +57,8 @@ export function buyLimits(state, tokens, cfg, now) {
     stopped: lossSol <= capSol,
     room: Math.max(0, Math.min((S.maxAbertas ?? 2) - open, (c.maxComprasPorDia ?? 5) - todayTrades.length)),
     bought: new Set(todayTrades.map((x) => x.mint)),
-    // moedas com uma compra hoje que saíram no stop depois: liberadas para UMA reentrada
-    reentryOk: new Set(todayTrades.filter((x) => todayTrades.filter((y) => y.mint === x.mint).length === 1 && tokens[x.mint]?.reentry?.at > x.at).map((x) => x.mint)),
+    // moedas já compradas hoje que saíram no stop depois da última compra: liberadas para reentrar (quantas vezes for,
+    // dentro das travas do dia: abertas, compras por dia e perda máxima)
+    reentryOk: new Set([...new Set(todayTrades.map((x) => x.mint))].filter((m) => (tokens[m]?.reentry?.at || 0) > Math.max(...todayTrades.filter((y) => y.mint === m).map((y) => y.at)))),
   };
 }
