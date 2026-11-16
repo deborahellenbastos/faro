@@ -267,9 +267,9 @@ assert.equal(scamSignals({ lpLockedPct: 0, devPct: 0 }, { lpLockedPct: 0, devPct
   assert.equal(buyLimits(stL, { P: { held: true }, Q: {} }, cfgS, now).stopped, true);
 }
 
-// Compra desligada por padrão
+// Compra real só com as travas: sem a variável AUTO_BUY e sem o interruptor, não compra
 assert.equal(state.lastRun.autoBuy, false);
-assert.equal(cfg.compra.ativada, false);
+assert.equal(state.lastRun.autoCompra, null);
 
 // Sinais de entrada e saída (alta, correção até 61,8%, reação com compra)
 {
