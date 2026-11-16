@@ -182,7 +182,14 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (t.safety.level !== 'ok') log(`ALERTA ${t.symbol}: ${t.safety.alerts.map((a) => a.msg).join(' | ')}`);
       // Venda automática de 100% quando o contrato muda para golpe (só com tudo ligado)
       const scam = t.held ? scamSignals(t.baseline, sum, cfg) : [];
-      if (scam.length && trader?.canSell && !(t.autoSell?.ok) && (t.autoSell?.tries || 0) < 3) {
+      // Só vale vender se sobrar pelo menos o valor mínimo (senão as taxas comem tudo)
+      const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
+      const worth = (t.heldAmount || 0) * (m.priceUsd || 0);
+      if (scam.length && trader?.canSell && !(t.autoSell?.ok) && worth < minUsd) {
+        if (!t.autoSell?.skipped) log(`GOLPE em ${t.symbol}, mas a posição vale só US$ ${worth.toFixed(2)} (mínimo US$ ${minUsd}). Não vendi.`);
+        t.autoSell = { ok: false, skipped: true, at: now, why: scam.join('; '), worth };
+      }
+      if (scam.length && trader?.canSell && !(t.autoSell?.ok) && worth >= minUsd && (t.autoSell?.tries || 0) < 3) {
         const why = scam.join('; ');
         log(`GOLPE em ${t.symbol}: ${why}. Vendendo 100%...`, true);
         try {
@@ -196,7 +203,9 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       }
       if (t.autoSell) {
         const a = t.autoSell;
-        const alert = a.ok
+        const alert = a.skipped
+          ? { id: 'auto-venda', level: 'danger', msg: `Golpe no contrato (${a.why}), mas a posição vale menos de US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender` }
+          : a.ok
           ? { id: 'auto-venda', level: 'danger', msg: `Robô vendeu 100% automaticamente${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`, sig: a.sig }
           : { id: 'auto-venda', level: 'danger', msg: `Tentei vender 100% (${a.why}) e falhou: ${a.erro}. Venda manualmente!` };
         t.safety = mergeSafety(t.safety, [alert, ...t.safety.alerts.filter((x) => x.id !== 'auto-venda')], now);

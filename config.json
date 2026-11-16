@@ -34,6 +34,7 @@
   },
   "venda": {
     "automatica": true,
-    "slippageMaxPct": 30
+    "slippageMaxPct": 30,
+    "valorMinimoUsd": 1
   }
 }
