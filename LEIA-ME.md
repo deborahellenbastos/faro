@@ -146,3 +146,27 @@ O robô "opera de mentira" com as mesmas regras do plano de trade: entra em moed
 ## Valor por operação cresce com a banca
 
 Banca = SOL na carteira + valor das moedas abertas. Faixas (config.json, `compra.faixas`): até US$ 30 → US$ 3,50 por operação; US$ 30+ → US$ 10; US$ 100+ → US$ 25; US$ 300+ → US$ 50. O robô recalcula a cada rodada e converte para SOL pelo preço do momento. Vale para a simulação e, quando ligada, para a compra automática.
+
+## Sinais de entrada e saída
+
+O Faro avisa quando é uma boa hora de entrar ou sair. Ele usa as velas de 5 min e as lições dos vídeos.
+
+- **Entrada (Radar e Observando com nota 75+)**
+  - Mede a última alta (fundo até o topo) e espera a correção chegar à zona de 50% a 61,8%.
+  - Só marca "Boa entrada" quando três coisas acontecem juntas:
+    - o fundo segura, sem mínima nova;
+    - fecha uma vela verde acima da anterior;
+    - tem mais compra que venda.
+  - Além disso, o alvo (topo anterior) precisa pagar pelo menos 2x o risco.
+  - O stop fica abaixo de 78,6% ou do fundo da correção. Passou de 78,6%, a alta acabou ("Perdeu a estrutura").
+- **Saída (suas moedas)**
+  - Chegou no topo anterior: "Chegou no alvo".
+  - Perdeu o fundo da correção: "Sair".
+  - Devolveu metade do lucro depois de +30%: "Devolvendo o lucro".
+  - Pavios longos com mais venda: "Exaustão".
+- **Onde aparece**
+  - Na tela da moeda, acima do bloco de compra. Com o botão "Usar este stop e alvo no plano".
+  - Como etiqueta na lista.
+  - Na central de notificações, com som. O robô calcula a cada rodada, mesmo com o painel fechado.
+- **Não compra nem vende sozinho.** Você decide.
+- **Para mudar a lógica:** ela fica em `scanner/signals.mjs`. O painel tem uma cópia entre `<sinais>` e `</fim-sinais>`, e o teste confere que as duas estão iguais.

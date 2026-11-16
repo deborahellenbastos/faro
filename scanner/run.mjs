@@ -1,5 +1,6 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { simStep } from './sim.mjs';
+import { entrySignal, exitSignal } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
@@ -8,7 +9,7 @@ const RECHECK_APPROVED_MIN = 30; // aprovadas que você não comprou: a cada 30 
 const MAX_REJECTED_KEPT = 300;
 const MAX_PRICE_LOOKUPS = 6;         // preços históricos buscados por rodada (o resto fica para a próxima)
 const MAX_CANDLE_CALLS = 8;         // GeckoTerminal grátis aceita poucas consultas por minuto
-const CANDLE_REFRESH_MIN = 15;      // aprovadas: velas atualizadas a cada 15 min (as da carteira, toda rodada)
+const CANDLE_REFRESH_MIN = 5;       // radar e carteira: velas novas a cada rodada, para o sinal de entrada e saída sair na hora
 
 export async function runOnce({ api, cfg, state, now = Date.now(), trader = null }) {
   const started = Date.now();
@@ -286,7 +287,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // 5c. Velas para o mini gráfico (aprovadas e as suas), via GeckoTerminal
   if (api.getCandles) {
     const want = Object.values(tokens)
-      .filter((t) => t.pairAddress && (monitored(t) || newlyApproved.includes(t)))
+      .filter((t) => t.pairAddress && (monitored(t) || newlyApproved.includes(t) || (t.status === 'aguardando' && (t.score || 0) >= 75)))
       .filter((t) => t.held || (state.sim?.open || []).some((o) => o.mint === t.mint) || !t.candlesAt || now - t.candlesAt >= CANDLE_REFRESH_MIN * 60000)
       .sort((a, b) => (b.held ? 1 : 0) - (a.held ? 1 : 0) || (a.candlesAt || 0) - (b.candlesAt || 0))
       .slice(0, MAX_CANDLE_CALLS);
@@ -309,6 +310,31 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       t.status = 'reprovada'; t.rejectedAt = now; t.reasons = [`Formato do gráfico: ${t.shape.msg}`];
       log(`SAIU DO RADAR: ${t.symbol} (${t.shape.msg})`);
     }
+  }
+
+  // 5d. Sinais de entrada (radar) e de saída (suas posições), com as lições dos vídeos
+  const rrMin = cfg.simulacao?.riscoRetornoMin || 2;
+  const opsOf = (mint) => (state.wallet?.ops || []).filter((o) => o.mint === mint && o.tokens).sort((a, b) => a.at - b.at);
+  for (const t of Object.values(tokens)) {
+    if (!t.candles?.length) continue;
+    const p5 = t.periods?.m5 || {};
+    const ctx = { px: t.priceUsd, buys5: p5.buys, sells5: p5.sells, safety: t.safety?.level, shape: t.shape?.tipo, rrMin };
+    const prev = t.sinal;
+    let sig = null;
+    if (t.held && t.position?.known && t.position.avgPriceUsd > 0) {
+      // início da posição aberta = primeira compra depois da última vez que zerou
+      let net = 0, start = null;
+      for (const o of opsOf(t.mint)) { if (net <= 0 && o.tokens > 0) start = o.at; net += o.tokens; if (net <= 0) start = null; }
+      const x = exitSignal(t.candles, { entryPx: t.position.avgPriceUsd, entryAt: start || t.heldSince || now }, ctx);
+      if (x) sig = { tipo: 'saida', ...x };
+    } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75)) {
+      sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };
+    }
+    if (!sig) { delete t.sinal; continue; }
+    // "desde" muda só quando a fase muda (para o painel avisar uma vez)
+    sig.at = prev && prev.tipo === sig.tipo && prev.fase === sig.fase && prev.key === sig.key ? prev.at : now;
+    t.sinal = sig;
+    if (sig.at === now && (sig.boa || sig.bom || sig.ruim)) log(`SINAL: ${t.symbol} - ${sig.titulo}`);
   }
 
   // 6. Compra automática (só se estiver ligada no config E no GitHub)

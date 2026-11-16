@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce } from './run.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
+import { entrySignal, exitSignal } from './signals.mjs';
 
 const cfg = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
 const now = Date.UTC(2026, 10, 15, 21, 0, 0);
@@ -245,6 +246,33 @@ assert.equal(scamSignals({ lpLockedPct: 0, devPct: 0 }, { lpLockedPct: 0, devPct
 // Compra desligada por padrão
 assert.equal(state.lastRun.autoBuy, false);
 assert.equal(cfg.compra.ativada, false);
+
+// Sinais de entrada e saída (alta, correção até 61,8%, reação com compra)
+{
+  const T0 = Date.now() - 80 * 300000; const c = [];
+  const push = (o, h, l, cl, v = 100) => c.push([T0 + c.length * 300000, o, h, l, cl, v]);
+  for (let i = 0; i < 20; i++) push(1, 1.02, 0.98, 1);
+  for (let i = 0; i < 10; i++) { const a = 1 + i * 0.1; push(a, a + 0.12, a - 0.02, a + 0.1, 300); }
+  assert.equal(entrySignal(c).fase, 'esticada', 'no topo: esperar');
+  for (let i = 0; i < 8; i++) { const a = 2.1 - i * 0.09; push(a, a + 0.02, a - 0.09, a - 0.08, 80); }
+  assert.equal(entrySignal(c, { buys5: 5, sells5: 9 }).fase, 'zona', 'caindo na zona: ainda não');
+  push(1.38, 1.40, 1.37, 1.39, 60); push(1.39, 1.47, 1.385, 1.46, 150);
+  const e = entrySignal(c, { buys5: 12, sells5: 6, safety: 'ok', shape: 'organica' });
+  assert.equal(e.fase, 'entrada'); assert.ok(e.rr >= 2 && e.stop < 1.37 && e.alvo === 2.12);
+  const at = c[c.length - 1][0];
+  assert.equal(exitSignal(c, { entryPx: 1.45, entryAt: at }, { px: 2.1 }).fase, 'realizar');
+  assert.equal(exitSignal(c, { entryPx: 1.45, entryAt: at }, { px: 1.0 }).fase, 'sair');
+  assert.equal(exitSignal(c, { entryPx: 1.45, entryAt: at }, { px: 1.6 }).fase, 'segurar');
+}
+
+// O painel tem uma cópia da lógica dos sinais: as duas precisam ser iguais
+{
+  const norm = (x) => x.replace(/export /g, '').replace(/\s+/g, ' ').trim();
+  const html = await readFile(new URL('../docs/index.html', import.meta.url), 'utf8');
+  const a = html.indexOf('</sinais>'), b = html.indexOf('// </fim-sinais>');
+  const src = await readFile(new URL('./signals.mjs', import.meta.url), 'utf8');
+  assert.equal(norm(html.slice(a + 9, b)), norm(src), 'copie scanner/signals.mjs para o painel (entre <sinais> e </fim-sinais>)');
+}
 
 console.log('\nTodos os testes passaram.');
 console.log(JSON.stringify(state.lastRun.counts));
