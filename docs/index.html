@@ -335,6 +335,7 @@
   .obs-note b { color: #f5b14c; }
   .solbal { display: inline-flex; align-items: baseline; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 12px; white-space: nowrap; align-items: center; }
   .solbal b { font-weight: 800; } .solbal span { color: var(--muted); font-weight: 600; }
+  .r-val { display: grid; justify-items: end; gap: 2px; }
   .linkbtn { justify-self: start; border: 0; background: none; padding: 0; color: var(--faint); font-size: 11px; text-decoration: underline; cursor: pointer; }
   .keybox .masked { -webkit-text-security: disc; }
   .orders { display: grid; gap: 6px; }
@@ -1445,7 +1446,8 @@
         side = `<b class="num ${cls(p?.pnlUsd)}">${signedMoney(p?.pnlUsd || 0)}</b><small class="num ${cls(p?.pnlPct)}">${pct(p?.pnlPct)}</small>`;
       } else {
       main = `<b>${esc(t.symbol)} ${l !== 'ok' && !isLost(t) ? `<i class="sdot ${l}" title="${l === 'danger' ? 'Perigo' : 'Atenção'}"></i>` : ''}</b><small class="num">${isLost(t) ? 'Perdida - ' : ''}${t.held ? `${tokFmt(t.heldAmount)} ${esc(t.symbol)}` : 'marcada por você'}</small>`;
-      side = `<b class="num">${p?.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p?.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}`;
+      const val = `<div class="r-val"><b class="num">${p?.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p?.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</div>`;
+      side = !isLost(t) && t.score != null ? `<div style="display:flex;align-items:center;gap:10px">${val}${scoreBadge(t.score, true)}</div>` : val;
       }
     } else if (ui.tab === 'aprovada') {
       const ch = Number(t.changePct) || 0;
