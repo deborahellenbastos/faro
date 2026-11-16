@@ -1612,6 +1612,9 @@
     const add = (price, color, title, style = 2, width = 1) => { if (price > 0) CH.lines.push(CH.candle.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title })); };
     if (t.position?.known) {
       add(t.position.avgPriceUsd, '#a78bfa', (t.position.buys || 1) > 1 ? 'entrada (média)' : 'entrada', 2, 2);
+      // Meta: +100% (ou o alvo configurado) sobre a entrada. Em posição pequena é onde o robô vende sozinho
+      const tp = metaOf(t);
+      if (t.held && tp) add(tp.px, '#10d27f', tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
       // Saída: preço médio das suas vendas
       const sells = (t.history || []).filter((o) => o.tokens < 0);
       const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
@@ -1721,6 +1724,11 @@
   }
   document.addEventListener('click', (e) => { if (e.target.closest('[data-chartreset]')) resetChart(); });
   // Variação desde a sua entrada (e desde a saída, se já vendeu), atualizada com o preço ao vivo
+  function metaOf(t) {
+    const p = t.position; if (!p?.known || !(p.avgPriceUsd > 0)) return null;
+    const L = data?.lastRun?.takeProfit; const pct = L?.alvoPct || 100;
+    return { pct, px: p.avgPriceUsd * (1 + pct / 100), robot: !!L && p.costOpenUsd > 0 && p.costOpenUsd < (L.ateUsd || 10) };
+  }
   function updateSince(t) {
     const el = $('chart-since'); if (!el) return;
     if (!t || CH.mint !== t.mint || !t.position?.known || !(t.priceUsd > 0)) { el.hidden = true; return; }
@@ -1729,7 +1737,10 @@
     const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
     const exit = soldTok > 0 && p.receivedUsd > 0 ? p.receivedUsd / soldTok : 0;
     const row = (label, ref) => { const c = (t.priceUsd / ref - 1) * 100; return `<span>${label}</span><b class="${c >= 0 ? 'pos' : 'neg'}">${c >= 0 ? '+' : ''}${c.toFixed(Math.abs(c) < 10 ? 2 : 1).replace('.', ',')}%</b>`; };
-    el.innerHTML = (p.avgPriceUsd > 0 ? row('Desde a entrada', p.avgPriceUsd) : '') + (exit ? row('Desde a saída', exit) : '');
+    const tp = t.held ? metaOf(t) : null;
+    const toGo = tp ? (tp.px / t.priceUsd - 1) * 100 : null;
+    el.innerHTML = (p.avgPriceUsd > 0 ? row('Desde a entrada', p.avgPriceUsd) : '') + (exit ? row('Desde a saída', exit) : '')
+      + (tp ? `<span>Até a meta +${tp.pct}%</span><b class="${toGo <= 0 ? 'pos' : ''}">${toGo <= 0 ? 'bateu!' : `falta +${toGo.toFixed(toGo < 10 ? 2 : 1).replace('.', ',')}%`}</b>` : '');
     el.hidden = !el.innerHTML;
   }
   function setTool(tool) {
