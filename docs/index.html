@@ -769,6 +769,8 @@
   .m-badges { gap: 6px; flex-wrap: wrap; margin-top: calc(var(--sp-2) * -1); }
   .m-badges .live { height: 30px; font-size: 12px; padding: 0 9px; font-family: inherit; cursor: pointer; }
   .m-badges .live.auto svg { width: 10px; height: 10px; }
+  .m-badges .live.pf svg { width: 13px; height: 13px; }
+  .m-badges .live.pf { gap: 6px; }
   .m-badges .live.pf.agr { color: #f5b14c; border-color: rgba(245,177,76,.35); }
   .m-live { display: none; height: 24px; font-size: 12px; padding: 0 9px; margin-left: 4px; }
   .m-brand { align-items: center; }
@@ -965,7 +967,9 @@
     .m-brand b { font-size: 24px; }
     .icon-btn { width: 46px; height: 46px; border-radius: 50%; }
     .m-live { height: 28px; font-size: 12px; }
-    .m-badges { gap: 8px; margin-top: 0; }
+    .m-badges { gap: 8px; margin-top: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .m-badges::-webkit-scrollbar { display: none; }
+    .m-badges .live { flex: none; }
     .m-badges .live { height: 32px; font-size: 12.5px; padding: 0 13px; }
     .m-hero .mh-label { font-size: 15px; }
     .m-hero .mh-big { font-size: 50px; letter-spacing: -.035em; margin-top: 4px; }
@@ -3489,9 +3493,9 @@ function baseBreakout(c, ctx = {}) {
     const buy = A.pend ? null : !!(A.on && A.canBuy);
     const ml = $('m-live'); if (ml) { ml.className = 'live m-live ' + (fresh ? 'on' : ''); ml.querySelector('span').textContent = fresh ? 'Ao vivo' : 'Conectando...'; }
     const ico = (on) => on ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2h2v8H3zM7 2h2v8H7z" fill="currentColor"/></svg>';
-    el.innerHTML = `<button class="live auto ${buy ? 'on' : ''}" data-open-robot title="Compra automática nos sinais">${ico(buy)}<span>Compra auto ${A.pend ? (A.pend.on ? 'ligando...' : 'desligando...') : buy ? 'ligada' : 'desligada'}</span></button>
-      <button class="live auto ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática">${ico(sell)}<span>Venda auto ${sell ? 'ligada' : 'desligada'}</span></button>
-      <button class="live pf ${perfilOf() === 'agressivo' ? 'agr' : ''}" data-open-robot title="Perfil de operação"><span>${perfilOf() === 'agressivo' ? 'Agressivo' : 'Conservador'}</span></button>`;
+    el.innerHTML = `<button class="live auto ${buy ? 'on' : ''}" data-open-robot title="Compra automática nos sinais">${ico(buy)}<span>Compra auto${A.pend ? (A.pend.on ? ' (ligando...)' : ' (desligando...)') : ''}</span></button>
+      <button class="live auto ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática">${ico(sell)}<span>Venda auto</span></button>
+      <button class="live pf ${perfilOf() === 'agressivo' ? 'agr' : ''}" data-open-robot title="Perfil de operação"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>${perfilOf() === 'agressivo' ? 'Agressivo' : 'Conservador'}</span></button>`;
   }
   function updateLivePill() {
     updateSolBal(); updateAutoPill(); updatePerfilRows();
