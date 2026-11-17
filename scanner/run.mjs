@@ -358,10 +358,15 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
 
   // 5c. Velas para o mini gráfico (aprovadas e as suas), via GeckoTerminal
   if (api.getCandles) {
+    // Moeda da carteira que já não vale nada (resto, morta ou perdida) não gasta consulta de velas: antes ocupava as vagas
+    // e o radar ficava sem velas (17/11: AI pediu velas 7x numa hora e a JALU, +1900%, ficou "sem movimento para medir")
+    const worthUsd = (t) => (t.heldAmount || 0) * (t.priceUsd || 0);
+    const heldLive = (t) => t.held && worthUsd(t) >= 0.25;
     const want = Object.values(tokens)
       .filter((t) => t.pairAddress && (monitored(t) || newlyApproved.includes(t) || (t.status === 'aguardando' && (t.score || 0) >= 75)))
-      .filter((t) => t.held || simOpen.has(t.mint) || !t.candlesAt || now - t.candlesAt >= CANDLE_REFRESH_MIN * 60000)
-      .sort((a, b) => (b.held ? 1 : 0) - (a.held ? 1 : 0) || (a.candlesAt || 0) - (b.candlesAt || 0))
+      .filter((t) => !t.held || heldLive(t) || !t.candlesAt || now - t.candlesAt >= 60 * 60000)
+      .filter((t) => heldLive(t) || simOpen.has(t.mint) || !t.candlesAt || now - t.candlesAt >= CANDLE_REFRESH_MIN * 60000)
+      .sort((a, b) => (heldLive(b) ? 2 : newlyApproved.includes(b) || b.status === 'aprovada' ? 1 : 0) - (heldLive(a) ? 2 : newlyApproved.includes(a) || a.status === 'aprovada' ? 1 : 0) || (a.candlesAt || 0) - (b.candlesAt || 0))
       .slice(0, MAX_CANDLE_CALLS);
     for (const t of want) {
       try {

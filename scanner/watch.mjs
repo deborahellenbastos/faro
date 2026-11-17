@@ -84,8 +84,13 @@ mem.base = mem.base || {};
 // lido direto da blockchain, para o stop de perda já valer desde o primeiro minuto (17/11: Privium)
 const liveEntry = {};
 async function refreshEntries() {
-  const need = held.filter((t) => !(t.position?.known && t.position.costOpenUsd > 0) && !liveEntry[t.mint]);
+  // Só compras recentes (até 30 min) e no máximo 1 consulta a cada 3 min: antes, um resto antigo sem compra recente
+  // fazia 15 consultas ao RPC a cada 30 s e o robô levava "pausa (429)" ao ler a carteira (17/11)
+  const nowE = Date.now();
+  const need = held.filter((t) => !(t.position?.known && t.position.costOpenUsd > 0) && !liveEntry[t.mint]
+    && nowE - Math.max(t.heldSince || 0, t.reboughtAt || 0) < 30 * 60000 && nowE - (refreshEntries.tried?.[t.mint] || 0) > 180000);
   if (!need.length || !wallet) return;
+  refreshEntries.tried = refreshEntries.tried || {}; for (const t of need) refreshEntries.tried[t.mint] = nowE;
   try {
     const ops = await getRecentOps(wallet, 15);
     for (const t of need) {
