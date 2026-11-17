@@ -387,7 +387,8 @@
   .sim-op { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-2); border: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; }
   .sim-op:hover { background: var(--panel-2); }
   .sim-op span { display: grid; gap: 2px; } .sim-op small { color: var(--muted); font-size: 11px; }
-  #robot-seg { display: grid; grid-template-columns: repeat(3, 1fr); }
+  #robot-seg { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.1fr; }
+  #robot-seg button { padding: 0 4px; white-space: nowrap; }
   .new-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #60a5fa; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(96,165,250,.18); }
   .mini-tag.new { color: #60a5fa; background: rgba(96,165,250,.14); }
   .mini-tag.bad { color: #ff5b5b; background: rgba(255,91,91,.12); }
@@ -898,11 +899,13 @@
         <b>Robô e filtros</b>
       </div>
       <div class="seg" id="robot-seg">
-        <button data-rt="filtros" aria-pressed="true">Filtros em uso</button>
-        <button data-rt="rodada" aria-pressed="false">Última rodada</button>
+        <button data-rt="config" aria-pressed="true">Configurações</button>
+        <button data-rt="filtros" aria-pressed="false">Filtros</button>
+        <button data-rt="rodada" aria-pressed="false">Rodada</button>
         <button data-rt="sim" aria-pressed="false">Simulação</button>
       </div>
       <div class="drawer-body">
+        <div id="rt-config">
         <div class="sw-row autorow in-drawer" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
         <div class="sw-row pfrow in-drawer" data-pfrow hidden><div><span>Perfil<button class="info-btn" data-pfinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-pfstate>protege o saldo</small></div><div class="pf-seg"><button data-pf="conservador">Conservador</button><button data-pf="agressivo">Agressivo</button></div></div>
         <div class="m-set" id="m-set">
@@ -911,7 +914,9 @@
           <div class="sw-row"><span>Gráfico da Dex</span><button class="switch" data-proxy="t-dex" role="switch" aria-checked="true" aria-label="Gráfico da Dex"></button></div>
           <div class="sw-row"><span>Moedas mortas</span><button class="switch" data-proxy="t-mortas" role="switch" aria-checked="true" aria-label="Mostrar moedas mortas"></button></div>
         </div>
-        <div id="rt-filtros">
+          <button class="lock-btn" data-lock hidden style="margin-top:8px" title="Esquece a senha neste navegador e fecha o painel. Para entrar de novo, pede a senha. O robô continua rodando."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sair do painel</button>
+        </div>
+        <div id="rt-filtros" hidden>
           <div class="kv" id="cfg"></div>
           <p class="note">Para mudar, edite o arquivo <b>config.json</b> no GitHub. A próxima rodada já usa os valores novos.</p>
         </div>
@@ -921,7 +926,7 @@
           <div class="log" id="log"></div>
         </div>
       </div>
-      <button class="lock-btn" data-lock hidden style="margin-top:16px" title="Esquece a senha neste navegador e fecha o painel. Para entrar de novo, pede a senha. O robô continua rodando."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sair do painel</button>
+
       <p class="disclaimer">O Faro elimina sinais de golpe e ordena por força de compra. Isso não garante que a moeda vai subir. A decisão é sempre sua.</p>
     </div>
   </div>
@@ -3984,6 +3989,7 @@ function baseBreakout(c, ctx = {}) {
   $('robot-seg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-rt]'); if (!b) return;
     for (const x of $('robot-seg').children) x.setAttribute('aria-pressed', x === b);
+    $('rt-config').hidden = b.dataset.rt !== 'config';
     $('rt-filtros').hidden = b.dataset.rt !== 'filtros';
     $('rt-rodada').hidden = b.dataset.rt !== 'rodada';
     $('rt-sim').hidden = b.dataset.rt !== 'sim';
