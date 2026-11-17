@@ -1071,6 +1071,18 @@
     body.in-phantom .main { padding-bottom: calc(env(safe-area-inset-bottom) + 200px) !important; }
     body.in-phantom::after { height: calc(env(safe-area-inset-bottom) + 170px); }
   }
+
+  /* Folha da moeda: cabeçalho alinhado ao topo e mesmo respiro em cima e nas laterais */
+  @media (max-width: 1099px) {
+    .detail { padding-top: 52px !important; }
+    .sheet-grip { top: -52px !important; margin: -52px -14px 0 !important; height: 52px !important; }
+    .sheet-close { top: 9px !important; right: 14px !important; }
+    .detail .d-card:first-child { padding: 18px !important; }
+    .detail .d-head { align-items: start !important; }
+    .detail .d-head .avatar { align-self: start !important; grid-row: 1 / span 3; }
+    .detail .d-head .d-actions { align-self: start !important; }
+    .detail .d-head .pair { align-items: center; min-height: 32px; }
+  }
 </style>
 </head>
 <body>
