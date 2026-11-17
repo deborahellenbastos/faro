@@ -87,15 +87,20 @@ async function refreshEntries() {
   // Só compras recentes (até 30 min) e no máximo 1 consulta a cada 3 min: antes, um resto antigo sem compra recente
   // fazia 15 consultas ao RPC a cada 30 s e o robô levava "pausa (429)" ao ler a carteira (17/11)
   const nowE = Date.now();
-  const need = held.filter((t) => !(t.position?.known && t.position.costOpenUsd > 0) && !liveEntry[t.mint]
-    && nowE - Math.max(t.heldSince || 0, t.reboughtAt || 0) < 30 * 60000 && nowE - (refreshEntries.tried?.[t.mint] || 0) > 180000);
+  const need = held.filter((t) => ((!(t.position?.known && t.position.costOpenUsd > 0) && nowE - Math.max(t.heldSince || 0, t.reboughtAt || 0) < 30 * 60000) || t.staleCost)
+    && !liveEntry[t.mint] && nowE - (refreshEntries.tried?.[t.mint] || 0) > (t.staleCost ? 20000 : 180000));
   if (!need.length || !wallet) return;
   refreshEntries.tried = refreshEntries.tried || {}; for (const t of need) refreshEntries.tried[t.mint] = nowE;
   try {
     const ops = await getRecentOps(wallet, 15);
     for (const t of need) {
-      const buys = ops.filter((o) => o.mint === t.mint && o.tokens > 0 && o.sol < 0);
-      const tok = buys.reduce((a, o) => a + o.tokens, 0), sol = buys.reduce((a, o) => a - o.sol, 0);
+      // Só a operação aberta: compras depois da última vez que a moeda zerou na carteira
+      let tok = 0, sol = 0, net = 0;
+      for (const o of ops.filter((x) => x.mint === t.mint && x.tokens).sort((a, b) => a.at - b.at)) {
+        if (net <= (t.heldAmount || 0) * 0.01) { tok = 0; sol = 0; net = 0; }
+        net += o.tokens; if (o.tokens > 0 && o.sol < 0) { tok += o.tokens; sol -= o.sol; }
+      }
+      if (t.staleCost && tok < (t.heldAmount || 0) * 0.8) { log(`${t.symbol}: não achei todas as compras recentes; segurando só pelas proteções de golpe e queda até a próxima rodada`); continue; }
       if (tok > 0 && sol > 0) { liveEntry[t.mint] = sol / tok; log(`${t.symbol}: entrada lida da blockchain (${(sol / tok).toExponential(3)} SOL por moeda); stop de perda já vale`); }
     }
   } catch (e) { log(`não consegui ler as compras recentes: ${e.message}`, true); }
@@ -104,7 +109,14 @@ async function refreshHoldings() {
   try {
     const list = await getWalletHoldings(wallet);
     const map = new Map(list.map((h) => [h.mint, h]));
-    held = held.filter((t) => map.has(t.mint)).map((t) => ({ ...t, heldAmount: map.get(t.mint).amount }));
+    // Comprou mais depois da última rodada do robô: o custo guardado não inclui a compra nova. Usar ele dava lucro falso
+    // (17/11: JALU, US$ 5 + US$ 10 comprados, o robô viu "+208% sobre US$ 5" e vendeu tudo 30 s depois, três vezes)
+    held = held.filter((t) => map.has(t.mint)).map((t) => {
+      const amt = map.get(t.mint).amount, base = t.snapAmount ?? t.heldAmount ?? 0;
+      const stale = t.staleCost || amt > base * 1.02 + 1e-9;
+      if (stale && !t.staleCost) { delete liveEntry[t.mint]; if (refreshEntries.tried) delete refreshEntries.tried[t.mint]; log(`${t.symbol}: compra nova depois da rodada; recalculando a entrada pela blockchain`); }
+      return { ...t, snapAmount: base, heldAmount: amt, staleCost: stale };
+    });
     for (const h of list) {
       if (held.some((t) => t.mint === h.mint)) continue;
       const old = state.tokens?.[h.mint] || { mint: h.mint, symbol: h.mint.slice(0, 6) };
@@ -181,7 +193,7 @@ async function sellPart(t, frac, why, px, target) {
 }
 function ladderStep(t, px, gainPx, weak, fromPeak) {
   if (!ESCADA.ligado || gainPx == null) return null;
-  const buyAt = t.position?.lastBuyAt || t.heldSince || 0;
+  const buyAt = (t.position?.lastBuyAt || t.heldSince || 0) + (t.staleCost ? 1 : 0); // compra nova depois da rodada: escada recomeça
   let L0 = mem.ladder[t.mint];
   if (!L0 || L0.buyAt !== buyAt) L0 = mem.ladder[t.mint] = { buyAt, sold: 0 };
   const faixa = [...ESCADA.faixas].reverse().find((f) => gainPx >= f.lucroPct);
@@ -245,12 +257,12 @@ while (Date.now() < until) {
       const fromPeak = (1 - px / mem.peak[t.mint]) * 100;
       const liqDrop = liqTop > 0 && liq > 0 ? (1 - liq / liqTop) * 100 : 0;
       // 1. Golpe no contrato  2. Queda forte  3. Lucro em posição pequena
-      const cost = t.position?.known ? t.position.costOpenUsd : 0;
+      const cost = t.position?.known && !t.staleCost ? t.position.costOpenUsd : 0;
       const pxSol = /^W?SOL$/i.test(p?.quoteToken?.symbol || '') ? Number(p?.priceNative) : 0;
       const gain = cost > 0 ? ((t.heldAmount * px) / cost - 1) * 100 : liveEntry[t.mint] && pxSol > 0 ? (pxSol / liveEntry[t.mint] - 1) * 100 : null;
       // Stop móvel: o da última rodada, subindo junto com o pico que a vigia vê ao vivo (nunca desce)
       let trailPx = 0;
-      if (trailOn && t.trail?.ativo && t.position?.avgPriceUsd > 0) {
+      if (trailOn && !t.staleCost && t.trail?.ativo && t.position?.avgPriceUsd > 0) {
         const entry = t.position.avgPriceUsd, pk = mem.peak[t.mint];
         const follow = (pk / entry - 1) * 100 >= (SM.seguirAPartirPct ?? 60) ? Math.min(pk * (1 - (SM.distanciaPct ?? 25) / 100), pk * 0.88) : 0;
         trailPx = Math.max(t.trail.stop, follow, entry * (1 + (SM.minimoTravadoPct ?? 5) / 100));
@@ -274,7 +286,7 @@ while (Date.now() < until) {
       else if (lossOn && gain != null && gain <= -lossPct) await sell(t, `stop de perda: caiu ${Math.abs(gain).toFixed(0)}% desde a entrada (limite -${lossPct}%)`, 'stop-perda', px);
       else if ((() => {
         // Escada de realização: ganho pelo preço de entrada (a venda parcial muda a quantidade, não o preço médio)
-        const avg = t.position?.avgPriceUsd > 0 ? t.position.avgPriceUsd : 0;
+        const avg = t.position?.avgPriceUsd > 0 && !t.staleCost ? t.position.avgPriceUsd : 0;
         const gainPx = avg ? (px / avg - 1) * 100 : gain;
         if (gainPx == null || gainPx >= (L.alvoPct ?? 100)) return false;
         const weak = weakSignals({ candles: t.candles, entryAt: t.position?.lastBuyAt || t.heldSince || 0, buys5: Number(p?.txns?.m5?.buys) || 0, sells5: Number(p?.txns?.m5?.sells) || 0, vol5: Number(p?.volume?.m5), volH1: Number(p?.volume?.h1), fromPeak });
