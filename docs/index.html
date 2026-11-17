@@ -1124,6 +1124,13 @@
     #inbox .drawer-foot { margin-top: auto; }
     body.in-phantom #inbox .drawer-panel { padding-bottom: 96px; }
   }
+
+  /* KPIs: rótulos em cinza; mesmo respiro entre os selos e o bloco de saldo em todas as abas */
+  .m-hero .mh-row small, .m-hero .mh-chips small { color: var(--muted) !important; }
+  @media (max-width: 1099px) {
+    .m-hero { margin-top: 6px !important; }
+    .m-hero > .mh-row:first-child { margin-top: 0 !important; }
+  }
 </style>
 </head>
 <body>
