@@ -1094,7 +1094,7 @@
   /* Títulos de seção padronizados: mesma fonte, tamanho, cor e contador ao lado (Em observação, Em aberto, Total na carteira...) */
   .list-head b, .list-sub, .m-hero .mh-label, .m-hero .mh-row small, .m-hero .mh-chips small {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important; font-size: 13px !important; font-weight: 700 !important;
-    letter-spacing: .06em !important; text-transform: uppercase; color: var(--muted) !important; line-height: 1.3; }
+    letter-spacing: .06em !important; text-transform: uppercase; color: var(--text) !important; line-height: 1.3; }
   .list-head b small, .list-sub small, .m-hero .mh-label small {
     font-family: inherit !important; font-size: 13px !important; font-weight: 700 !important; letter-spacing: .02em !important;
     color: var(--faint) !important; margin-left: 6px !important; text-transform: none; }
@@ -4191,7 +4191,7 @@ function baseBreakout(c, ctx = {}) {
     const openHdr = ui.tab === 'minhas' && !q && ui.page === 1 && !mine.length ? sub('Em aberto', 0) : '';
     const rows = openHdr + slice.map((t, i) => {
       if (t.__encHdr) return `<button class="list-sub fold" data-encfold aria-expanded="false">Encerradas<small>${closed.length}</small>${ICON.chev}</button>`;
-      if (t.__deadHdr) return `<button class="list-sub fold ${prefs.mortasOpen ? 'open' : ''}" data-mortas aria-expanded="${!!prefs.mortasOpen}">Mortas - valem menos de US$ 1<small>${dead.length}</small>${ICON.chev}</button>`;
+      if (t.__deadHdr) return `<button class="list-sub fold ${prefs.mortasOpen ? 'open' : ''}" data-mortas aria-expanded="${!!prefs.mortasOpen}">Mortas<small>${dead.length}</small>${ICON.chev}</button>`;
       let head = '';
       if (ui.tab === 'minhas' && !q) {
         const c = isClosed(t), dd = !c && isDead(t), prev = slice[i - 1];
