@@ -339,3 +339,4 @@ Limitação: o robô roda a cada 5 min. Altas muito rápidas, como a da goldie (
 - `config.json > regrasEmTeste`. Não bloqueiam nada: só marcam as entradas das três simulações (`mare`, `cetico`) e medem o resultado delas (`stats.regras`).
 - Maré vermelha: 70%+ das moedas do Radar das últimas 24h (mínimo 5) caindo no dia (`state.mare`). Cético: 2 stops seguidos há menos de 45 min.
 - Na aba Simulação aparece quantas entradas cada regra teria evitado e se isso teria ajudado ou atrapalhado.
+- Volume sumiu (saída em teste): com +10% ou mais, se o volume das 2 últimas velas de 5 min cair 60%+ em relação ao pico desde a entrada, a simulação anota o preço (`o.volFade`) e compara "sair ali" com a saída normal (`stats.regras.volume`).

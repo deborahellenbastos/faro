@@ -21,7 +21,24 @@ export function skepticOn(closed, now, o = {}) {
   return last.length >= (o.stopsSeguidos ?? 2) && last.every((x) => /stop/.test(x.why || '') && !/móvel/.test(x.why || '')) && now - last[0].exitAt < (o.pausaMin ?? 45) * 60000;
 }
 const ruleTags = (state, sim, now) => ({ ...(state.mare?.vermelha ? { mare: true } : {}), ...(skepticOn(sim.closed, now) ? { cetico: true } : {}) });
-const ruleStats = (c) => { const f = (k) => { const x = c.filter((o) => o[k]); return { ops: x.length, pnlSol: x.reduce((a, o) => a + o.pnlSol, 0), wins: x.filter((o) => o.pnlPct > 0).length }; }; return { mare: f('mare'), cetico: f('cetico') }; };
+// Volume sumiu (regra de saída em teste): já no lucro (+10% ou mais) e o volume das 2 últimas velas de 5 min caiu 60% ou mais
+// em relação à vela de maior volume desde a entrada. Só anota o preço desse momento; a operação segue pelas regras normais.
+export function volumeFade(t, o, px, f = {}) {
+  if (!(px > 0) || px < o.entry * (1 + (f.lucroMinPct ?? 10) / 100)) return false;
+  const since = (t?.candles || []).filter((x) => x[0] >= o.at - 300000);
+  if (since.length < 4) return false;
+  const peakV = Math.max(...since.map((x) => x[5] || 0));
+  const last2 = since.slice(-2).map((x) => x[5] || 0);
+  const now2 = last2.reduce((a, v) => a + v, 0) / last2.length;
+  return peakV > 0 && now2 <= peakV * (1 - (f.quedaPct ?? 60) / 100);
+}
+const markFade = (o, t, px, now) => { if (!o.volFade && volumeFade(t, o, px)) o.volFade = { at: now, px }; };
+const ruleStats = (c, cost = 0.03) => {
+  const f = (k) => { const x = c.filter((o) => o[k]); return { ops: x.length, pnlSol: x.reduce((a, o) => a + o.pnlSol, 0), wins: x.filter((o) => o.pnlPct > 0).length }; };
+  const vf = c.filter((o) => o.volFade?.px > 0);
+  const ifExit = vf.reduce((a, o) => a + o.sol * ((o.volFade.px / o.entry) * (1 - cost) / (1 + cost) - 1), 0);
+  return { mare: f('mare'), cetico: f('cetico'), volume: { ops: vf.length, pnlSol: vf.reduce((a, o) => a + o.pnlSol, 0), pnlSeSaisse: ifExit } };
+};
 
 // Stop no fundo recente (entre -8% e -40%) ou -25%; alvo no topo anterior (se 30%+ acima) ou +100%
 export function planFor(t, cfg) {
@@ -70,6 +87,7 @@ export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, can
     else if (t?.safety?.level === 'danger' && px) { exit = px * 0.9; why = 'perigo'; }
     else if (now - o.at > (S.horasMaximas ?? 24) * 3600000 && px) { exit = px; why = 'tempo'; }
     else if (!t) { exit = o.entry * 0.5; why = 'sumiu'; }
+    markFade(o, t, px, now);
     o.checkedAt = now;
     if (!exit) continue;
     const gross = exit / o.entry - 1;
@@ -113,7 +131,7 @@ export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, can
     pnlSol: c.reduce((a, x) => a + x.pnlSol, 0),
     avgWin: wins.length ? wins.reduce((a, x) => a + x.pnlPct, 0) / wins.length : 0,
     avgLoss: losses.length ? losses.reduce((a, x) => a + x.pnlPct, 0) / losses.length : 0,
-    base, regras: ruleStats(c),
+    base, regras: ruleStats(c, cost),
   };
   const cv = c.filter((x) => x.curva);
   const rp = c.filter((x) => x.romp);
@@ -173,6 +191,7 @@ export function simCrazy({ state, tokens, cfg, now, log, solUsd }) {
     if (!exit && t?.safety?.level === 'danger' && px) { exit = px * 0.9; why = 'perigo'; }
     if (!exit && now - o.at > (L.horasMax ?? 2) * 3600000 && px) { exit = px; why = 'tempo (2h)'; }
     if (!exit && !t) { exit = o.entry * 0.5; why = 'sumiu'; }
+    markFade(o, t, px, now);
     o.checkedAt = now;
     if (!exit) continue;
     const net = (exit / o.entry) * (1 - cost) / (1 + cost) - 1;
@@ -201,5 +220,5 @@ export function simCrazy({ state, tokens, cfg, now, log, solUsd }) {
   const c = sim.closed, wins = c.filter((x) => x.pnlPct > 0), losses = c.filter((x) => x.pnlPct <= 0);
   sim.stats = { ops: c.length, open: sim.open.length, winRate: c.length ? (wins.length / c.length) * 100 : 0, pnlSol: c.reduce((a, x) => a + x.pnlSol, 0),
     avgWin: wins.length ? wins.reduce((a, x) => a + x.pnlPct, 0) / wins.length : 0, avgLoss: losses.length ? losses.reduce((a, x) => a + x.pnlPct, 0) / losses.length : 0,
-    avgMin: c.length ? c.reduce((a, x) => a + (x.exitAt - x.at), 0) / c.length / 60000 : 0, base: sol, regras: ruleStats(c) };
+    avgMin: c.length ? c.reduce((a, x) => a + (x.exitAt - x.at), 0) / c.length / 60000 : 0, base: sol, regras: ruleStats(c, cost) };
 }

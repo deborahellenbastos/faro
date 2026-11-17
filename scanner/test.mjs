@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce, dumpReason, lpFalseAlarm } from './run.mjs';
 import { buyScoreOk, entryCandidates as ecTest, profileCfg, readProfile } from './autobuy.mjs';
 import { shallowEntry, baseBreakout } from './signals.mjs';
-import { crazyEntry, simCrazy, marketTide, skepticOn } from './sim.mjs';
+import { crazyEntry, simCrazy, marketTide, skepticOn, volumeFade } from './sim.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
 import { entrySignal, exitSignal, trailStop, weakSignals, realizeCheck, breakoutSignal } from './signals.mjs';
@@ -523,6 +523,16 @@ console.log(JSON.stringify(state.lastRun.counts));
   assert.equal(skepticOn([{ why: 'stop', exitAt: now - 10 * 60000 }, { why: 'stop', exitAt: now - 20 * 60000 }], now), true);
   assert.equal(skepticOn([{ why: 'stop', exitAt: now - 60 * 60000 }, { why: 'stop', exitAt: now - 70 * 60000 }], now), false);
   assert.equal(skepticOn([{ why: 'alvo +50%', exitAt: now - 10 * 60000 }, { why: 'stop', exitAt: now - 20 * 60000 }], now), false);
+}
+
+// Volume sumiu (saída em teste): no lucro e volume das 2 últimas velas 60%+ abaixo do pico desde a entrada
+{
+  const t0 = Date.UTC(2026, 10, 16, 23);
+  const o = { entry: 100, at: t0 };
+  const cs = [[t0, 100, 110, 99, 108, 500], [t0 + 3e5, 108, 125, 107, 120, 900], [t0 + 6e5, 120, 124, 118, 121, 300], [t0 + 9e5, 121, 123, 119, 122, 250]];
+  assert.equal(volumeFade({ candles: cs }, o, 122), true);
+  assert.equal(volumeFade({ candles: cs }, o, 105), false); // ainda sem lucro de 10%
+  assert.equal(volumeFade({ candles: cs.map((x) => [...x.slice(0, 5), 800]) }, o, 122), false); // volume firme
 }
 if (process.argv.includes('--demo')) {
   state.config = cfg;

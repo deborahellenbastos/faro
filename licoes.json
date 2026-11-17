@@ -173,6 +173,15 @@
       "regra": "Teste: depois de 2 stops seguidos, pausa de 45 minutos sem novas entradas. A simulação mede o resultado das entradas que essa pausa teria evitado.",
       "status": "em teste",
       "tipo": "compra"
+    },
+    {
+      "data": "2026-11-16",
+      "titulo": "Sair quando o volume some",
+      "moedas": [],
+      "aconteceu": "Ideia tirada de um post no X: a operação foi fechada quando o volume caiu 60%. Hoje o Faro realiza em +50% e +80% olhando sinais de fraqueza, mas não usa a queda de volume como gatilho próprio.",
+      "regra": "Teste: já com lucro de 10% ou mais, se o volume das 2 últimas velas de 5 min cair 60% ou mais em relação à vela de maior volume desde a entrada, anota esse preço. A simulação compara o resultado de sair ali com o das saídas normais.",
+      "status": "em teste",
+      "tipo": "venda"
     }
   ]
 }
