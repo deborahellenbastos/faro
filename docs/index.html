@@ -1389,6 +1389,13 @@
   .mo-tools button:hover { background: rgba(255,255,255,.06); color: var(--text); }
   .mo-tools button.on { background: rgba(255,255,255,.1); color: var(--text); }
   .mo-chart { flex: 1; min-width: 0; }
+  /* Favoritas para o robô */
+  .fav-sync { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; padding: 10px 12px; border-radius: 14px; background: rgba(244,114,182,.07); box-shadow: inset 0 0 0 1px rgba(244,114,182,.18); }
+  .fav-sync[hidden] { display: none; }
+  .fav-sync > span { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; flex: 1; min-width: 0; }
+  .fav-sync svg { width: 16px; height: 16px; color: #f472b6; grid-row: 1 / span 2; }
+  .fav-sync b { font-size: 13px; } .fav-sync small { grid-column: 2; color: var(--faint); font-size: 12px; }
+  .fav-sync .btn { flex: none; }
 </style>
 </head>
 <body>
@@ -1455,6 +1462,7 @@
           <div class="seg-sm" id="radar-ord" hidden title="Ordem da lista"><button data-rord="recentes">Recentes</button><button data-rord="nota">Nota</button></div>
           <label class="an-date" id="an-date-wrap" hidden title="Mostrar as moedas vistas neste dia"><input type="date" id="an-date"></label>
         </div>
+        <div class="fav-sync" id="fav-sync" hidden></div>
         <div class="radar-chips" id="radar-chips" hidden></div>
         <div class="rows" id="list"></div>
         <div class="pager" id="pager" hidden>
@@ -1608,6 +1616,7 @@
   const ICON = {
     ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
     claude: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>',
+    heart: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.7 4 4.5 7.3 4.5c2 0 3.6 1.1 4.7 2.7 1.1-1.6 2.7-2.7 4.7-2.7 3.3 0 5.7 3.2 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"/></svg>',
     grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
     chev: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>',
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
@@ -2108,6 +2117,15 @@
       if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') {
         sysNotify(g.tipo === 'entrada' ? `Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}` : `${sym}: ${g.titulo}`, g.msg, 'sinal-' + t.mint, t.mint);
       }
+    }
+    // Favorita virou Perigo (e você não tem a moeda): avisa uma vez com o motivo; o robô já não compra
+    for (const t of Object.values(data.tokens)) {
+      if (!(FAVS.has(t.mint) || t.favorita) || isMine(t) || levelOf(t) !== 'danger') continue;
+      const a = (t.safety?.alerts || []).find((x) => x.level === 'danger') || crashAlert(t);
+      const k = `favperigo:${t.mint}:${a?.id || ''}:${Math.floor((a?.at || 0) / 3600000)}`; if (SIGSEEN.has(k)) continue; SIGSEEN.add(k);
+      const sym = t.symbol || t.mint.slice(0, 6);
+      addInbox(`Sua favorita ${sym} virou Perigo`, `${a?.msg || 'Alerta de segurança'}. O robô não compra enquanto estiver assim.`, t.mint, 'danger', 'fav-' + k);
+      sysNotify(`Sua favorita ${sym} virou Perigo`, a?.msg || '', 'fav-' + t.mint, t.mint);
     }
     // Perfil Agressivo ligado: avisa também os sinais do agressivo (38,2%, rompimento de base, rompimento, zona 1:1,5)
     if (perfilOf() === 'agressivo') for (const t of Object.values(data.tokens)) {
@@ -2824,7 +2842,7 @@ function trendEntry(c, ctx = {}) {
 
   // Sinal ao vivo: velas do robô (5 min) ou as do gráfico aberto, com o preço de agora
   // Só avisa entrada onde o robô pode comprar (mesma regra do robô): no Radar, na Análise com nota 75+, ou reentrada
-  const buyableStatus = (t, g) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || !!g?.reentrada;
+  const buyableStatus = (t, g) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || !!g?.reentrada || !!t.favorita;
   function liveSig(t) {
     const c = candlesOf(t);
     if (c.length < 6) return null;
@@ -2841,7 +2859,7 @@ function trendEntry(c, ctx = {}) {
       return x ? { tipo: 'saida', ...x } : null;
     }
     const reent = !!(t.reentry && !t.held && Date.now() - t.reentry.at < (data?.config?.compra?.reentradaHoras ?? 3) * 3600000);
-    if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reent) {
+    if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reent || t.favorita) {
       const z = entrySignal(c, ctx);
       // Subida saudável (mesma regra do robô): moeda segura subindo sem corrigir até a zona
       if (!z.boa && SG.tendencia?.ligado !== false) {
@@ -4163,6 +4181,33 @@ function trendEntry(c, ctx = {}) {
     const msg = new W.TransactionMessage({ payerKey: publicKey, recentBlockhash: blockhash, instructions: [ix] }).compileToV0Message();
     return (await ph.signAndSendTransaction(new W.VersionedTransaction(msg))).signature;
   }
+  // ---------- Favoritas para o robô: o coração fica no navegador; o botão manda a lista para o robô (memo assinado) ----------
+  const favList = () => [...FAVS].slice(-12);
+  function favState() {
+    const robot = (data?.favs && Date.now() - (data.favs.at || 0) < 24 * 3600000) ? (data.favs.mints || []).filter((m) => !(data.favsOut || []).includes(m)) : [];
+    const mine = favList(), same = mine.length === robot.length && mine.every((m) => robot.includes(m));
+    return { robot, mine, same, pend: store.get('faro-favs-pend', null) };
+  }
+  function renderFavSync() {
+    const el = $('fav-sync'); if (!el) return;
+    // Golpe confirmado: o robô tirou da lista; tira o coração também
+    for (const m of data?.favsOut || []) if (FAVS.has(m)) { FAVS.delete(m); store.set('faro-favs', [...FAVS]); toast(`${data.tokens?.[m]?.symbol || 'Favorita'} saiu das favoritas: golpe no contrato`); }
+    const F = favState();
+    if (isDemo() || !data?.wallet?.address || (!F.mine.length && !F.robot.length)) { el.hidden = true; return; }
+    const pend = F.pend && Date.now() - F.pend.at < 15 * 60000 && !F.same;
+    el.hidden = false;
+    el.innerHTML = F.same
+      ? `<span>${ICON.heart || '&#9829;'}<b>O robô está de olho em ${F.robot.length} ${F.robot.length === 1 ? 'favorita' : 'favoritas'}</b><small>vigia por 24h, aviso de entrada e compra automática se a segurança estiver 7 de 7</small></span>`
+      : `<span>${ICON.heart || '&#9829;'}<b>${pend ? 'Enviadas, esperando a próxima rodada do robô...' : `${F.mine.length} ${F.mine.length === 1 ? 'favorita' : 'favoritas'} - o robô ainda não sabe`}</b><small>${FAVS.size > 12 ? 'vão as 12 mais recentes - ' : ''}uma assinatura na Phantom para todas</small></span>${pend ? '' : '<button class="btn btn-sm" data-favsend>Enviar ao robô</button>'}`;
+  }
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-favsend]'); if (!b) return;
+    if (!getPhantom()) { toast('Abra o Faro dentro da Phantom para enviar'); if (/iPhone|iPad|Android/i.test(navigator.userAgent)) location.href = phantomLink(); return; }
+    b.disabled = true;
+    try { await sendMemo(`faro:favs=${favList().join(',')}`); store.set('faro-favs-pend', { at: Date.now() }); toast('Favoritas enviadas. O robô lê na próxima rodada.'); }
+    catch (err) { toast(/reject|denied|cancel/i.test(err.message || '') ? 'Você cancelou na Phantom' : err.message); }
+    renderFavSync();
+  });
   function updatePerfilRows() {
     const rows = document.querySelectorAll('[data-pfrow]'); if (!rows.length) return;
     const show = !!data && !isDemo();
@@ -4797,6 +4842,7 @@ function trendEntry(c, ctx = {}) {
     const realN = items.length;
     const ro = $('radar-ord'); ro.hidden = true;
     ro.querySelectorAll('[data-rord]').forEach((b) => b.classList.toggle('on', b.dataset.rord === radarOrd()));
+    renderFavSync();
     $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em análise', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
     // Encerradas: abre/fecha pelo título (começa aberta)
     if (ui.tab === 'minhas' && !q && closed.length && prefs.encOpen === false) {

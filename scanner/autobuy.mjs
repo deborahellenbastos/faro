@@ -15,6 +15,18 @@ export function profileCfg(cfg, name) {
   return out;
 }
 // Último memo de perfil assinado pela carteira (mesma regra do interruptor da compra)
+// Favoritas mandadas pelo painel (memo "faro:favs=mint1,mint2" assinado pela carteira): o robô fica de olho nelas
+const FAVS_RE = /^faro:favs=([1-9A-HJ-NP-Za-km-z,]*)$/;
+export async function readFavs(memos, verify) {
+  for (const m of memos || []) {
+    if (m.err || !m.memo) continue;
+    const r = FAVS_RE.exec(m.memo.trim()); if (!r) continue;
+    if (!(await verify(m.sig))) continue;
+    return { mints: r[1].split(',').filter((x) => x.length >= 32 && x.length <= 44).slice(0, 12), at: m.at, sig: m.sig };
+  }
+  return null;
+}
+export const isFav = (t, state) => !!(state?.favs?.mints || []).includes(t.mint);
 export async function readProfile(memos, verify) {
   for (const m of memos || []) {
     if (m.err || !m.memo) continue;
@@ -86,7 +98,7 @@ export function entryCandidates(tokens, cfg, now, opts = {}) {
 function filterCandidates(list, cfg, now, scoreOk, byApproval) {
   const c = cfg.compra || {};
   return list
-    .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || isReentry(t, cfg, now))
+    .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || isReentry(t, cfg, now) || (t.favorita && securityOk(t) && (t.checks || []).length && t.checks.every((k) => k.ok !== false)))
     // reentrada: só com a liquidez ainda de pé (golpe tira a liquidez) e sem alerta de perigo
     .filter((t) => !isReentry(t, cfg, now) || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     // reentrada: segurança limpa (alertas de contrato/holders/liquidez sumindo) e sem queda maior que 80% do pico (cara de rug)
@@ -95,7 +107,7 @@ function filterCandidates(list, cfg, now, scoreOk, byApproval) {
     .filter((t) => !byApproval || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => t.dexId !== 'pumpfun') // compra de verdade nunca na curva da pump.fun (modo curva é só simulação)
     // Tempo mínimo no Radar (16/11: os 3 rugs comprados entraram 2 a 9 min depois da aprovação). Reentrada já passou por isso
-    .filter((t) => isReentry(t, cfg, now) || now - (t.approvedAt || t.firstSeen || now) >= (c.minutosNoRadarMin ?? 0) * 60000)
+    .filter((t) => isReentry(t, cfg, now) || t.favorita || now - (t.approvedAt || t.firstSeen || now) >= (c.minutosNoRadarMin ?? 0) * 60000)
     .filter((t) => !(t.shape && ['morta', 'reta'].includes(t.shape.tipo)))
     .filter((t) => (t.sinal.rr || 0) >= (cfg.simulacao?.riscoRetornoMin ?? 2))
     .sort((a, b) => (b.sinal.rr || 0) - (a.sinal.rr || 0) || (b.score || 0) - (a.score || 0));

@@ -1,6 +1,6 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { simStep, simCrazy, marketTide } from './sim.mjs';
-import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore } from './autobuy.mjs';
+import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore, readFavs } from './autobuy.mjs';
 import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
@@ -127,7 +127,12 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   const REENTRY_MS = (cfg.compra?.reentradaHoras ?? 3) * 3600000;
   const reentryOpen = (t) => !!(t.reentry && !t.held && now - t.reentry.at < REENTRY_MS);
   const curveOn = (t) => !!(t.curva?.ok && now - t.curva.at < 3600000);
-  const monitored = (t) => t.held || simOpen.has(t.mint) || t.status === 'carteira' || reentryOpen(t) || curveOn(t) || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
+  // Favoritas (até 24h depois de enviadas ao robô): vigiadas mesmo fora do Radar; golpe confirmado tira da lista
+  const FAV_MS = 24 * 3600000;
+  const favSet = new Set(state.favs && now - (state.favs.at || 0) < FAV_MS ? (state.favs.mints || []).filter((m) => !(state.favsOut || []).includes(m)) : []);
+  for (const m of favSet) if (!tokens[m]) tokens[m] = { mint: m, firstSeen: now, status: 'aguardando', source: 'favorita' };
+  for (const t of Object.values(tokens)) { if (favSet.has(t.mint)) t.favorita = true; else delete t.favorita; }
+  const monitored = (t) => t.favorita || t.held || simOpen.has(t.mint) || t.status === 'carteira' || reentryOpen(t) || curveOn(t) || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
   const active = Object.values(tokens).filter((t) => t.status === 'nova' || t.status === 'aguardando' || monitored(t));
 
   // 3. Dados de mercado de todas de uma vez
@@ -365,8 +370,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     const want = Object.values(tokens)
       .filter((t) => t.pairAddress && (monitored(t) || newlyApproved.includes(t) || (t.status === 'aguardando' && (t.score || 0) >= 75)))
       .filter((t) => !t.held || heldLive(t) || !t.candlesAt || now - t.candlesAt >= 60 * 60000)
-      .filter((t) => heldLive(t) || simOpen.has(t.mint) || !t.candlesAt || now - t.candlesAt >= CANDLE_REFRESH_MIN * 60000)
-      .sort((a, b) => (heldLive(b) ? 2 : newlyApproved.includes(b) || b.status === 'aprovada' ? 1 : 0) - (heldLive(a) ? 2 : newlyApproved.includes(a) || a.status === 'aprovada' ? 1 : 0) || (a.candlesAt || 0) - (b.candlesAt || 0))
+      .filter((t) => heldLive(t) || t.favorita || simOpen.has(t.mint) || !t.candlesAt || now - t.candlesAt >= CANDLE_REFRESH_MIN * 60000)
+      .sort((a, b) => (heldLive(b) ? 3 : b.favorita ? 2 : newlyApproved.includes(b) || b.status === 'aprovada' ? 1 : 0) - (heldLive(a) ? 3 : a.favorita ? 2 : newlyApproved.includes(a) || a.status === 'aprovada' ? 1 : 0) || (a.candlesAt || 0) - (b.candlesAt || 0))
       .slice(0, MAX_CANDLE_CALLS);
     for (const t of want) {
       try {
@@ -426,7 +431,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       ctx.trail = t.trail;
       const x = exitSignal(t.candles, { entryPx: t.position.avgPriceUsd, entryAt }, ctx);
       if (x) sig = { tipo: 'saida', ...x };
-    } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t) || curveOn(t)) {
+    } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t) || curveOn(t) || t.favorita) {
       sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };
       // Subida saudável (aula de análise técnica): moeda segura que sobe sem corrigir até a zona. Vale para o Conservador
       // A trava é a QUALIDADE (segurança e holders), não a nota total: o movimento é o próprio gráfico que o sinal lê
@@ -566,6 +571,18 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (pf) state.perfil = pf;
     } catch (e) { log(`Não consegui ler o perfil de operação: ${e.message}`, true); }
   }
+  // Favoritas enviadas pelo painel
+  if (wallet && api.getMemos && api.txSigner) {
+    try {
+      const fv = await readFavs(await api.getMemos(wallet), async (sig) => (await api.txSigner(sig)) === wallet);
+      if (fv && (!state.favs || state.favs.sig !== fv.sig)) { log(`Favoritas recebidas do painel: ${fv.mints.length}`); state.favsOut = []; }
+      if (fv) state.favs = fv;
+    } catch (e) { log(`Não consegui ler as favoritas: ${e.message}`, true); }
+  }
+  // Favorita com golpe confirmado no contrato (mint/freeze/liquidez sumindo) sai da lista sozinha
+  for (const t of Object.values(tokens)) if (t.favorita && (t.safety?.alerts || []).some((a) => a.level === 'danger' && ['rugged', 'mint', 'freeze', 'liq-sumiu'].includes(a.id))) {
+    state.favsOut = [...new Set([...(state.favsOut || []), t.mint])]; delete t.favorita; log(`Favorita ${t.symbol} saiu da lista: golpe no contrato`);
+  }
   const perfil = state.perfil?.name === 'agressivo' ? 'agressivo' : 'conservador';
   const cfgAgr = profileCfg(cfg, 'agressivo');
   const agrList = entryCandidates(tokens, cfgAgr, now, { agr: true });
@@ -622,7 +639,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   const simNow = new Set([...(state.sim?.open || []), ...(state.simAgr?.open || []), ...(state.simLouco?.open || [])].map((o) => o.mint));
   for (const t of rejected.slice(MAX_REJECTED_KEPT)) if (!simNow.has(t.mint)) delete tokens[t.mint];
   for (const t of Object.values(tokens)) {
-    if (t.held || simNow.has(t.mint)) { delete t._rug; continue; }
+    if (t.held || t.favorita || simNow.has(t.mint)) { delete t._rug; continue; }
     if (t.status === 'carteira' && now - (t.soldAt || t.firstSeen || now) > 86400000) delete tokens[t.mint];
     else if (t.status === 'aprovada' && now - (t.approvedAt || now) > trackMs * 3) delete tokens[t.mint];
     else if (!['aprovada', 'carteira'].includes(t.status) && now - (t.firstSeen || now) > 3 * 86400000) delete tokens[t.mint];
