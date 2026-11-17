@@ -2192,15 +2192,42 @@
 
   // ---------- Peças visuais ----------
   const dexLink = (t) => t.pairUrl || `https://dexscreener.com/solana/${encodeURIComponent(t.mint)}`;
+  // Foto da moeda: a do robô; se faltar ou falhar, a do DexScreener; se falhar também, busca na Jupiter (a mesma que a Phantom usa)
+  const ALT_ICON = store.get('faro-alt-icon', {}); // mint -> { u: url ou '', at }
+  const ALT_Q = new Set(); let altT = null;
+  function queueAltIcon(mint) {
+    const c = ALT_ICON[mint]; if (c && (c.u || Date.now() - c.at < 6 * 3600000)) return; // sem foto: tenta de novo a cada 6h
+    ALT_Q.add(mint); clearTimeout(altT); altT = setTimeout(fetchAltIcons, 400);
+  }
+  async function fetchAltIcons() {
+    const mints = [...ALT_Q].slice(0, 50); mints.forEach((m) => ALT_Q.delete(m)); if (!mints.length) return;
+    const r = await fetch(`https://lite-api.jup.ag/tokens/v2/search?query=${mints.join(',')}`).then((x) => x.json()).catch(() => null);
+    let got = false;
+    for (const m of mints) { const x = Array.isArray(r) ? r.find((y) => y.id === m) : null; ALT_ICON[m] = { u: x?.icon || '', n: x?.name || '', at: Date.now() }; if (x?.icon || x?.name) got = true; }
+    store.set('faro-alt-icon', ALT_ICON);
+    if (got) { try { render(); } catch {} }
+    if (ALT_Q.size) altT = setTimeout(fetchAltIcons, 400);
+  }
+  // Nome como na Phantom (nome completo); se não tiver, a sigla
+  function dispName(t) {
+    const n = (t.name || ALT_ICON[t.mint]?.n || '').trim();
+    if (!n && !ALT_ICON[t.mint]) queueAltIcon(t.mint);
+    return n || t.symbol || t.mint.slice(0, 6);
+  }
   function avatar(t) {
     const letter = esc((t.symbol || '?').slice(0, 2).toUpperCase());
-    const src = t.icon || `https://dd.dexscreener.com/ds-data/tokens/solana/${encodeURIComponent(t.mint)}.png`;
-    // Foto que já falhou uma vez: vai direto para as letras (não tenta de novo a cada atualização, sem piscar)
-    if (AVA_FAIL.has(src)) return `<div class="avatar">${letter}</div>`;
-    return `<div class="avatar"><img src="${esc(src)}" alt="" loading="lazy" onerror="window.__avaFail&&window.__avaFail(this.getAttribute('src'));this.parentNode.textContent='${letter}'"></div>`;
+    const cands = [ALT_ICON[t.mint]?.u, t.icon, `https://dd.dexscreener.com/ds-data/tokens/solana/${encodeURIComponent(t.mint)}.png`].filter(Boolean);
+    const src = cands.find((u) => !AVA_FAIL.has(u));
+    if (!src) { queueAltIcon(t.mint); return `<div class="avatar">${letter}</div>`; }
+    return `<div class="avatar"><img src="${esc(src)}" alt="" loading="lazy" onerror="window.__avaFail&&window.__avaFail(this.getAttribute('src'),'${esc(t.mint)}');this.parentNode.textContent='${letter}'"></div>`;
   }
-  const AVA_FAIL = new Set(JSON.parse((() => { try { return sessionStorage.getItem('faro-ava-fail') || '[]'; } catch { return '[]'; } })()));
-  window.__avaFail = (src) => { AVA_FAIL.add(src); try { sessionStorage.setItem('faro-ava-fail', JSON.stringify([...AVA_FAIL].slice(-800))); } catch {} };
+  // Fotos que falharam: guardadas por 30 min (depois tenta de novo, para pegar fotos novas)
+  const AVA_FAIL = new Set((() => { try { const o = JSON.parse(sessionStorage.getItem('faro-ava-fail2') || '{}'); return Object.keys(o).filter((k) => Date.now() - o[k] < 30 * 60000); } catch { return []; } })());
+  window.__avaFail = (src, mint) => {
+    AVA_FAIL.add(src);
+    try { const o = JSON.parse(sessionStorage.getItem('faro-ava-fail2') || '{}'); o[src] = Date.now(); sessionStorage.setItem('faro-ava-fail2', JSON.stringify(o)); } catch {}
+    if (mint) { queueAltIcon(mint); clearTimeout(window.__avaRT); window.__avaRT = setTimeout(() => { try { render(); } catch {} }, 600); }
+  };
   const DEX_NAMES = { pumpswap: 'PumpSwap', pumpfun: 'Pump.fun', raydium: 'Raydium', meteora: 'Meteora', orca: 'Orca', launchlab: 'LaunchLab', fluxbeam: 'FluxBeam' };
   const launchpad = (mint) => (/pump$/i.test(mint) ? 'Pump.fun' : /bonk$/i.test(mint) ? 'LetsBonk' : /bags$/i.test(mint) ? 'Bags' : null);
   const SHAPE = { morta: ['Morta', 'danger'], reta: ['Subida reta', 'danger'], organica: ['Orgânica', 'ok'], lateral: ['Sem tendência', 'muted'], nova: ['Gráfico novo', 'muted'] };
@@ -2725,9 +2752,9 @@ function baseBreakout(c, ctx = {}) {
     const lp = t.launchpad || launchpad(t.mint);
     const route = ['Solana', dex, lp && lp !== dex ? `via ${lp}` : null].filter(Boolean).join(' - ');
     return `<div class="ident">
-      <div class="pair"><b>${esc(t.symbol || t.mint.slice(0, 6))}</b>
+      <div class="pair"><b>${esc(dispName(t))}</b>
         <button class="copy" data-copy="${esc(t.mint)}" title="Copiar endereço do contrato" aria-label="Copiar endereço">${ICON.copy}</button>
-        <span class="quote">/ ${esc(t.quoteSymbol || 'SOL')}</span>
+        <span class="quote">${dispName(t) !== t.symbol && t.symbol ? `${esc(t.symbol)} ` : ''}/ ${esc(t.quoteSymbol || 'SOL')}</span>
         ${t.boosts ? `<span class="boost" title="Boosts ativos no DexScreener">&#9889;${int(t.boosts)}</span>` : ''}
       </div>
       <div class="route">${esc(route)}</div>
@@ -3157,26 +3184,26 @@ function baseBreakout(c, ctx = {}) {
       const p = t.position;
       const l = levelOf(t);
       if (isSold(t) || isDust(t)) {
-        main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>Vendida ${t.history?.[0] ? ago(t.history[0].at) : ''}</small>`;
+        main = `<b>${esc(dispName(t))}</b><small>Vendida ${t.history?.[0] ? ago(t.history[0].at) : ''}</small>`;
         const r = closedResult(t);
         side = r ? `<b class="num" title="Quanto você colocou e quanto voltou para a carteira">${money(r.spent)}<i class="r-arrow">→</i>${money(r.received)}</b><small class="num sold-line ${cls(r.pnl)}">${signedMoney(r.pnl)}<i class="r-tri">${r.pct >= 0 ? '▲' : '▼'}</i>${Math.abs(r.pct).toFixed(1)}%</small>` : '';
       } else {
-      main = `<b>${esc(t.symbol)} ${l !== 'ok' && !isLost(t) ? `<i class="sdot ${l}" title="${l === 'danger' ? 'Perigo' : 'Atenção'}"></i>` : ''}${isLost(t) ? '' : sigTag(t)}</b><small class="num">${isLost(t) ? 'Perdida - ' : ''}${t.held ? `${tokFmt(t.heldAmount)} ${esc(t.symbol)}` : 'marcada por você'}</small>`;
+      main = `<b>${esc(dispName(t))} ${l !== 'ok' && !isLost(t) ? `<i class="sdot ${l}" title="${l === 'danger' ? 'Perigo' : 'Atenção'}"></i>` : ''}${isLost(t) ? '' : sigTag(t)}</b><small class="num">${isLost(t) ? 'Perdida - ' : ''}${t.held ? `${tokFmt(t.heldAmount)} ${esc(t.symbol)}` : 'marcada por você'}</small>`;
       const val = `<div class="r-val"><b class="num">${p?.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p?.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</div>`;
       side = !isLost(t) && t.score != null ? `<div style="display:flex;align-items:center;gap:10px">${val}${scoreBadge(t.score, true)}</div>` : val;
       }
     } else if (ui.tab === 'aprovada') {
       const ch = Number(t.changePct) || 0;
       const tw = twinInfo(t);
-      main = `<b>${isUnseen(t) ? '<i class="new-dot" title="Nova, você ainda não abriu"></i>' : ''}${esc(t.symbol)}${isUnseen(t) ? ' <i class="mini-tag new">nova</i>' : ''}${tw ? ` <i class="mini-tag ${tw.best ? 'ok' : 'warn'}">${tw.best ? 'mais forte' : 'cópia'}</i>` : ''}${sigTag(t)}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}${t.shape && SHAPE[t.shape.tipo] && t.shape.tipo !== 'nova' ? ` - ${SHAPE[t.shape.tipo][0].toLowerCase()}` : ''}</small>`;
+      main = `<b>${isUnseen(t) ? '<i class="new-dot" title="Nova, você ainda não abriu"></i>' : ''}${esc(dispName(t))}${isUnseen(t) ? ' <i class="mini-tag new">nova</i>' : ''}${tw ? ` <i class="mini-tag ${tw.best ? 'ok' : 'warn'}">${tw.best ? 'mais forte' : 'cópia'}</i>` : ''}${sigTag(t)}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}${t.shape && SHAPE[t.shape.tipo] && t.shape.tipo !== 'nova' ? ` - ${SHAPE[t.shape.tipo][0].toLowerCase()}` : ''}</small>`;
       side = `<div class="r-radar">${sparkSvg(t)}<small class="num ${cls(ch)}" style="font-size:13px">${pct(ch)}</small>${scoreBadge(t.score, true)}</div>`;
     } else if (ui.tab === 'aguardando') {
       const left = t.pending ?? (t.reasons || []).length;
-      main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>${left ? `${left === 1 ? 'Falta 1 critério' : `Faltam ${left} critérios`} - ${esc((t.reasons || [])[0] || '')}` : esc((t.reasons || [])[0] || 'Na fila de checagem')}</small>`;
+      main = `<b>${esc(dispName(t))}</b><small>${left ? `${left === 1 ? 'Falta 1 critério' : `Faltam ${left} critérios`} - ${esc((t.reasons || [])[0] || '')}` : esc((t.reasons || [])[0] || 'Na fila de checagem')}</small>`;
       side = `<div style="display:flex;align-items:center;gap:10px"><small class="num" style="color:var(--muted)">${t.mcapUsd ? `MC ${usd(t.mcapUsd)}` : ''}</small>${t.score != null ? scoreBadge(t.score, true, true) : ''}</div>`;
     } else {
       const why = t.status === 'aprovada' ? `Virou perigo: ${(t.safety?.alerts || []).find((x) => x.level === 'danger')?.msg || ''}` : (t.reasons || [])[0] || '';
-      main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>${esc(why)}</small>`;
+      main = `<b>${esc(dispName(t))}</b><small>${esc(why)}</small>`;
       side = t.mcapUsd ? `<b class="num" style="font-size:13px">${usd(t.mcapUsd)}</b><small class="num" style="color:var(--muted)">liq ${usd(t.liquidityUsd)}</small>` : '';
     }
     const md = ui.tab === 'aprovada' ? window.__faroMedal?.get(t.mint) : null;
