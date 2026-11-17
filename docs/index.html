@@ -1209,7 +1209,7 @@
   /* Folha das notificações: mesmo topo da folha da moeda (alça dentro, 24px) e menos espaço embaixo */
   @media (max-width: 1099px) {
     #inbox .drawer-panel { padding: 0 16px max(10px, calc(env(safe-area-inset-bottom) - 14px)) !important; overflow: hidden; }
-    #inbox .inbox-grip { position: relative !important; height: 24px !important; margin: 0 -16px !important; display: grid !important; place-items: center; }
+    #inbox .inbox-grip { position: relative !important; top: 0 !important; height: 24px !important; margin: 0 -16px !important; display: grid !important; place-items: center; }
     #inbox .drawer-head { padding-top: 0 !important; }
     #inbox .drawer-foot { padding-top: 10px !important; margin-top: 8px !important; }
     body.in-phantom #inbox .drawer-panel { padding-bottom: 92px !important; }
@@ -1242,6 +1242,12 @@
   @keyframes xDraw { to { stroke-dashoffset: 0; } }
   /* Sem o bloco de saldo (Análise e Reprovadas), não sobra espaço extra entre os selos e a busca */
   .m-hero:empty { display: none !important; }
+  /* Notificações no celular: uma linha de descrição, todos os cards com a mesma altura e ícone centralizado */
+  @media (max-width: 1099px) {
+    .nt { align-items: center !important; }
+    .nt .nt-ico { align-self: center !important; }
+    .nt-txt small { -webkit-line-clamp: 1 !important; display: block !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  }
 </style>
 </head>
 <body>
