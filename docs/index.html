@@ -836,7 +836,8 @@
   h1, .brand b, .sec-title, .list-head b, .drawer-head b, .pair > b, .cmax-sym, .lock-card h2 { font-family: 'Sora', 'Plus Jakarta Sans', system-ui, sans-serif; letter-spacing: -.02em; }
   ::selection { background: rgba(16,210,127,.3); }
   *::-webkit-scrollbar { width: 10px; height: 10px; } *::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; } *::-webkit-scrollbar-track { background: transparent; }
-  button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid rgba(16,210,127,.55); outline-offset: 2px; }
+  button:focus-visible, a:focus-visible { outline: 2px solid rgba(16,210,127,.55); outline-offset: 2px; }
+  .search input, .search input:focus, .search input:focus-visible { outline: none !important; box-shadow: none !important; -webkit-appearance: none; appearance: none; }
 
   /* Superfícies: sem cara de "caixa com borda"; profundidade por gradiente e luz no topo */
   .panel, .stat, .tile, .side-foot, .wallet-strip { border: 0; background: linear-gradient(180deg, #121519, #0d0f12); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(255,255,255,.035), 0 14px 34px rgba(0,0,0,.28); }
