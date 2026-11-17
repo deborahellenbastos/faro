@@ -555,3 +555,12 @@ if (process.argv.includes('--demo')) {
   assert.equal(linkDelayedProceeds(ops, ins), 0); // não liga duas vezes
 }
 console.log('Teste do dinheiro de venda que chega depois: ok');
+
+// 17/11: reentrada não barra por aviso de momento (robô vendeu, queda do topo), só por alerta de segurança
+{
+  const { securityOk } = await import('./autobuy.mjs');
+  assert.equal(securityOk({ safety: { level: 'warn', alerts: [{ id: 'vigia', level: 'warn' }, { id: 'preco-topo', level: 'warn' }] } }), true);
+  assert.equal(securityOk({ safety: { level: 'warn', alerts: [{ id: 'dev-vendendo', level: 'warn' }] } }), false);
+  assert.equal(securityOk({ safety: { level: 'danger', alerts: [{ id: 'liq-caiu', level: 'danger' }] } }), false);
+}
+console.log('Teste da segurança na reentrada: ok');

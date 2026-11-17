@@ -34,6 +34,12 @@ export function peakDropPct(t, now = Date.now()) {
   const top = Math.max(0, ...pts), px = t.priceUsd || 0;
   return top > 0 && px > 0 ? (1 - px / top) * 100 : 0;
 }
+// Segurança da moeda, ignorando avisos de momento: queda do topo, vendas dominando, liquidez oscilando e as ações do
+// próprio robô ("Robô vendeu..."). Esses deixam o selo em "Atenção", mas não dizem nada sobre golpe (17/11)
+const SECURITY_IDS = new Set(['rugged', 'mint', 'freeze', 'lp', 'risco-novo', 'dev-vendendo', 'concentracao', 'insiders', 'liq-sumiu', 'score']);
+export function securityOk(t) {
+  return !(t.safety?.alerts || []).some((a) => a.level === 'danger' || (SECURITY_IDS.has(a.id) && a.level === 'warn'));
+}
 export const isReentry = (t, cfg, now) => !!(t.reentry && !t.held && now - t.reentry.at < (cfg.compra?.reentradaHoras ?? 3) * 3600000);
 
 // Moedas com sinal de boa entrada que acabou de aparecer, dentro das regras
@@ -75,8 +81,8 @@ function filterCandidates(list, cfg, now, scoreOk, byApproval) {
     .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || isReentry(t, cfg, now))
     // reentrada: só com a liquidez ainda de pé (golpe tira a liquidez) e sem alerta de perigo
     .filter((t) => !isReentry(t, cfg, now) || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
-    // reentrada: selo "Segura" (sem nenhum alerta) e sem queda maior que 80% do pico das últimas horas (cara de rug)
-    .filter((t) => !isReentry(t, cfg, now) || ((t.safety?.level || 'ok') === 'ok' && peakDropPct(t, now) < 80))
+    // reentrada: segurança limpa (alertas de contrato/holders/liquidez sumindo) e sem queda maior que 80% do pico (cara de rug)
+    .filter((t) => !isReentry(t, cfg, now) || (securityOk(t) && peakDropPct(t, now) < 80))
     .filter((t) => !t.held && t.safety?.level !== 'danger' && scoreOk(t))
     .filter((t) => !byApproval || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => t.dexId !== 'pumpfun') // compra de verdade nunca na curva da pump.fun (modo curva é só simulação)
