@@ -1404,6 +1404,12 @@
   .ci-bar { display: inline-block; width: 70px; height: 6px; border-radius: 3px; background: rgba(255,91,91,.55); overflow: hidden; }
   .ci-bar > i { display: block; height: 100%; background: var(--green); }
   @media (max-width: 700px) { .ci-tx small, .ci-bar { display: none; } }
+  /* Favoritas: botão de coração ao lado do sino */
+  .favbtn[hidden] { display: none !important; }
+  .favbtn { position: relative; }
+  .favbtn.on { color: #f472b6; } .favbtn.on svg { fill: currentColor; }
+  .favbtn .fav-dot { position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: #f472b6; box-shadow: 0 0 0 2px var(--bg); }
+  .favbtn .fav-dot[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -1452,6 +1458,7 @@
         </div><p id="hint"></p></div>
       <div class="top-tools">
         <button class="icon-btn m-robot" data-open-robot aria-label="Robô e configurações" title="Robô e configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg></button>
+        <button class="icon-btn favbtn" id="favbtn" data-favbtn aria-label="Favoritas do robô" title="Favoritas do robô" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.7 4 4.5 7.3 4.5c2 0 3.6 1.1 4.7 2.7 1.1-1.6 2.7-2.7 4.7-2.7 3.3 0 5.7 3.2 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"/></svg><i class="fav-dot" hidden></i></button>
         <button class="icon-btn bell" id="bell" aria-label="Central de notificações" title="Central de notificações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><i class="badge" id="bell-n" hidden></i></button>
         <button class="icon-btn" id="refresh" hidden aria-label="Atualizar" title="Atualizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
         <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="search" type="search" name="faro-busca" placeholder="Buscar moeda ou endereço" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore></label>
@@ -4209,7 +4216,17 @@ function trendEntry(c, ctx = {}) {
     // Golpe confirmado: o robô tirou da lista; tira o coração também
     for (const m of data?.favsOut || []) if (FAVS.has(m)) { FAVS.delete(m); store.set('faro-favs', [...FAVS]); toast(`${data.tokens?.[m]?.symbol || 'Favorita'} saiu das favoritas: golpe no contrato`); }
     const F = favState();
-    if (isDemo() || !data?.wallet?.address || (!F.mine.length && !F.robot.length)) { el.hidden = true; return; }
+    el.hidden = true; // a faixa saiu: o envio fica no botão de coração ao lado do sino
+    const fb = $('favbtn');
+    if (fb) {
+      const show = !isDemo() && !!data?.wallet?.address && (F.mine.length || F.robot.length);
+      fb.hidden = !show;
+      const pend0 = F.pend && Date.now() - F.pend.at < 15 * 60000 && !F.same;
+      fb.classList.toggle('on', show && F.same && F.robot.length > 0);
+      fb.querySelector('.fav-dot').hidden = !(show && !F.same && !pend0);
+      fb.title = !show ? '' : F.same ? `O robô está de olho em ${F.robot.length} ${F.robot.length === 1 ? 'favorita' : 'favoritas'}` : pend0 ? 'Favoritas enviadas, esperando a próxima rodada do robô' : `Enviar ${F.mine.length} ${F.mine.length === 1 ? 'favorita' : 'favoritas'} ao robô`;
+    }
+    return;
     const pend = F.pend && Date.now() - F.pend.at < 15 * 60000 && !F.same;
     el.hidden = false;
     el.innerHTML = F.same
@@ -4217,7 +4234,10 @@ function trendEntry(c, ctx = {}) {
       : `<span>${ICON.heart || '&#9829;'}<b>${pend ? 'Enviadas, esperando a próxima rodada do robô...' : `${F.mine.length} ${F.mine.length === 1 ? 'favorita' : 'favoritas'} - o robô ainda não sabe`}</b><small>${FAVS.size > 12 ? 'vão as 12 mais recentes - ' : ''}uma assinatura na Phantom para todas</small></span>${pend ? '' : '<button class="btn btn-sm" data-favsend>Enviar ao robô</button>'}`;
   }
   document.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-favsend]'); if (!b) return;
+    const hb = e.target.closest('[data-favbtn]');
+    if (hb) { const F = favState(); const pend = F.pend && Date.now() - F.pend.at < 15 * 60000 && !F.same;
+      if (F.same) { toast(hb.title); return; } if (pend) { toast('Já enviadas: o robô lê na próxima rodada'); return; } }
+    const b = e.target.closest('[data-favsend], [data-favbtn]'); if (!b) return;
     if (!getPhantom()) { toast('Abra o Faro dentro da Phantom para enviar'); if (/iPhone|iPad|Android/i.test(navigator.userAgent)) location.href = phantomLink(); return; }
     b.disabled = true;
     try { await sendMemo(`faro:favs=${favList().join(',')}`); store.set('faro-favs-pend', { at: Date.now() }); toast('Favoritas enviadas. O robô lê na próxima rodada.'); }
