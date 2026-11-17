@@ -182,6 +182,17 @@
       "regra": "Teste: já com lucro de 10% ou mais, se o volume das 2 últimas velas de 5 min cair 60% ou mais em relação à vela de maior volume desde a entrada, anota esse preço. A simulação compara o resultado de sair ali com o das saídas normais.",
       "status": "em teste",
       "tipo": "venda"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Entrada boa da Kerah: suporte testado, fundos subindo e compras dominando",
+      "moedas": [
+        "JALU (BSsmLA6UN8fzJ8qUkV4KwC5LxR7ab3TaUtcwvAyJpump)"
+      ],
+      "aconteceu": "A Kerah entrou na JALU (Jason & Lucia) às ~20:00, numa leitura manual: selo Segura e nota 76; desde as 19:00 o preço voltou várias vezes à mesma região de suporte (perto da entrada) sem perder, com um pavio abaixo às 19:48 que voltou na hora; depois fundos mais altos às 19:50, 20:00 e 20:05; compras dominando a última hora (10.248 x 6.880, ~60%). Às 20:13 estava +7% e subindo. Antes, no mesmo dia, o robô tinha vendido as entradas dela na JALU por erro (custo antigo depois de recompra), corrigido às 19:40.",
+      "regra": "Teste: conferir na análise diária se o sinal 'subida saudável' (ou o rompimento de base) do robô teria dado entrada nesse mesmo trecho. Padrão a ensinar ao robô se ele não pegou: segurança 7/7 + pelo menos 3 toques no mesmo suporte em 1h sem fechar abaixo (pavio pode) + fundo mais alto depois do último toque + compras >= 60% na última hora.",
+      "status": "em teste",
+      "tipo": "entrada"
     }
   ]
 }
