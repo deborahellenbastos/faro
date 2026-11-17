@@ -74,7 +74,7 @@ export function simStep({ state, tokens, candidates, rompidas = [], cfg, now, lo
     if (sim.open.length >= (S.maxAbertas ?? 2)) break;
     if (todayOpened + sim.open.filter((x) => x.at === now).length >= (cfg.compra?.maxComprasPorDia ?? 5)) break;
     if (todayPnl <= lossCap) { log('SIMULAÇÃO: perda máxima do dia atingida, sem novas entradas'); break; }
-    if ((t.score || 0) < (cfg.compra?.scoreMinimo ?? 70)) continue;
+    if (!t._notaAprov && (t.score || 0) < (cfg.compra?.scoreMinimo ?? 70)) continue;
     if (t.shape && ['morta', 'reta'].includes(t.shape.tipo)) continue;
     if (sim.open.some((x) => x.mint === t.mint)) continue;
     // igual à compra real: a mesma moeda de novo só se a última operação saiu no stop (reentrada)
@@ -83,8 +83,8 @@ export function simStep({ state, tokens, candidates, rompidas = [], cfg, now, lo
     const g = t.sinal, E = t.priceUsd;
     if (!(E > 0) || !(g.stop > 0 && g.stop < E)) continue;
     const tp = E * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);
-    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}), ...(t._romp ? { romp: true } : {}) });
-    log(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de ${t._romp ? 'rompimento' : 'boa entrada'} a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
+    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}), ...(t._romp ? { romp: true } : {}), ...(t._notaAprov ? { notaAprov: true, approvalScore: t.approvalScore } : {}) });
+    log(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de ${t._romp ? 'rompimento' : 'boa entrada'}${t._notaAprov ? ` (pela nota da aprovação ${t.approvalScore}, agora ${t.score})` : ''} a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
   }
 
   // 3. Resumo
@@ -101,6 +101,8 @@ export function simStep({ state, tokens, candidates, rompidas = [], cfg, now, lo
   };
   const cv = c.filter((x) => x.curva);
   const rp = c.filter((x) => x.romp);
+  const na = c.filter((x) => x.notaAprov);
   sim.stats.romp = { ops: rp.length, winRate: rp.length ? (rp.filter((x) => x.pnlPct > 0).length / rp.length) * 100 : 0, pnlSol: rp.reduce((a, x) => a + x.pnlSol, 0) };
+  sim.stats.notaAprov = { ops: na.length, winRate: na.length ? (na.filter((x) => x.pnlPct > 0).length / na.length) * 100 : 0, pnlSol: na.reduce((a, x) => a + x.pnlSol, 0) };
   sim.stats.curva = { ops: cv.length, winRate: cv.length ? (cv.filter((x) => x.pnlPct > 0).length / cv.length) * 100 : 0, pnlSol: cv.reduce((a, x) => a + x.pnlSol, 0) };
 }

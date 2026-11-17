@@ -310,3 +310,9 @@ Limitação: o robô roda a cada 5 min. Altas muito rápidas, como a da goldie (
 - Notificações saem pelo service worker (o iPhone só aceita assim, com o Faro adicionado à Tela de Início) e o ícone mostra o número de avisos não lidos.
 - Tocar na notificação abre a moeda. No celular, Sons, Notificações, Gráfico da Dex e Moedas mortas ficam na gaveta do Robô.
 - Limite: com o app totalmente fechado, o iPhone não deixa a página rodar. Aviso com o app fechado precisa de push enviado pelo robô (o sw.js já está pronto para receber).
+
+### Nota da aprovação na hora do sinal (só simulação, 16/11)
+- O sinal de boa entrada aparece na correção, e a correção derruba a parte de "momento" da nota (força de compra, volume e alta da última hora).
+- Teste na simulação: quando a nota de agora está abaixo de 70, vale a nota da aprovação (70+), desde que a parte sólida (holders, liquidez, segurança, distribuição) tenha 30 de 55 pontos ou mais, sem insiders/concentração novos e com a liquidez em 70%+ da referência.
+- Só para moedas aprovadas a partir de agora (a nota da aprovação passou a ser guardada). Resultado separado na aba Simulação ("nota aprov."). Desliga em `simulacao.notaAprovacao.ligado`.
+- A compra de verdade continua exigindo nota 70+ agora.

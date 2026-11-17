@@ -7,7 +7,20 @@ export const SWITCH_RE = /faro:compra=(on|off)/;
 export const isReentry = (t, cfg, now) => !!(t.reentry && !t.held && now - t.reentry.at < (cfg.compra?.reentradaHoras ?? 3) * 3600000);
 
 // Moedas com sinal de boa entrada que acabou de aparecer, dentro das regras
-export function entryCandidates(tokens, cfg, now) {
+// Parte "sólida" da nota (holders, liquidez, segurança, distribuição: 55 pontos), que não cai numa correção saudável
+export function solidPts(t) {
+  return (t.scoreParts || []).filter((p) => /Holders|liquidez|Segurança|Distribuição/.test(p.label)).reduce((a, p) => a + (p.pts || 0), 0);
+}
+// Nota que vale para a compra. Normal: a de agora. byApproval: a da aprovação (a correção que gera o sinal derruba a parte de
+// "momento" da nota de agora), desde que a parte sólida siga de pé e sem insiders/concentração novos.
+export function buyScoreOk(t, cfg, byApproval) {
+  const min = cfg.compra?.scoreMinimo ?? 70;
+  if (!byApproval) return (t.score || 0) >= min;
+  if ((t.score || 0) >= min) return false; // já entra pela regra normal
+  const holderAlert = (t.safety?.alerts || []).some((a) => ['insiders', 'concentracao'].includes(a.id));
+  return (t.approvalScore || 0) >= min && solidPts(t) >= (cfg.simulacao?.notaAprovacao?.solidaMin ?? 30) && !holderAlert;
+}
+export function entryCandidates(tokens, cfg, now, opts = {}) {
   const c = cfg.compra || {};
   const fresh = (c.sinalValidoMin ?? 10) * 60000;
   return Object.values(tokens)
@@ -15,7 +28,8 @@ export function entryCandidates(tokens, cfg, now) {
     .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || isReentry(t, cfg, now))
     // reentrada: só com a liquidez ainda de pé (golpe tira a liquidez) e sem alerta de perigo
     .filter((t) => !isReentry(t, cfg, now) || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
-    .filter((t) => !t.held && t.safety?.level !== 'danger' && (t.score || 0) >= (c.scoreMinimo ?? 70))
+    .filter((t) => !t.held && t.safety?.level !== 'danger' && buyScoreOk(t, cfg, opts.byApproval))
+    .filter((t) => !opts.byApproval || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => t.dexId !== 'pumpfun') // compra de verdade nunca na curva da pump.fun (modo curva é só simulação)
     .filter((t) => !(t.shape && ['morta', 'reta'].includes(t.shape.tipo)))
     .filter((t) => (t.sinal.rr || 0) >= (cfg.simulacao?.riscoRetornoMin ?? 2))

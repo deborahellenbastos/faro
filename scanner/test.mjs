@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce, dumpReason, lpFalseAlarm } from './run.mjs';
+import { buyScoreOk, entryCandidates as ecTest } from './autobuy.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
 import { entrySignal, exitSignal, trailStop, weakSignals, realizeCheck, breakoutSignal } from './signals.mjs';
@@ -414,6 +415,23 @@ console.log(JSON.stringify(state.lastRun.counts));
   assert.equal(lpFalseAlarm({ entryLiquidityUsd: 16058, liquidityUsd: 15015 }, a), true);
   assert.equal(lpFalseAlarm({ entryLiquidityUsd: 16058, liquidityUsd: 3000 }, a), false);
   assert.equal(lpFalseAlarm({ entryLiquidityUsd: 16058, liquidityUsd: 15015 }, { kind: 'golpe', why: 'mint authority ativa' }), false);
+}
+
+// Nota da aprovação (só simulação): a correção que gera o sinal derruba a nota de agora (GOAT 16/11: 54)
+{
+  const cfgT = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
+  const parts = (h, l, s2, d) => [{ label: 'Holders', pts: h }, { label: 'Tamanho da liquidez', pts: l }, { label: 'Segurança (RugCheck)', pts: s2 }, { label: 'Distribuição', pts: d }, { label: 'Força de compra', pts: 0 }];
+  const base = { score: 54, approvalScore: 78, scoreParts: parts(10, 6, 12, 8), safety: { level: 'ok', alerts: [] } };
+  assert.equal(buyScoreOk(base, cfgT, false), false);
+  assert.equal(buyScoreOk(base, cfgT, true), true);
+  assert.equal(buyScoreOk({ ...base, approvalScore: 65 }, cfgT, true), false);
+  assert.equal(buyScoreOk({ ...base, scoreParts: parts(5, 5, 5, 5) }, cfgT, true), false);
+  assert.equal(buyScoreOk({ ...base, safety: { level: 'warn', alerts: [{ id: 'insiders' }] } }, cfgT, true), false);
+  assert.equal(buyScoreOk({ ...base, score: 75 }, cfgT, true), false); // já entra pela regra normal
+  const now = Date.now();
+  const tok = { mint: 'X', symbol: 'X', status: 'aprovada', dexId: 'pumpswap', liquidityUsd: 15000, entryLiquidityUsd: 16000, sinal: { tipo: 'entrada', boa: true, at: now, rr: 3 }, ...base };
+  assert.equal(ecTest({ X: tok }, cfgT, now).length, 0);
+  assert.equal(ecTest({ X: tok }, cfgT, now, { byApproval: true }).length, 1);
 }
 if (process.argv.includes('--demo')) {
   state.config = cfg;

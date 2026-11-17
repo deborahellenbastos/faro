@@ -311,6 +311,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     if (res.status === 'reprovada') t.rejectedAt = now;
     if (res.status === 'aprovada') {
       t.approvedAt = now;
+      t.approvalScore = res.score;
       t.entryPriceUsd = m.priceUsd;
       t.entryMcapUsd = m.mcapUsd;
       t.entryLiquidityUsd = m.liquidityUsd;
@@ -487,11 +488,13 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     } catch (e) { log(`Não consegui ler o interruptor da compra automática: ${e.message}`, true); }
   }
   const buyList = entryCandidates(tokens, cfg, now);
+  // Teste (só simulação): nota da aprovação em vez da de agora, para sinais que a correção derrubou abaixo de 70
+  const notaList = cfg.simulacao?.notaAprovacao?.ligado === false ? [] : entryCandidates(tokens, cfg, now, { byApproval: true }).filter((t) => !buyList.includes(t)).map((t) => ({ ...t, _notaAprov: true }));
   // Simulação: os mesmos sinais da compra real + (modo curva) moedas na curva da pump.fun com boa entrada
   const curveList = Object.values(tokens).filter((t) => curveOn(t) && !t.held && t.sinal?.tipo === 'entrada' && t.sinal.boa && now - (t.sinal.at || 0) <= 10 * 60000).map((t) => Object.assign(t, { _simCurva: true }));
   // rompimentos frescos (até 10 min) em moedas do radar, com as mesmas travas de segurança da lista de compra
   const rompList = Object.values(tokens).filter((t) => t.romp && now - t.romp.at <= 10 * 60000 && !t.held && t.status === 'aprovada' && t.safety?.level !== 'danger' && t.dexId !== 'pumpfun' && !buyList.includes(t));
-  try { simStep({ state, tokens, candidates: [...buyList, ...curveList.filter((t) => !buyList.includes(t))], rompidas: rompList, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
+  try { simStep({ state, tokens, candidates: [...buyList, ...curveList.filter((t) => !buyList.includes(t)), ...notaList], rompidas: rompList, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
   if (trader?.canBuy && state.autoCompra?.on && buyList.length) {
     try {
       const limits = buyLimits(state, tokens, cfg, now);

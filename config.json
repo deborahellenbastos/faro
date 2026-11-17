@@ -83,6 +83,7 @@
   "curva": { "ligado": true, "somenteSimulacao": true, "marketCapMinUsd": 45000, "idadeMinMin": 15, "comprasHoraMin": 100, "compraPctMin": 55, "maxRugcheckPorRodada": 3 },
   "simulacao": {
     "ligado": true,
+    "notaAprovacao": { "ligado": true, "solidaMin": 30 },
     "maxAbertas": 2,
     "perdaMaxDiaVezesBase": 3,
     "riscoRetornoMin": 2,
