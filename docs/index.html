@@ -708,7 +708,10 @@
   .m-hero .mh-chips small { display: block; font-size: 11px; font-weight: 600; color: var(--faint); }
   .m-hero .mh-chips b { display: block; font-size: 15px; font-weight: 800; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .m-hero .mh-row { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); font-size: 13px; color: var(--muted); }
-  .m-hero .mh-row b { color: var(--text); }
+  .m-hero .mh-row { align-items: center; }
+  .m-hero .mh-row small { display: block; font-size: 11px; font-weight: 600; color: var(--faint); }
+  .m-hero .mh-row b { display: block; margin-top: 2px; font-size: 15px; font-weight: 800; color: var(--text); }
+  .m-hero .mh-row .r { text-align: right; }
   .m-robot, .m-search-slot { display: none; }
   .m-hero .mh-label small { margin-left: 6px; color: var(--faint); font-weight: 700; font-size: 12px; }
   .m-hero .mh-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -3481,7 +3484,7 @@
         stat('Melhor do radar', best ? `<a class="stat-link" data-goto="${esc(best.mint)}">${esc(best.symbol)}</a>` : '-', best ? `máxima ${pct(best.maxChangePct)} - agora ${pct(best.changePct)}` : 'nenhuma no radar agora'),
       ].join('');
       { const W = walletTotals();
-        $('m-hero').innerHTML = W.sol == null ? '' : `<div class="mh-row"><span>Disponível <b class="num">${solFmt(W.sol, 4)}</b>${W.solUsd != null ? ` (${money(W.solUsd)})` : ''}</span><span>Total <b class="num">${W.total != null ? money(W.total) : '-'}</b></span></div>`; }
+        $('m-hero').innerHTML = W.sol == null ? '' : `<div class="mh-row"><div><small>Disponível</small><b class="num">${solFmt(W.sol, 4)}</b></div><div class="r"><small>Total</small><b class="num">${W.total != null ? money(W.total) : '-'}</b></div></div>`; }
     }
 
     // Carteira resumida nas outras abas: quanto tenho para gastar
