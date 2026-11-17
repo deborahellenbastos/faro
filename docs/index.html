@@ -1217,6 +1217,19 @@
     #inbox .drawer-foot { padding-top: 10px !important; margin-top: 8px !important; }
     body.in-phantom #inbox .drawer-panel { padding-bottom: 92px !important; }
   }
+  /* Notificações: card inteiro com borda em degradê sutil; alça visível na folha */
+  #inbox-list { display: grid; gap: 8px; align-content: start; }
+  .nt { position: relative; border: 0 !important; border-radius: 16px !important; background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012)) !important; }
+  .nt::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.03) 45%, rgba(255,255,255,.07));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+  .nt.unread { background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)) !important; }
+  .nt.unread::before { background: linear-gradient(160deg, rgba(16,210,127,.35), rgba(255,255,255,.04) 50%, rgba(255,255,255,.08)); }
+  .nt:hover { background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025)) !important; }
+  @media (max-width: 1099px) {
+    #inbox .inbox-grip::before { content: ""; display: block; width: 44px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.22); }
+    .nt { padding: 12px !important; }
+  }
 </style>
 </head>
 <body>
@@ -1540,8 +1553,10 @@
       INBOX.fitting = true;
       requestAnimationFrame(() => {
         const L = $('inbox-list'); let changed = false;
-        if (L && L.scrollHeight > L.clientHeight + 2 && per > 2) { INBOX.per = per - 1; changed = true; }
-        else if (L && !INBOX.per) { const h = L.firstElementChild?.offsetHeight || 96; const fitN = Math.max(2, Math.floor(L.clientHeight / (h + 8))); if (fitN !== per) { INBOX.per = fitN; changed = true; } else INBOX.per = per; }
+        // cabe o máximo possível: aumenta de 1 em 1 até estourar, aí volta um
+        if (L && L.scrollHeight > L.clientHeight + 2 && per > 2) { INBOX.per = per - 1; INBOX.fitLock = true; changed = true; }
+        else if (L && !INBOX.fitLock && INBOX.list.length > per) { INBOX.per = per + 1; changed = true; }
+        else INBOX.per = per;
         INBOX.fitting = false;
         if (changed) renderInbox();
       });
@@ -1672,8 +1687,8 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('ntm') && !$('ntm').hidden) { $('ntm').hidden = true; e.stopPropagation(); } }, true);
   const BELL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
   const openInbox = () => { $('inbox').classList.add('show'); document.body.style.overflow = 'hidden'; INBOX.page = 1; renderInbox(); setTimeout(() => { INBOX.list.forEach((x) => (x.read = true)); store.set('faro-inbox', INBOX.list); renderInbox(); }, 1500); };
-  const closeInbox = () => { $('inbox').classList.remove('show'); document.body.style.overflow = ''; INBOX.per = 0; };
-  window.addEventListener('resize', () => { INBOX.per = 0; });
+  const closeInbox = () => { $('inbox').classList.remove('show'); document.body.style.overflow = ''; INBOX.per = 0; INBOX.fitLock = false; };
+  window.addEventListener('resize', () => { INBOX.per = 0; INBOX.fitLock = false; });
   $('inbox').addEventListener('click', (e) => { if (e.target.id === 'inbox') closeInbox(); });
   { let y0 = null, dy = 0; const P = () => $('inbox')?.querySelector('.drawer-panel');
     document.addEventListener('touchstart', (e) => { if (!$('inbox').classList.contains('show') || !e.target.closest('#inbox .inbox-grip, #inbox .drawer-head')) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
