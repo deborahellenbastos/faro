@@ -2801,7 +2801,17 @@ function baseBreakout(c, ctx = {}) {
       <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="${r}" class="track"/><circle cx="26" cy="26" r="${r}" class="val" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg>
       <b class="num">${n}</b><span>${tier[1]}</span></div>`;
   }
-  const levelOf = (t) => t.safety?.level || 'ok';
+  // Preço despencou (rug ou queda forte): conta como perigo mesmo que os critérios de segurança ainda estejam ok
+  function crashAlert(t) {
+    if (!t) return null;
+    const pnl = t.held && t.position?.known ? t.position.openPnlPct : null;
+    const h1 = Number(t.periods?.h1?.chg), m5 = Number(t.periods?.m5?.chg);
+    let msg = null;
+    if (pnl != null && pnl <= -60) msg = `Preço despencou ${Math.abs(pnl).toFixed(0)}% desde a sua compra`;
+    else if (m5 <= -60 || h1 <= -70) msg = `Preço desabou ${Math.abs(Math.min(m5 || 0, h1 || 0)).toFixed(0)}% em ${m5 <= -60 ? '5 minutos' : '1 hora'} (cara de rug: liquidez puxada ou dev vendendo)`;
+    return msg ? { id: 'crash', level: 'danger', msg, at: Date.now() } : null;
+  }
+  const levelOf = (t) => (crashAlert(t) ? 'danger' : t.safety?.level || 'ok');
   const statusPill = (t) => { const l = levelOf(t); return `<span class="pill ${l === 'ok' ? '' : l}">${{ ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[l]}</span>`; };
 
   function lpLocked(t) {
@@ -3013,7 +3023,8 @@ function baseBreakout(c, ctx = {}) {
   }
 
   function alertsHtml(t) {
-    const al = t.safety?.alerts || [];
+    const cr = crashAlert(t);
+    const al = [...(cr ? [cr] : []), ...(t.safety?.alerts || [])];
     if (!al.length) return '';
     const lvl = levelOf(t);
     const head = lvl === 'danger' ? 'Perigo: o que mudou desde a compra' : lvl === 'warn' ? 'Atenção: vale ficar de olho' : 'Avisos do robô';
