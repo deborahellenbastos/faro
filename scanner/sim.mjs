@@ -23,10 +23,11 @@ export function planFor(t, cfg) {
   return { entry: E, stop, tp, rr };
 }
 
-export function simStep({ state, tokens, candidates, rompidas = [], cfg, now, log }) {
+export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, candidates, rompidas = [], cfg, now, log }) {
   const S = cfg.simulacao || {};
   if (S.ligado === false) return;
-  const sim = (state.sim = state.sim || { open: [], closed: [], startedAt: now });
+  const sim = (state[key] = state[key] || { open: [], closed: [], startedAt: now });
+  const logS = (m) => log(m.replace(/^SIMULAÇÃO/, label));
   const base = cfg.compra?.solPorCompra ?? 0.05;
   const cost = ((S.taxaPct ?? 1) + (S.slippagePct ?? 2)) / 100; // por lado (compra e venda)
   const day = now - 86400000;
@@ -61,7 +62,7 @@ export function simStep({ state, tokens, candidates, rompidas = [], cfg, now, lo
     const closed = { ...o, exitAt: now, exit, why, pnlPct: net * 100, pnlSol: base * net };
     sim.open = sim.open.filter((x) => x !== o);
     sim.closed.unshift(closed);
-    log(`SIMULAÇÃO: fechou ${o.symbol} por ${why} (${net >= 0 ? '+' : ''}${(net * 100).toFixed(1)}%)`);
+    logS(`SIMULAÇÃO: fechou ${o.symbol} por ${why} (${net >= 0 ? '+' : ''}${(net * 100).toFixed(1)}%)`);
   }
   sim.closed = sim.closed.slice(0, 300);
 
@@ -73,8 +74,8 @@ export function simStep({ state, tokens, candidates, rompidas = [], cfg, now, lo
   for (const t of [...(candidates || []), ...rompidas.map((t) => ({ ...t, sinal: t.romp, _romp: true }))]) {
     if (sim.open.length >= (S.maxAbertas ?? 2)) break;
     if (todayOpened + sim.open.filter((x) => x.at === now).length >= (cfg.compra?.maxComprasPorDia ?? 5)) break;
-    if (todayPnl <= lossCap) { log('SIMULAÇÃO: perda máxima do dia atingida, sem novas entradas'); break; }
-    if (!t._notaAprov && (t.score || 0) < (cfg.compra?.scoreMinimo ?? 70)) continue;
+    if (todayPnl <= lossCap) { logS('SIMULAÇÃO: perda máxima do dia atingida, sem novas entradas'); break; }
+    if (!t._notaAprov && !t._agr && (t.score || 0) < (cfg.compra?.scoreMinimo ?? 70)) continue;
     if (t.shape && ['morta', 'reta'].includes(t.shape.tipo)) continue;
     if (sim.open.some((x) => x.mint === t.mint)) continue;
     // igual à compra real: a mesma moeda de novo só se a última operação saiu no stop (reentrada)
@@ -83,8 +84,8 @@ export function simStep({ state, tokens, candidates, rompidas = [], cfg, now, lo
     const g = t.sinal, E = t.priceUsd;
     if (!(E > 0) || !(g.stop > 0 && g.stop < E)) continue;
     const tp = E * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);
-    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}), ...(t._romp ? { romp: true } : {}), ...(t._notaAprov ? { notaAprov: true, approvalScore: t.approvalScore } : {}) });
-    log(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de ${t._romp ? 'rompimento' : 'boa entrada'}${t._notaAprov ? ` (pela nota da aprovação ${t.approvalScore}, agora ${t.score})` : ''} a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
+    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}), ...(t._romp ? { romp: true } : {}), ...(t._notaAprov ? { notaAprov: true, approvalScore: t.approvalScore } : {}), ...(t._agrTipo ? { tipo: t._agrTipo } : {}) });
+    logS(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de ${t._romp ? 'rompimento' : 'boa entrada'}${t._notaAprov ? ` (pela nota da aprovação ${t.approvalScore}, agora ${t.score})` : ''} a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
   }
 
   // 3. Resumo

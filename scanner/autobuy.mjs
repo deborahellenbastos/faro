@@ -2,6 +2,29 @@
 // e o interruptor que liga/desliga a compra real, mandado pelo painel como um memo assinado pela carteira.
 
 export const SWITCH_RE = /faro:compra=(on|off)/;
+export const PROFILE_RE = /faro:perfil=(agressivo|conservador)/;
+
+// Configuração de um perfil: a base + os ajustes do perfil (cópia, não mexe na base)
+export function profileCfg(cfg, name) {
+  const over = cfg.perfis?.[name];
+  const out = JSON.parse(JSON.stringify(cfg));
+  if (!over) return out;
+  const merge = (a, b) => { for (const [k, v] of Object.entries(b)) { if (k.startsWith('_')) continue; if (v && typeof v === 'object' && !Array.isArray(v)) { a[k] = a[k] && typeof a[k] === 'object' ? a[k] : {}; merge(a[k], v); } else a[k] = v; } };
+  merge(out, over);
+  out.__perfil = name;
+  return out;
+}
+// Último memo de perfil assinado pela carteira (mesma regra do interruptor da compra)
+export async function readProfile(memos, verify) {
+  for (const m of memos || []) {
+    if (m.err || !m.memo) continue;
+    const r = PROFILE_RE.exec(m.memo);
+    if (!r) continue;
+    if (!(await verify(m.sig))) continue;
+    return { name: r[1], at: m.at, sig: m.sig };
+  }
+  return null;
+}
 
 // Saiu no stop há pouco e a moeda segue viva: pode reentrar se o fundo se confirmar (uma vez por moeda no dia)
 export const isReentry = (t, cfg, now) => !!(t.reentry && !t.held && now - t.reentry.at < (cfg.compra?.reentradaHoras ?? 3) * 3600000);
@@ -20,16 +43,33 @@ export function buyScoreOk(t, cfg, byApproval) {
   const holderAlert = (t.safety?.alerts || []).some((a) => ['insiders', 'concentracao'].includes(a.id));
   return (t.approvalScore || 0) >= min && solidPts(t) >= (cfg.simulacao?.notaAprovacao?.solidaMin ?? 30) && !holderAlert;
 }
+// Sinal que vale para a compra. Agressivo: o sinal normal ou, se ele não estiver "boa", o sinal do perfil agressivo
+// (zona com risco/retorno 1:1,5, entrada rasa na 38,2%, rompimento de base ou rompimento curto)
+function pickSignal(t, fresh, now, agr) {
+  if (t.sinal?.tipo === 'entrada' && t.sinal.boa && now - (t.sinal.at || 0) <= fresh) return t.sinal;
+  if (agr && t.sinalAgr?.boa && now - (t.sinalAgr.at || 0) <= fresh) return t.sinalAgr;
+  return null;
+}
 export function entryCandidates(tokens, cfg, now, opts = {}) {
   const c = cfg.compra || {};
   const fresh = (c.sinalValidoMin ?? 10) * 60000;
-  return Object.values(tokens)
-    .filter((t) => t.sinal?.tipo === 'entrada' && (t.sinal.boa || (opts.byApproval && t.sinal.notaBaixa)) && now - (t.sinal.at || 0) <= fresh)
+  if (opts.agr) {
+    // devolve cópias com o sinal escolhido em t.sinal (a simulação e a compra leem dali)
+    const picked = Object.values(tokens).map((t) => { const g = pickSignal(t, fresh, now, true); return g ? { ...t, sinal: g, _agr: true, _agrTipo: g === t.sinal ? 'zona' : g.raso ? '38,2%' : g.base ? 'base' : g.fase === 'rompimento' ? 'rompimento' : 'zona 1:1,5' } : null; }).filter(Boolean);
+    const okScore = (t) => (t.score || 0) >= (c.scoreMinimo ?? 60) || buyScoreOk(t, { ...cfg, compra: { ...c, scoreMinimo: 70 } }, true);
+    return filterCandidates(picked, cfg, now, okScore);
+  }
+  const list = Object.values(tokens).filter((t) => t.sinal?.tipo === 'entrada' && (t.sinal.boa || (opts.byApproval && t.sinal.notaBaixa)) && now - (t.sinal.at || 0) <= fresh);
+  return filterCandidates(list, cfg, now, (t) => buyScoreOk(t, cfg, opts.byApproval), opts.byApproval);
+}
+function filterCandidates(list, cfg, now, scoreOk, byApproval) {
+  const c = cfg.compra || {};
+  return list
     .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || isReentry(t, cfg, now))
     // reentrada: só com a liquidez ainda de pé (golpe tira a liquidez) e sem alerta de perigo
     .filter((t) => !isReentry(t, cfg, now) || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
-    .filter((t) => !t.held && t.safety?.level !== 'danger' && buyScoreOk(t, cfg, opts.byApproval))
-    .filter((t) => !opts.byApproval || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
+    .filter((t) => !t.held && t.safety?.level !== 'danger' && scoreOk(t))
+    .filter((t) => !byApproval || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => t.dexId !== 'pumpfun') // compra de verdade nunca na curva da pump.fun (modo curva é só simulação)
     // Tempo mínimo no Radar (16/11: os 3 rugs comprados entraram 2 a 9 min depois da aprovação). Reentrada já passou por isso
     .filter((t) => isReentry(t, cfg, now) || now - (t.approvedAt || t.firstSeen || now) >= (c.minutosNoRadarMin ?? 0) * 60000)

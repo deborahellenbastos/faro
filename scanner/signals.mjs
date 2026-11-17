@@ -188,3 +188,64 @@ export function breakoutSignal(c, ctx = {}) {
   const alvo = px + 2.5 * (px - stop);
   return { tipo: 'entrada', fase: 'rompimento', titulo: 'Rompimento', boa: true, msg: `Fez uma pausa perto do topo e rompeu a máxima com volume e compra.`, stop, alvo, rr: 2.5, key: `${c[n - 1][0]}` };
 }
+
+// ---------- Perfil agressivo ----------
+// Entrada rasa: em tendência forte a moeda às vezes só corrige até perto da 38,2% e volta a subir (LEOSTAR 16/11).
+// Vale se corrigiu de 30% a 50% da alta, a tendência está organizada com compra dominando e a vela reagiu com compra.
+// Stop logo abaixo da 50%, alvo no topo anterior.
+export function shallowEntry(c, ctx = {}) {
+  const s = swingOf(c);
+  if (!s) return null;
+  if (ctx.safety && ctx.safety !== 'ok') return null;
+  if (ctx.shape !== 'organica') return null;
+  if (!(ctx.buyRatioH1 >= 55)) return null;
+  const n = c.length;
+  const px = ctx.px > 0 ? ctx.px : c[n - 1][4];
+  const r = (s.hi - px) / (s.hi - s.lo);
+  if (r < 0.3 || r >= 0.5) return null;
+  const after = c.slice(s.iHi + 1);
+  if (after.length < 3) return null;
+  const last = c[n - 1], prev = c[n - 2];
+  const held = last[3] >= Math.min(...after.slice(0, -1).map((x) => x[3])) * 0.995;
+  const green = px > last[1] && px > prev[4];
+  const buyOk = ctx.buys5 == null || (ctx.buys5 + ctx.sells5 === 0) || ctx.buys5 >= ctx.sells5;
+  if (!(held && green && buyOk)) return null;
+  const stop = Math.min(fibPx(s, 0.5), ...after.map((x) => x[3])) * 0.97;
+  const alvo = s.hi;
+  const rr = px > stop ? (alvo - px) / (px - stop) : 0;
+  if (rr < (ctx.rrMin || 1.5)) return null;
+  return { fase: 'entrada', titulo: 'Boa entrada (38,2%)', boa: true, raso: true, msg: 'Tendência forte: corrigiu só até perto da 38,2% e reagiu com compra. Stop abaixo da 50%, alvo no topo anterior.', zona: [fibPx(s, 0.5), fibPx(s, 0.382)], stop, alvo, rr, retr: r, key: `raso-${s.at}` };
+}
+
+// Rompimento de base: a moeda passa 1h ou mais presa numa faixa e fecha acima do teto com volume e compra (GTA 16/11).
+// Velas de 5 min. Stop um pouco abaixo do teto rompido; alvo = altura da faixa projetada a partir do teto.
+export function baseBreakout(c, ctx = {}) {
+  if (!c || c.length < 14) return null;
+  if (ctx.safety && ctx.safety !== 'ok') return null;
+  const n = c.length, last = c[n - 1];
+  const px = ctx.px > 0 ? ctx.px : last[4];
+  const minBars = ctx.baseMinVelas || 12; // 12 velas de 5 min = 1 hora
+  // maior base possível (até 6 h) que termine na vela anterior e seja uma faixa (teto/fundo até 1,4x)
+  let best = null;
+  for (let len = minBars; len <= Math.min(72, n - 1); len++) {
+    const win = c.slice(n - 1 - len, n - 1);
+    const H = Math.max(...win.map((x) => x[2])), L = Math.min(...win.map((x) => x[3]));
+    if (H / L > 1.4) break;
+    best = { H, L, win };
+  }
+  if (!best) return null;
+  const { H, L, win } = best;
+  if (!(px > H * 1.01 && px < H * 1.2 && px > last[1])) return null;
+  const vols = win.map((x) => x[5]).filter((v) => v > 0);
+  const avgV = vols.length ? vols.reduce((a, v) => a + v, 0) / vols.length : 0;
+  if (avgV && !(last[5] >= avgV * 1.5)) return null;
+  if (ctx.buys5 != null && ctx.buys5 + ctx.sells5 > 0 && ctx.buys5 / (ctx.buys5 + ctx.sells5) < 0.55) return null;
+  const stop = H * 0.93;
+  const risk = (px - stop) / px;
+  if (risk > 0.2) return null;
+  // alvo: a altura da faixa projetada a partir do teto, ou +50% (onde o robô já começa a realizar), o que for maior
+  const alvo = Math.max(H + (H - L), px * 1.5);
+  const rr = (alvo - px) / (px - stop);
+  if (rr < (ctx.rrMin || 1.5)) return null;
+  return { fase: 'rompimento-base', titulo: 'Rompimento de base', boa: true, base: true, msg: `Ficou ${Math.round(win.length * 5 / 60 * 10) / 10}h presa numa faixa e rompeu o teto com volume e compra. Stop logo abaixo do teto, alvo na altura da faixa (ou +50%).`, stop, alvo, rr, key: `base-${win[0][0]}` };
+}

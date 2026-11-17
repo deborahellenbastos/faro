@@ -600,6 +600,22 @@
   #dex-vault iframe { width: 100%; height: 100%; border: 0; }
   .list-sub { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .list-sub small { color: var(--faint); font-weight: 700; }
+  .pfrow { flex-wrap: wrap; row-gap: 8px; }
+  .pfrow small[data-pfstate] { color: var(--muted); font-weight: 600; } .pfrow.agr small[data-pfstate] { color: #f5b14c; }
+  .pfrow[hidden] { display: none; }
+  .pf-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 3px; border-radius: var(--r-2); background: var(--bg); border: 1px solid var(--line); width: 100%; }
+  .pf-seg button { border: 0; background: transparent; height: 28px; border-radius: var(--r-1); color: var(--muted); font-weight: 700; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .pf-seg button.on { background: var(--panel-3); color: var(--text); }
+  .pfrow.agr .pf-seg button.on { background: rgba(245,177,76,.16); color: #f5b14c; }
+  .pf-seg button:disabled { cursor: progress; }
+  .pfrow.in-drawer { padding: 12px 14px; margin-bottom: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg); }
+  .pf-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0 12px; }
+  .pf-table th, .pf-table td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .pf-table th { color: var(--muted); font-size: 12px; } .pf-table td:first-child { color: var(--muted); }
+  .pf-cmps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: var(--sp-4); }
+  .pf-cmp { text-align: left; padding: 10px 12px; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-family: inherit; color: var(--text); display: grid; gap: 2px; }
+  .pf-cmp.on { border-color: var(--line-2); background: var(--panel-3); }
+  .pf-cmp span { font-size: 12px; font-weight: 700; color: var(--muted); } .pf-cmp b { font-size: 17px; font-weight: 800; } .pf-cmp small { font-size: 11px; color: var(--faint); }
   .r-arrow { font-style: normal; color: var(--faint); font-weight: 600; margin: 0 8px; }
   .r-tri { font-style: normal; font-size: .8em; margin: 0 3px 0 12px; }
   .row .r-side small.sold-line { margin-top: 3px; }
@@ -719,6 +735,7 @@
   .m-badges { gap: 6px; flex-wrap: wrap; margin-top: calc(var(--sp-2) * -1); }
   .m-badges .live { height: 26px; font-size: 11px; padding: 0 9px; font-family: inherit; cursor: pointer; }
   .m-badges .live.auto svg { width: 10px; height: 10px; }
+  .m-badges .live.pf.agr { color: #f5b14c; border-color: rgba(245,177,76,.35); }
   .m-live { display: none; height: 24px; font-size: 11px; padding: 0 9px; margin-left: 4px; }
   .m-brand { align-items: center; }
   .m-hero .mh-label small { margin-left: 6px; color: var(--faint); font-weight: 700; font-size: 12px; }
@@ -806,6 +823,7 @@
       <div class="sw-row"><div><span>Gráfico da Dex<i class="info-btn tip" title="Desligado, o painel fica mais leve: não carrega os gráficos da DexScreener e mostra só o gráfico do Faro (com um link para abrir a Dex em outra aba)"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></i></span></div><button class="switch" id="t-dex" role="switch" aria-checked="true" aria-label="Gráfico da Dex"></button></div>
       <div class="sw-row"><span>Moedas mortas</span><button class="switch" id="t-mortas" role="switch" aria-checked="true" aria-label="Mostrar moedas mortas na Carteira"></button></div>
       <div class="sw-row autorow" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
+      <div class="sw-row pfrow" data-pfrow hidden><div><span>Perfil<button class="info-btn" data-pfinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-pfstate>protege o saldo</small></div><div class="pf-seg"><button data-pf="conservador">Conservador</button><button data-pf="agressivo">Agressivo</button></div></div>
       <div class="side-sep" data-lock-sep hidden></div><button class="lock-btn" data-lock hidden title="Esquece a senha neste navegador e fecha o painel. Para entrar de novo, pede a senha. O robô continua rodando."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sair do painel</button>
     </div>
   </aside>
@@ -884,6 +902,7 @@
       </div>
       <div class="drawer-body">
         <div class="sw-row autorow in-drawer" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
+        <div class="sw-row pfrow in-drawer" data-pfrow hidden><div><span>Perfil<button class="info-btn" data-pfinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-pfstate>protege o saldo</small></div><div class="pf-seg"><button data-pf="conservador">Conservador</button><button data-pf="agressivo">Agressivo</button></div></div>
         <div class="m-set" id="m-set">
           <div class="sw-row"><span>Sons</span><button class="switch" data-proxy="t-sound" role="switch" aria-checked="false" aria-label="Sons"></button></div>
           <div class="sw-row"><span>Notificações</span><button class="switch" data-proxy="t-notif" role="switch" aria-checked="false" aria-label="Notificações"></button></div>
@@ -1327,7 +1346,8 @@
   function autoBuyWhy(t, g) {
     const lr = data.lastRun || {};
     if (!(lr.autoBuy && lr.autoCompra?.on)) return '';
-    const c = data.config?.compra || {}, min = c.scoreMinimo ?? 70, rrMin = data.config?.simulacao?.riscoRetornoMin ?? 2;
+    const agr = perfilOf() === 'agressivo', PA = data.config?.perfis?.agressivo || {};
+    const c = data.config?.compra || {}, min = agr ? PA.compra?.scoreMinimo ?? 60 : c.scoreMinimo ?? 70, rrMin = agr ? PA.simulacao?.riscoRetornoMin ?? 1.5 : data.config?.simulacao?.riscoRetornoMin ?? 2;
     const why = [];
     if (!g.reentrada && t.status === 'aguardando' && (t.score || 0) < 75) why.push('ainda em observação');
     if ((t.score || 0) < min) why.push(`nota ${t.score || 0}, abaixo de ${min}`);
@@ -1384,6 +1404,15 @@
       if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') {
         sysNotify(g.tipo === 'entrada' ? `Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}` : `${sym}: ${g.titulo}`, g.msg, 'sinal-' + t.mint, t.mint);
       }
+    }
+    // Perfil Agressivo ligado: avisa também os sinais do agressivo (38,2%, rompimento de base, rompimento, zona 1:1,5)
+    if (perfilOf() === 'agressivo') for (const t of Object.values(data.tokens)) {
+      const g = t.sinalAgr; if (!g?.boa || isMine(t) || levelOf(t) === 'danger' || t.status === 'reprovada' || Date.now() - (g.at || 0) > 10 * 60000) continue;
+      const k = `${t.mint}:agr:${g.fase}:${g.key}`; if (SIGSEEN.has(k)) continue; SIGSEEN.add(k);
+      const sym = t.symbol || t.mint.slice(0, 6); entrada = true;
+      addInbox(`${g.titulo} (agressivo): ${sym}`, `${autoBuyWhy(t, g)} ${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${(g.rr || 0).toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k, { kind: 'entrada', sig0: { msg: g.msg, stop: g.stop, alvo: g.alvo, rr: g.rr } });
+      toast(`${g.titulo} (agressivo): ${sym}`);
+      sysNotify(`${g.titulo} (agressivo): ${sym}`, g.msg, 'sinal-' + t.mint, t.mint);
     }
     // Perdida que voltou a valer US$ 1 ou mais: aí vale a pena vender (avisa uma vez; se cair de novo, pode avisar de novo)
     for (const t of Object.values(data.tokens)) {
@@ -1595,196 +1624,258 @@
   }
 
   // <sinais> cópia de scanner/signals.mjs (a mesma lógica do robô) </sinais>
-  // Sinais de entrada e saída, a partir das velas de 5 min.
-  // A mesma lógica roda no robô (para avisar quando você não está olhando) e no painel (ao vivo).
-  // Ideia, tirada dos vídeos: não perseguir vela verde no topo; esperar a correção até a zona de
-  // 50% a 61,8% do último movimento; só entrar quando o fundo segurar e aparecer reação com compra;
-  // stop abaixo de 78,6% (se passar disso, a alta acabou); alvo no topo anterior; risco/retorno >= 2.
+// Sinais de entrada e saída, a partir das velas de 5 min.
+// A mesma lógica roda no robô (para avisar quando você não está olhando) e no painel (ao vivo).
+// Ideia, tirada dos vídeos: não perseguir vela verde no topo; esperar a correção até a zona de
+// 50% a 61,8% do último movimento; só entrar quando o fundo segurar e aparecer reação com compra;
+// stop abaixo de 78,6% (se passar disso, a alta acabou); alvo no topo anterior; risco/retorno >= 2.
 
-  const pctTxt = (v) => `${Math.round(v)}%`;
+const pctTxt = (v) => `${Math.round(v)}%`;
 
-  // c = [[ms, open, high, low, close, volume], ...] do mais antigo para o mais novo
-  function swingOf(c) {
-    if (!Array.isArray(c) || c.length < 12) return null;
-    let iHi = 0; c.forEach((x, i) => { if (x[2] >= c[iHi][2]) iHi = i; });
-    let iLo = 0; for (let i = 0; i <= iHi; i++) if (c[i][3] <= c[iLo][3]) iLo = i;
-    const hi = c[iHi][2], lo = c[iLo][3];
-    if (!(lo > 0) || hi < lo * 1.3) return null;
-    return { hi, lo, iHi, iLo, at: c[iHi][0] };
-  }
+// c = [[ms, open, high, low, close, volume], ...] do mais antigo para o mais novo
+function swingOf(c) {
+  if (!Array.isArray(c) || c.length < 12) return null;
+  let iHi = 0; c.forEach((x, i) => { if (x[2] >= c[iHi][2]) iHi = i; });
+  let iLo = 0; for (let i = 0; i <= iHi; i++) if (c[i][3] <= c[iLo][3]) iLo = i;
+  const hi = c[iHi][2], lo = c[iLo][3];
+  if (!(lo > 0) || hi < lo * 1.3) return null;
+  return { hi, lo, iHi, iLo, at: c[iHi][0] };
+}
 
-  const fibPx = (s, r) => s.hi - (s.hi - s.lo) * r;
+const fibPx = (s, r) => s.hi - (s.hi - s.lo) * r;
 
-  // ctx: { px (preço agora), buys5, sells5 (transações nos últimos 5 min), safety ('ok'|'info'|'warn'|'danger'), shape, rrMin }
-  function entrySignal(c, ctx = {}) {
-    const s = swingOf(c);
-    if (!s) return { fase: 'sem-movimento', titulo: 'Sem movimento para medir', msg: 'Ainda não houve uma alta de pelo menos 30% para medir a correção.', boa: false };
-    const n = c.length;
-    const px = ctx.px > 0 ? ctx.px : c[n - 1][4];
-    const r = (s.hi - px) / (s.hi - s.lo);
-    const z50 = fibPx(s, 0.5), z618 = fibPx(s, 0.618), z786 = fibPx(s, 0.786);
-    const after = c.slice(s.iHi + 1);
-    const low = Math.min(px, ...after.map((x) => x[3]));
-    const stop = Math.min(z786, low) * 0.97;
-    const alvo = s.hi;
-    const rr = px > stop ? (alvo - px) / (px - stop) : 0;
-    const rrMin = ctx.rrMin || 2;
-    const base = { zona: [z618, z50], stop, alvo, rr, retr: r, key: `${s.at}` };
-    if (ctx.safety === 'danger') return { ...base, fase: 'perigo', titulo: 'Não entrar', msg: 'A moeda está com sinal de perigo.', boa: false };
-    if (ctx.shape === 'morta' || ctx.shape === 'reta') return { ...base, fase: 'evitar', titulo: 'Evitar', msg: ctx.shape === 'morta' ? 'Já passou do auge.' : 'Subida reta, sem correção: cara de rug.', boa: false };
-    if (r > 0.786) return { ...base, fase: 'quebrou', titulo: 'Perdeu a estrutura', msg: `Devolveu ${pctTxt(r * 100)} da alta (passou de 78,6%). A alta acabou, evite.`, boa: false };
-    if (r < 0.236 && s.iHi >= n - 3) return { ...base, fase: 'esticada', titulo: 'Esticada, no topo', msg: 'Comprar agora é perseguir preço. Espere corrigir até a zona de 50% a 61,8%.', boa: false };
-    if (r < 0.382) return { ...base, fase: 'esperar', titulo: 'Esperar a correção', msg: `Corrigiu ${pctTxt(r * 100)} da alta. A zona de compra começa ${pctTxt((px / z50 - 1) * 100)} abaixo.`, boa: false };
-    if (r < 0.5) return { ...base, fase: 'perto', titulo: 'Chegando na zona', msg: `Corrigiu ${pctTxt(r * 100)} da alta. Falta ${pctTxt((px / z50 - 1) * 100)} para a zona de 50% a 61,8%.`, boa: false };
-    // Na zona (50% a 78,6%): precisa o fundo segurar e aparecer reação
-    const deep = r > 0.65;
-    const last = c[n - 1], prev = c[n - 2];
-    // fundo segurou: a vela atual não fez mínima nova
-    const held = after.length >= 3 && last[3] >= Math.min(...after.slice(0, -1).map((x) => x[3])) * 0.995;
-    const green = px > last[1] && px > prev[4];
-    const vols = after.slice(-7, -1).map((x) => x[5]).filter((v) => v > 0);
-    const avgVol = vols.length ? vols.reduce((a, v) => a + v, 0) / vols.length : 0;
-    const volOk = !avgVol || last[5] >= avgVol * 0.8 || prev[5] >= avgVol;
-    const buyOk = ctx.buys5 == null || (ctx.buys5 + ctx.sells5 === 0) || ctx.buys5 >= ctx.sells5;
-    const confirmed = held && green && (volOk || buyOk) && buyOk;
-    const where = deep ? 'na parte funda da zona (61,8% a 78,6%)' : 'na zona de 50% a 61,8%';
-    if (confirmed && rr >= rrMin && ctx.safety !== 'warn') {
-      // Não repete o sinal numa moeda em que o último "Boa entrada" não andou (16/11: GOAT 4 sinais, ANGSTIPAN 3, nenhum passou de +11%)
-      const bp = ctx.boaPrev, now = ctx.now || Date.now();
-      const subiu = bp?.px > 0 ? (bp.max / bp.px - 1) * 100 : null;
-      if (bp && subiu != null && now - bp.at >= 20 * 60000 && now - bp.at < (ctx.repetirHoras ?? 24) * 3600000 && subiu < (ctx.repetirSeSubiuPct ?? 10)) {
-        const ha = now - bp.at < 3600000 ? `${Math.round((now - bp.at) / 60000)} min` : `${Math.round((now - bp.at) / 3600000)}h`;
-        return { ...base, fase: 'repetido', titulo: 'Sinal repetido', msg: `O último "Boa entrada" desta moeda (há ${ha}) não andou: subiu no máximo ${Math.max(0, subiu).toFixed(0)}%. O Faro não repete o sinal.`, boa: false };
-      }
-      // Nota baixa demais para o sinal (16/11: GOAT deu "Boa entrada" com nota 38 e caiu 29%).
-      // notaBaixa: o teste da nota da aprovação (só simulação) ainda pode usar esse sinal
-      if (ctx.notaMin > 0 && ctx.score != null && ctx.score < ctx.notaMin) {
-        return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: `Reagiu ${where}, mas a nota da moeda está em ${Math.round(ctx.score)} (o sinal pede ${ctx.notaMin}+).`, boa: false, notaBaixa: true };
-      }
-      return { ...base, fase: 'entrada', titulo: 'Boa entrada', msg: `Segurou ${where} e reagiu com compra. Stop abaixo do fundo, alvo no topo anterior.`, boa: true };
+// ctx: { px (preço agora), buys5, sells5 (transações nos últimos 5 min), safety ('ok'|'info'|'warn'|'danger'), shape, rrMin }
+function entrySignal(c, ctx = {}) {
+  const s = swingOf(c);
+  if (!s) return { fase: 'sem-movimento', titulo: 'Sem movimento para medir', msg: 'Ainda não houve uma alta de pelo menos 30% para medir a correção.', boa: false };
+  const n = c.length;
+  const px = ctx.px > 0 ? ctx.px : c[n - 1][4];
+  const r = (s.hi - px) / (s.hi - s.lo);
+  const z50 = fibPx(s, 0.5), z618 = fibPx(s, 0.618), z786 = fibPx(s, 0.786);
+  const after = c.slice(s.iHi + 1);
+  const low = Math.min(px, ...after.map((x) => x[3]));
+  const stop = Math.min(z786, low) * 0.97;
+  const alvo = s.hi;
+  const rr = px > stop ? (alvo - px) / (px - stop) : 0;
+  const rrMin = ctx.rrMin || 2;
+  const base = { zona: [z618, z50], stop, alvo, rr, retr: r, key: `${s.at}` };
+  if (ctx.safety === 'danger') return { ...base, fase: 'perigo', titulo: 'Não entrar', msg: 'A moeda está com sinal de perigo.', boa: false };
+  if (ctx.shape === 'morta' || ctx.shape === 'reta') return { ...base, fase: 'evitar', titulo: 'Evitar', msg: ctx.shape === 'morta' ? 'Já passou do auge.' : 'Subida reta, sem correção: cara de rug.', boa: false };
+  if (r > 0.786) return { ...base, fase: 'quebrou', titulo: 'Perdeu a estrutura', msg: `Devolveu ${pctTxt(r * 100)} da alta (passou de 78,6%). A alta acabou, evite.`, boa: false };
+  if (r < 0.236 && s.iHi >= n - 3) return { ...base, fase: 'esticada', titulo: 'Esticada, no topo', msg: 'Comprar agora é perseguir preço. Espere corrigir até a zona de 50% a 61,8%.', boa: false };
+  if (r < 0.382) return { ...base, fase: 'esperar', titulo: 'Esperar a correção', msg: `Corrigiu ${pctTxt(r * 100)} da alta. A zona de compra começa ${pctTxt((px / z50 - 1) * 100)} abaixo.`, boa: false };
+  if (r < 0.5) return { ...base, fase: 'perto', titulo: 'Chegando na zona', msg: `Corrigiu ${pctTxt(r * 100)} da alta. Falta ${pctTxt((px / z50 - 1) * 100)} para a zona de 50% a 61,8%.`, boa: false };
+  // Na zona (50% a 78,6%): precisa o fundo segurar e aparecer reação
+  const deep = r > 0.65;
+  const last = c[n - 1], prev = c[n - 2];
+  // fundo segurou: a vela atual não fez mínima nova
+  const held = after.length >= 3 && last[3] >= Math.min(...after.slice(0, -1).map((x) => x[3])) * 0.995;
+  const green = px > last[1] && px > prev[4];
+  const vols = after.slice(-7, -1).map((x) => x[5]).filter((v) => v > 0);
+  const avgVol = vols.length ? vols.reduce((a, v) => a + v, 0) / vols.length : 0;
+  const volOk = !avgVol || last[5] >= avgVol * 0.8 || prev[5] >= avgVol;
+  const buyOk = ctx.buys5 == null || (ctx.buys5 + ctx.sells5 === 0) || ctx.buys5 >= ctx.sells5;
+  const confirmed = held && green && (volOk || buyOk) && buyOk;
+  const where = deep ? 'na parte funda da zona (61,8% a 78,6%)' : 'na zona de 50% a 61,8%';
+  if (confirmed && rr >= rrMin && ctx.safety !== 'warn') {
+    // Não repete o sinal numa moeda em que o último "Boa entrada" não andou (16/11: GOAT 4 sinais, ANGSTIPAN 3, nenhum passou de +11%)
+    const bp = ctx.boaPrev, now = ctx.now || Date.now();
+    const subiu = bp?.px > 0 ? (bp.max / bp.px - 1) * 100 : null;
+    if (bp && subiu != null && now - bp.at >= 20 * 60000 && now - bp.at < (ctx.repetirHoras ?? 24) * 3600000 && subiu < (ctx.repetirSeSubiuPct ?? 10)) {
+      const ha = now - bp.at < 3600000 ? `${Math.round((now - bp.at) / 60000)} min` : `${Math.round((now - bp.at) / 3600000)}h`;
+      return { ...base, fase: 'repetido', titulo: 'Sinal repetido', msg: `O último "Boa entrada" desta moeda (há ${ha}) não andou: subiu no máximo ${Math.max(0, subiu).toFixed(0)}%. O Faro não repete o sinal.`, boa: false };
     }
-    if (confirmed) return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: ctx.safety === 'warn' ? 'Reagiu na zona, mas há um alerta de atenção na moeda.' : `Reagiu ${where}, mas o alvo paga menos de ${rrMin}x o risco.`, boa: false };
-    return { ...base, fase: 'zona', titulo: 'Na zona de compra', msg: !held ? `Está ${where}, mas ainda fazendo fundos mais baixos. Espere segurar.` : `Está ${where}. Espere uma vela verde fechar acima da anterior, com compra.`, boa: false };
-  }
-
-  // Stop móvel: depois de subir ativarPct desde a compra, o stop sobe junto e nunca desce.
-  // Fica no último fundo da subida (ou a distanciaPct abaixo do topo, o que for mais alto),
-  // nunca colado demais no topo (memecoin oscila) e garantindo pelo menos minimoTravadoPct de lucro.
-  // pos: { entryPx, entryAt, peak? }; prev = stop da rodada anterior (só sobe)
-  function trailStop(c, pos, o = {}, prev = 0) {
-    if (!(pos?.entryPx > 0)) return null;
-    const ativar = o.ativarPct ?? 30, dist = o.distanciaPct ?? 25, minLock = o.minimoTravadoPct ?? 5;
-    const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
-    const peak = Math.max(pos.entryPx, pos.peak || 0, ...since.map((x) => x[2]));
-    const peakGain = (peak / pos.entryPx - 1) * 100;
-    if (peakGain < ativar && !(prev > 0)) return { ativo: false, peak, ativarPx: pos.entryPx * (1 + ativar / 100), falta: ativar - peakGain };
-    // Começo da alta (até seguirAPartirPct): o stop fica logo acima da entrada, só sai se devolver quase tudo.
-    // Memecoin corrige 20-30% no meio da subida; seguir o topo cedo demais vende na correção normal.
-    const seguir = o.seguirAPartirPct ?? 60;
-    const floor = pos.entryPx * (1 + minLock / 100);
-    let stop = floor;
-    if (peakGain >= seguir) {
-      let pivot = 0;
-      for (let i = 2; i < since.length - 2; i++) {
-        const l = since[i][3];
-        if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) pivot = l;
-      }
-      stop = Math.min(Math.max(pivot * 0.97, peak * (1 - dist / 100)), peak * 0.88);
+    // Nota baixa demais para o sinal (16/11: GOAT deu "Boa entrada" com nota 38 e caiu 29%).
+    // notaBaixa: o teste da nota da aprovação (só simulação) ainda pode usar esse sinal
+    if (ctx.notaMin > 0 && ctx.score != null && ctx.score < ctx.notaMin) {
+      return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: `Reagiu ${where}, mas a nota da moeda está em ${Math.round(ctx.score)} (o sinal pede ${ctx.notaMin}+).`, boa: false, notaBaixa: true };
     }
-    stop = Math.max(stop, floor, prev || 0);
-    return { ativo: true, stop, peak, travadoPct: (stop / pos.entryPx - 1) * 100 };
+    return { ...base, fase: 'entrada', titulo: 'Boa entrada', msg: `Segurou ${where} e reagiu com compra. Stop abaixo do fundo, alvo no topo anterior.`, boa: true };
   }
+  if (confirmed) return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: ctx.safety === 'warn' ? 'Reagiu na zona, mas há um alerta de atenção na moeda.' : `Reagiu ${where}, mas o alvo paga menos de ${rrMin}x o risco.`, boa: false };
+  return { ...base, fase: 'zona', titulo: 'Na zona de compra', msg: !held ? `Está ${where}, mas ainda fazendo fundos mais baixos. Espere segurar.` : `Está ${where}. Espere uma vela verde fechar acima da anterior, com compra.`, boa: false };
+}
 
-  // Como está a alta de uma moeda que você tem: fundos subindo, compra x venda, distância do topo
-  function trendHealth(c, pos, ctx = {}) {
-    const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
-    const px = ctx.px > 0 ? ctx.px : since.length ? since[since.length - 1][4] : 0;
-    const lows = [];
+// Stop móvel: depois de subir ativarPct desde a compra, o stop sobe junto e nunca desce.
+// Fica no último fundo da subida (ou a distanciaPct abaixo do topo, o que for mais alto),
+// nunca colado demais no topo (memecoin oscila) e garantindo pelo menos minimoTravadoPct de lucro.
+// pos: { entryPx, entryAt, peak? }; prev = stop da rodada anterior (só sobe)
+function trailStop(c, pos, o = {}, prev = 0) {
+  if (!(pos?.entryPx > 0)) return null;
+  const ativar = o.ativarPct ?? 30, dist = o.distanciaPct ?? 25, minLock = o.minimoTravadoPct ?? 5;
+  const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
+  const peak = Math.max(pos.entryPx, pos.peak || 0, ...since.map((x) => x[2]));
+  const peakGain = (peak / pos.entryPx - 1) * 100;
+  if (peakGain < ativar && !(prev > 0)) return { ativo: false, peak, ativarPx: pos.entryPx * (1 + ativar / 100), falta: ativar - peakGain };
+  // Começo da alta (até seguirAPartirPct): o stop fica logo acima da entrada, só sai se devolver quase tudo.
+  // Memecoin corrige 20-30% no meio da subida; seguir o topo cedo demais vende na correção normal.
+  const seguir = o.seguirAPartirPct ?? 60;
+  const floor = pos.entryPx * (1 + minLock / 100);
+  let stop = floor;
+  if (peakGain >= seguir) {
+    let pivot = 0;
     for (let i = 2; i < since.length - 2; i++) {
       const l = since[i][3];
-      if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) lows.push(l);
+      if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) pivot = l;
     }
-    const last3 = lows.slice(-3);
-    const rising = last3.length >= 2 && last3.every((l, i) => i === 0 || l > last3[i - 1]);
-    const peak = Math.max(px, ...since.map((x) => x[2]));
-    const fromTop = peak > 0 ? (1 - px / peak) * 100 : 0;
-    const ratio = (b, s) => (b + s > 0 ? (b / (b + s)) * 100 : null);
-    return { lows: last3, rising, fromTop, buy5: ratio(ctx.buys5 || 0, ctx.sells5 || 0), buy1h: ratio(ctx.buys1h || 0, ctx.sells1h || 0) };
+    stop = Math.min(Math.max(pivot * 0.97, peak * (1 - dist / 100)), peak * 0.88);
   }
+  stop = Math.max(stop, floor, prev || 0);
+  return { ativo: true, stop, peak, travadoPct: (stop / pos.entryPx - 1) * 100 };
+}
 
-  // pos: { entryPx, entryAt (ms) }; ctx: { px, buys5, sells5, safety, trail }
-  function exitSignal(c, pos, ctx = {}) {
-    if (!Array.isArray(c) || c.length < 6 || !(pos?.entryPx > 0)) return null;
-    const n = c.length;
-    const px = ctx.px > 0 ? ctx.px : c[n - 1][4];
-    const before = c.filter((x) => x[0] < pos.entryAt);
-    const since = c.filter((x) => x[0] >= pos.entryAt - 5 * 60000);
-    const sw = swingOf(before);
-    const preLow = before.length ? Math.min(...before.slice(-6).map((x) => x[3])) : pos.entryPx * 0.8;
-    let stop = sw ? Math.min(fibPx(sw, 0.786), preLow) * 0.97 : Math.min(preLow * 0.97, pos.entryPx * 0.8);
-    stop = Math.max(stop, pos.entryPx * 0.65);
-    const alvo = sw && sw.hi > pos.entryPx * 1.1 ? sw.hi : pos.entryPx * 2;
-    const peak = Math.max(px, ...since.map((x) => x[2]));
-    const gain = (px / pos.entryPx - 1) * 100, peakGain = (peak / pos.entryPx - 1) * 100;
-    const base = { stop, alvo, gain, peakGain, key: `${pos.entryAt}` };
-    if (ctx.safety === 'danger') return { ...base, fase: 'sair', titulo: 'Sair', msg: 'Apareceu sinal de perigo na moeda.', ruim: true };
-    if (ctx.trail?.ativo) { base.stop = ctx.trail.stop; base.trail = ctx.trail; }
-    if (ctx.trail?.ativo && px < ctx.trail.stop) return { ...base, fase: 'sair', titulo: 'Bateu o stop móvel', msg: `Caiu abaixo do stop móvel. Vendendo aí você garante +${Math.round(ctx.trail.travadoPct)}%.`, ruim: true };
-    if (px < stop) return { ...base, fase: 'sair', titulo: 'Perdeu o fundo', msg: 'O preço passou do stop do plano (abaixo do fundo da correção). Pelo plano, é hora de sair.', ruim: true };
-    if (px >= alvo * 0.97) return { ...base, fase: 'realizar', titulo: 'Chegou no alvo', msg: 'Bateu no topo anterior. Bom ponto para vender tudo ou parte e garantir o lucro.', bom: true };
-    if (peakGain >= 30 && gain <= peakGain * 0.5) return { ...base, fase: 'proteger', titulo: 'Devolvendo o lucro', msg: `Chegou a +${pctTxt(peakGain)} e devolveu metade ou mais. Proteja o que sobrou.`, ruim: true };
-    const last3 = c.slice(-3);
-    const wicks = last3.filter((x) => (x[2] - Math.max(x[1], x[4])) > Math.abs(x[4] - x[1]) * 1.5).length;
-    const sells = ctx.buys5 != null && ctx.sells5 > ctx.buys5 * 1.5;
-    if (gain >= 40 && wicks >= 2 && sells) return { ...base, fase: 'exaustao', titulo: 'Sinais de exaustão', msg: 'Velas com pavio longo em cima e mais venda que compra. Considere realizar parte.', ruim: true };
-    return { ...base, fase: 'segurar', titulo: 'Dentro do plano', msg: ctx.trail?.ativo ? `Nada a fazer. O stop móvel já garante +${Math.round(ctx.trail.travadoPct)}% e sobe junto se ela subir.` : 'Nada a fazer: o preço está entre o stop e o alvo.' };
+// Como está a alta de uma moeda que você tem: fundos subindo, compra x venda, distância do topo
+function trendHealth(c, pos, ctx = {}) {
+  const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
+  const px = ctx.px > 0 ? ctx.px : since.length ? since[since.length - 1][4] : 0;
+  const lows = [];
+  for (let i = 2; i < since.length - 2; i++) {
+    const l = since[i][3];
+    if (l < since[i - 1][3] && l < since[i - 2][3] && l < since[i + 1][3] && l < since[i + 2][3]) lows.push(l);
   }
+  const last3 = lows.slice(-3);
+  const rising = last3.length >= 2 && last3.every((l, i) => i === 0 || l > last3[i - 1]);
+  const peak = Math.max(px, ...since.map((x) => x[2]));
+  const fromTop = peak > 0 ? (1 - px / peak) * 100 : 0;
+  const ratio = (b, s) => (b + s > 0 ? (b / (b + s)) * 100 : null);
+  return { lows: last3, rising, fromTop, buy5: ratio(ctx.buys5 || 0, ctx.sells5 || 0), buy1h: ratio(ctx.buys1h || 0, ctx.sells1h || 0) };
+}
 
-  // Sinais de que a alta está perdendo força (usados para realizar o lucro antes do +100%)
-  // m: { candles, entryAt, buys5, sells5, vol5, volH1, fromPeak }
-  function weakSignals(m) {
-    const out = [];
-    const b = m.buys5 || 0, s = m.sells5 || 0;
-    if (b + s >= 10 && s / (b + s) >= 0.55) out.push({ id: 'vendas', forte: true, msg: `vendas dominando (${Math.round((s / (b + s)) * 100)}% nos últimos 5 min)` });
-    if (m.volH1 > 0 && m.vol5 != null && m.vol5 < (m.volH1 / 12) * 0.4) out.push({ id: 'volume', forte: true, msg: 'volume secando (5 min bem abaixo da média da hora)' });
-    const h = trendHealth(m.candles || [], { entryAt: m.entryAt || 0 }, {});
-    if (h.lows.length >= 2 && !h.rising) out.push({ id: 'fundo', forte: true, msg: 'fez um fundo mais baixo' });
-    if (m.fromPeak >= 10) out.push({ id: 'recuo', forte: m.fromPeak >= 15, msg: `recuou ${Math.round(m.fromPeak)}% do topo` });
-    return out;
-  }
-  // Realização em faixas: com +50% vende se 2 sinais de fraqueza; com +80%, basta 1 sinal forte; senão segura até o +100%
-  function realizeCheck(gain, weak, o = {}) {
-    const faixas = [...(o.faixas || [{ lucroPct: 50, sinais: 2 }, { lucroPct: 80, sinais: 1 }])].sort((a, b) => b.lucroPct - a.lucroPct);
-    const f = faixas.find((x) => gain >= x.lucroPct);
-    if (!f) return { sell: false, faixa: null };
-    const count = f.sinais <= 1 ? weak.filter((w) => w.forte).length : weak.length;
-    return { sell: count >= f.sinais, faixa: f, count };
-  }
+// pos: { entryPx, entryAt (ms) }; ctx: { px, buys5, sells5, safety, trail }
+function exitSignal(c, pos, ctx = {}) {
+  if (!Array.isArray(c) || c.length < 6 || !(pos?.entryPx > 0)) return null;
+  const n = c.length;
+  const px = ctx.px > 0 ? ctx.px : c[n - 1][4];
+  const before = c.filter((x) => x[0] < pos.entryAt);
+  const since = c.filter((x) => x[0] >= pos.entryAt - 5 * 60000);
+  const sw = swingOf(before);
+  const preLow = before.length ? Math.min(...before.slice(-6).map((x) => x[3])) : pos.entryPx * 0.8;
+  let stop = sw ? Math.min(fibPx(sw, 0.786), preLow) * 0.97 : Math.min(preLow * 0.97, pos.entryPx * 0.8);
+  stop = Math.max(stop, pos.entryPx * 0.65);
+  const alvo = sw && sw.hi > pos.entryPx * 1.1 ? sw.hi : pos.entryPx * 2;
+  const peak = Math.max(px, ...since.map((x) => x[2]));
+  const gain = (px / pos.entryPx - 1) * 100, peakGain = (peak / pos.entryPx - 1) * 100;
+  const base = { stop, alvo, gain, peakGain, key: `${pos.entryAt}` };
+  if (ctx.safety === 'danger') return { ...base, fase: 'sair', titulo: 'Sair', msg: 'Apareceu sinal de perigo na moeda.', ruim: true };
+  if (ctx.trail?.ativo) { base.stop = ctx.trail.stop; base.trail = ctx.trail; }
+  if (ctx.trail?.ativo && px < ctx.trail.stop) return { ...base, fase: 'sair', titulo: 'Bateu o stop móvel', msg: `Caiu abaixo do stop móvel. Vendendo aí você garante +${Math.round(ctx.trail.travadoPct)}%.`, ruim: true };
+  if (px < stop) return { ...base, fase: 'sair', titulo: 'Perdeu o fundo', msg: 'O preço passou do stop do plano (abaixo do fundo da correção). Pelo plano, é hora de sair.', ruim: true };
+  if (px >= alvo * 0.97) return { ...base, fase: 'realizar', titulo: 'Chegou no alvo', msg: 'Bateu no topo anterior. Bom ponto para vender tudo ou parte e garantir o lucro.', bom: true };
+  if (peakGain >= 30 && gain <= peakGain * 0.5) return { ...base, fase: 'proteger', titulo: 'Devolvendo o lucro', msg: `Chegou a +${pctTxt(peakGain)} e devolveu metade ou mais. Proteja o que sobrou.`, ruim: true };
+  const last3 = c.slice(-3);
+  const wicks = last3.filter((x) => (x[2] - Math.max(x[1], x[4])) > Math.abs(x[4] - x[1]) * 1.5).length;
+  const sells = ctx.buys5 != null && ctx.sells5 > ctx.buys5 * 1.5;
+  if (gain >= 40 && wicks >= 2 && sells) return { ...base, fase: 'exaustao', titulo: 'Sinais de exaustão', msg: 'Velas com pavio longo em cima e mais venda que compra. Considere realizar parte.', ruim: true };
+  return { ...base, fase: 'segurar', titulo: 'Dentro do plano', msg: ctx.trail?.ativo ? `Nada a fazer. O stop móvel já garante +${Math.round(ctx.trail.travadoPct)}% e sobe junto se ela subir.` : 'Nada a fazer: o preço está entre o stop e o alvo.' };
+}
 
-  // Rompimento (só simulação por enquanto): moeda forte que corrige pouco, faz uma pausa perto do topo
-  // e rompe a máxima com volume e compra (casos goldie e RESPECT em 16/11). Velas de 5 min.
-  // ctx: { px, buys5, sells5 }
-  function breakoutSignal(c, ctx = {}) {
-    if (!Array.isArray(c) || c.length < 8) return null;
-    const n = c.length, last = c[n - 1];
-    const px = ctx.px > 0 ? ctx.px : last[4];
-    const prior = c.slice(Math.max(0, n - 8), n - 1);           // ~35 min antes da vela atual
-    const H = Math.max(...prior.map((x) => x[2]));               // topo a romper
-    const pause = c.slice(n - 4, n - 1);                         // as 3 velas antes da atual
-    const pHi = Math.max(...pause.map((x) => x[2])), pLo = Math.min(...pause.map((x) => x[3]));
-    if (pHi / pLo > 1.3 || pLo < H * 0.75) return null;          // pausa curta e perto do topo (recuo de até 25%)
-    if (!(px > H * 1.01 && px <= H * 1.15)) return null;         // rompeu, mas sem já ter disparado demais
-    if (!(last[4] >= last[1])) return null;                      // vela atual verde
-    const vols = pause.map((x) => x[5]).filter((v) => v > 0);
-    const avgV = vols.length ? vols.reduce((a, v) => a + v, 0) / vols.length : 0;
-    if (avgV && !(last[5] >= avgV * 1.2)) return null;           // volume subindo no rompimento
-    const b = ctx.buys5 || 0, s = ctx.sells5 || 0;
-    if (b + s >= 10 && b / (b + s) < 0.6) return null;           // 60%+ de compras
-    const stop = pLo * 0.97;
-    if ((px - stop) / px > 0.25) return null;                    // stop longe demais: não vale
-    const alvo = px + 2.5 * (px - stop);
-    return { tipo: 'entrada', fase: 'rompimento', titulo: 'Rompimento', boa: true, msg: `Fez uma pausa perto do topo e rompeu a máxima com volume e compra.`, stop, alvo, rr: 2.5, key: `${c[n - 1][0]}` };
+// Sinais de que a alta está perdendo força (usados para realizar o lucro antes do +100%)
+// m: { candles, entryAt, buys5, sells5, vol5, volH1, fromPeak }
+function weakSignals(m) {
+  const out = [];
+  const b = m.buys5 || 0, s = m.sells5 || 0;
+  if (b + s >= 10 && s / (b + s) >= 0.55) out.push({ id: 'vendas', forte: true, msg: `vendas dominando (${Math.round((s / (b + s)) * 100)}% nos últimos 5 min)` });
+  if (m.volH1 > 0 && m.vol5 != null && m.vol5 < (m.volH1 / 12) * 0.4) out.push({ id: 'volume', forte: true, msg: 'volume secando (5 min bem abaixo da média da hora)' });
+  const h = trendHealth(m.candles || [], { entryAt: m.entryAt || 0 }, {});
+  if (h.lows.length >= 2 && !h.rising) out.push({ id: 'fundo', forte: true, msg: 'fez um fundo mais baixo' });
+  if (m.fromPeak >= 10) out.push({ id: 'recuo', forte: m.fromPeak >= 15, msg: `recuou ${Math.round(m.fromPeak)}% do topo` });
+  return out;
+}
+// Realização em faixas: com +50% vende se 2 sinais de fraqueza; com +80%, basta 1 sinal forte; senão segura até o +100%
+function realizeCheck(gain, weak, o = {}) {
+  const faixas = [...(o.faixas || [{ lucroPct: 50, sinais: 2 }, { lucroPct: 80, sinais: 1 }])].sort((a, b) => b.lucroPct - a.lucroPct);
+  const f = faixas.find((x) => gain >= x.lucroPct);
+  if (!f) return { sell: false, faixa: null };
+  const count = f.sinais <= 1 ? weak.filter((w) => w.forte).length : weak.length;
+  return { sell: count >= f.sinais, faixa: f, count };
+}
+
+// Rompimento (só simulação por enquanto): moeda forte que corrige pouco, faz uma pausa perto do topo
+// e rompe a máxima com volume e compra (casos goldie e RESPECT em 16/11). Velas de 5 min.
+// ctx: { px, buys5, sells5 }
+function breakoutSignal(c, ctx = {}) {
+  if (!Array.isArray(c) || c.length < 8) return null;
+  const n = c.length, last = c[n - 1];
+  const px = ctx.px > 0 ? ctx.px : last[4];
+  const prior = c.slice(Math.max(0, n - 8), n - 1);           // ~35 min antes da vela atual
+  const H = Math.max(...prior.map((x) => x[2]));               // topo a romper
+  const pause = c.slice(n - 4, n - 1);                         // as 3 velas antes da atual
+  const pHi = Math.max(...pause.map((x) => x[2])), pLo = Math.min(...pause.map((x) => x[3]));
+  if (pHi / pLo > 1.3 || pLo < H * 0.75) return null;          // pausa curta e perto do topo (recuo de até 25%)
+  if (!(px > H * 1.01 && px <= H * 1.15)) return null;         // rompeu, mas sem já ter disparado demais
+  if (!(last[4] >= last[1])) return null;                      // vela atual verde
+  const vols = pause.map((x) => x[5]).filter((v) => v > 0);
+  const avgV = vols.length ? vols.reduce((a, v) => a + v, 0) / vols.length : 0;
+  if (avgV && !(last[5] >= avgV * 1.2)) return null;           // volume subindo no rompimento
+  const b = ctx.buys5 || 0, s = ctx.sells5 || 0;
+  if (b + s >= 10 && b / (b + s) < 0.6) return null;           // 60%+ de compras
+  const stop = pLo * 0.97;
+  if ((px - stop) / px > 0.25) return null;                    // stop longe demais: não vale
+  const alvo = px + 2.5 * (px - stop);
+  return { tipo: 'entrada', fase: 'rompimento', titulo: 'Rompimento', boa: true, msg: `Fez uma pausa perto do topo e rompeu a máxima com volume e compra.`, stop, alvo, rr: 2.5, key: `${c[n - 1][0]}` };
+}
+
+// ---------- Perfil agressivo ----------
+// Entrada rasa: em tendência forte a moeda às vezes só corrige até perto da 38,2% e volta a subir (LEOSTAR 16/11).
+// Vale se corrigiu de 30% a 50% da alta, a tendência está organizada com compra dominando e a vela reagiu com compra.
+// Stop logo abaixo da 50%, alvo no topo anterior.
+function shallowEntry(c, ctx = {}) {
+  const s = swingOf(c);
+  if (!s) return null;
+  if (ctx.safety && ctx.safety !== 'ok') return null;
+  if (ctx.shape !== 'organica') return null;
+  if (!(ctx.buyRatioH1 >= 55)) return null;
+  const n = c.length;
+  const px = ctx.px > 0 ? ctx.px : c[n - 1][4];
+  const r = (s.hi - px) / (s.hi - s.lo);
+  if (r < 0.3 || r >= 0.5) return null;
+  const after = c.slice(s.iHi + 1);
+  if (after.length < 3) return null;
+  const last = c[n - 1], prev = c[n - 2];
+  const held = last[3] >= Math.min(...after.slice(0, -1).map((x) => x[3])) * 0.995;
+  const green = px > last[1] && px > prev[4];
+  const buyOk = ctx.buys5 == null || (ctx.buys5 + ctx.sells5 === 0) || ctx.buys5 >= ctx.sells5;
+  if (!(held && green && buyOk)) return null;
+  const stop = Math.min(fibPx(s, 0.5), ...after.map((x) => x[3])) * 0.97;
+  const alvo = s.hi;
+  const rr = px > stop ? (alvo - px) / (px - stop) : 0;
+  if (rr < (ctx.rrMin || 1.5)) return null;
+  return { fase: 'entrada', titulo: 'Boa entrada (38,2%)', boa: true, raso: true, msg: 'Tendência forte: corrigiu só até perto da 38,2% e reagiu com compra. Stop abaixo da 50%, alvo no topo anterior.', zona: [fibPx(s, 0.5), fibPx(s, 0.382)], stop, alvo, rr, retr: r, key: `raso-${s.at}` };
+}
+
+// Rompimento de base: a moeda passa 1h ou mais presa numa faixa e fecha acima do teto com volume e compra (GTA 16/11).
+// Velas de 5 min. Stop um pouco abaixo do teto rompido; alvo = altura da faixa projetada a partir do teto.
+function baseBreakout(c, ctx = {}) {
+  if (!c || c.length < 14) return null;
+  if (ctx.safety && ctx.safety !== 'ok') return null;
+  const n = c.length, last = c[n - 1];
+  const px = ctx.px > 0 ? ctx.px : last[4];
+  const minBars = ctx.baseMinVelas || 12; // 12 velas de 5 min = 1 hora
+  // maior base possível (até 6 h) que termine na vela anterior e seja uma faixa (teto/fundo até 1,4x)
+  let best = null;
+  for (let len = minBars; len <= Math.min(72, n - 1); len++) {
+    const win = c.slice(n - 1 - len, n - 1);
+    const H = Math.max(...win.map((x) => x[2])), L = Math.min(...win.map((x) => x[3]));
+    if (H / L > 1.4) break;
+    best = { H, L, win };
   }
+  if (!best) return null;
+  const { H, L, win } = best;
+  if (!(px > H * 1.01 && px < H * 1.2 && px > last[1])) return null;
+  const vols = win.map((x) => x[5]).filter((v) => v > 0);
+  const avgV = vols.length ? vols.reduce((a, v) => a + v, 0) / vols.length : 0;
+  if (avgV && !(last[5] >= avgV * 1.5)) return null;
+  if (ctx.buys5 != null && ctx.buys5 + ctx.sells5 > 0 && ctx.buys5 / (ctx.buys5 + ctx.sells5) < 0.55) return null;
+  const stop = H * 0.93;
+  const risk = (px - stop) / px;
+  if (risk > 0.2) return null;
+  // alvo: a altura da faixa projetada a partir do teto, ou +50% (onde o robô já começa a realizar), o que for maior
+  const alvo = Math.max(H + (H - L), px * 1.5);
+  const rr = (alvo - px) / (px - stop);
+  if (rr < (ctx.rrMin || 1.5)) return null;
+  return { fase: 'rompimento-base', titulo: 'Rompimento de base', boa: true, base: true, msg: `Ficou ${Math.round(win.length * 5 / 60 * 10) / 10}h presa numa faixa e rompeu o teto com volume e compra. Stop logo abaixo do teto, alvo na altura da faixa (ou +50%).`, stop, alvo, rr, key: `base-${win[0][0]}` };
+}
+
   // </fim-sinais>
 
   // Ícone de informação: toca para abrir/fechar a explicação (funciona no celular, sem depender de passar o mouse)
@@ -3027,6 +3118,70 @@
       <h5>Simulação até agora</h5><p><b>${st?.ops || 0} operações</b>${st?.ops ? `, ${Math.round(st.winRate)}% de acerto, ${(st.pnlSol >= 0 ? '+' : '') + solFmt(st.pnlSol, 4)}` : ''}.</p></div>`;
     m.hidden = false;
   }
+  // ---------- Perfil de operação (Conservador / Agressivo): memo assinado pela carteira, o robô troca na próxima rodada ----------
+  function perfilState() {
+    const robot = data?.lastRun?.perfil || null;
+    let pend = store.get('faro-perfil-pend', null);
+    if (pend && robot && robot.name === pend.name) { store.set('faro-perfil-pend', null); pend = null; }
+    if (pend && Date.now() - pend.at > 20 * 60000) { store.set('faro-perfil-pend', null); pend = null; }
+    return { name: robot?.name === 'agressivo' ? 'agressivo' : 'conservador', pend };
+  }
+  const perfilOf = () => perfilState().name;
+  async function sendMemo(text) {
+    const ph = getPhantom(); if (!ph) throw new Error('Phantom não encontrada neste navegador');
+    const { publicKey } = await ph.connect();
+    if (data.wallet?.address && publicKey.toString() !== data.wallet.address) throw new Error('A Phantom está em outra carteira. Troque para a carteira do Faro.');
+    const W = await loadWeb3();
+    const conn = new W.Connection(RPC_URL, 'confirmed');
+    const { blockhash } = await conn.getLatestBlockhash();
+    const ix = new W.TransactionInstruction({ keys: [{ pubkey: publicKey, isSigner: true, isWritable: false }], programId: new W.PublicKey(MEMO_PROGRAM), data: new TextEncoder().encode(text) });
+    const msg = new W.TransactionMessage({ payerKey: publicKey, recentBlockhash: blockhash, instructions: [ix] }).compileToV0Message();
+    return (await ph.signAndSendTransaction(new W.VersionedTransaction(msg))).signature;
+  }
+  function updatePerfilRows() {
+    const rows = document.querySelectorAll('[data-pfrow]'); if (!rows.length) return;
+    const show = !!data && !isDemo();
+    const P = show ? perfilState() : null;
+    rows.forEach((r) => {
+      r.hidden = !show; if (!show) return;
+      const cur = P.pend ? P.pend.name : P.name;
+      r.querySelectorAll('[data-pf]').forEach((b) => { b.classList.toggle('on', b.dataset.pf === cur); b.disabled = !!P.pend; });
+      r.classList.toggle('agr', cur === 'agressivo');
+      r.querySelector('[data-pfstate]').textContent = P.pend ? `trocando para ${P.pend.name === 'agressivo' ? 'Agressivo' : 'Conservador'}... (até 5 min)` : P.name === 'agressivo' ? 'entra mais vezes, arrisca mais' : 'protege o saldo';
+    });
+  }
+  function openPerfilInfo() {
+    const A = data.config?.perfis?.agressivo || {}, c = data.config?.compra || {}, S = data.config?.simulacao || {};
+    const row = (l, a, b) => `<tr><td>${l}</td><td>${a}</td><td>${b}</td></tr>`;
+    const m = $('ntm');
+    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Perfil de operação</b><button class="icon-btn" data-ntmclose aria-label="Fechar">&times;</button></div>
+      <p>O perfil decide quando o robô <b>compra</b>. As travas contra golpe, a curva da pump.fun (nunca compra), os stops e a vigia são iguais nos dois.</p>
+      <table class="pf-table"><thead><tr><th></th><th>Conservador</th><th>Agressivo</th></tr></thead><tbody>
+        ${row('Nota mínima', c.scoreMinimo ?? 70, `${A.compra?.scoreMinimo ?? 60} (ou a da aprovação)`)}
+        ${row('Entradas', 'zona de 50% a 61,8%', 'também 38,2% em tendência forte e rompimentos')}
+        ${row('Risco/retorno mínimo', `1:${S.riscoRetornoMin ?? 2}`, `1:${String(A.simulacao?.riscoRetornoMin ?? 1.5).replace('.', ',')}`)}
+        ${row('Abertas ao mesmo tempo', S.maxAbertas ?? 2, A.simulacao?.maxAbertas ?? 3)}
+        ${row('Compras por dia', c.maxComprasPorDia ?? 5, A.compra?.maxComprasPorDia ?? 8)}
+        ${row('Perda máxima no dia', `${S.perdaMaxDiaVezesBase ?? 3}x uma operação`, `${A.simulacao?.perdaMaxDiaVezesBase ?? 4}x uma operação`)}
+      </tbody></table>
+      <p class="sp-note">Os dois perfis rodam o tempo todo na simulação (gaveta do Robô, aba Simulação). A troca é assinada pela sua carteira (menos de US$ 0,01 de taxa, não movimenta dinheiro) e vale na próxima rodada do robô.</p></div>`;
+    m.hidden = false;
+  }
+  document.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-pfinfo]')) { e.preventDefault(); openPerfilInfo(); return; }
+    const b = e.target.closest('[data-pf]'); if (!b || b.disabled) return;
+    const name = b.dataset.pf, P = perfilState();
+    if ((P.pend ? P.pend.name : P.name) === name) return;
+    const row = b.closest('[data-pfrow]'); row.querySelectorAll('[data-pf]').forEach((x) => (x.disabled = true));
+    row.querySelector('[data-pfstate]').textContent = 'assine na Phantom...';
+    try {
+      const sig = await sendMemo(`faro:perfil=${name}`);
+      store.set('faro-perfil-pend', { name, sig, at: Date.now() });
+      toast(`Pedido enviado: perfil ${name === 'agressivo' ? 'Agressivo' : 'Conservador'} na próxima rodada do robô.`);
+      play('boa');
+    } catch (err) { toast(err?.message?.includes('User rejected') ? 'Cancelado na Phantom' : `Não deu: ${err.message}`); }
+    updatePerfilRows(); try { updateLivePill(); } catch {}
+  });
   async function sendAutoSwitch(on) {
     const ph = getPhantom(); if (!ph) throw new Error('Phantom não encontrada neste navegador');
     const { publicKey } = await ph.connect();
@@ -3064,10 +3219,11 @@
     const ml = $('m-live'); if (ml) { ml.className = 'live m-live ' + (fresh ? 'on' : ''); ml.querySelector('span').textContent = fresh ? 'Ao vivo' : 'Conectando...'; }
     const ico = (on) => on ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2h2v8H3zM7 2h2v8H7z" fill="currentColor"/></svg>';
     el.innerHTML = `<button class="live auto ${buy ? 'on' : ''}" data-open-robot title="Compra automática nos sinais">${ico(buy)}<span>Compra auto ${A.pend ? (A.pend.on ? 'ligando...' : 'desligando...') : buy ? 'ligada' : 'desligada'}</span></button>
-      <button class="live auto ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática">${ico(sell)}<span>Venda auto ${sell ? 'ligada' : 'desligada'}</span></button>`;
+      <button class="live auto ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática">${ico(sell)}<span>Venda auto ${sell ? 'ligada' : 'desligada'}</span></button>
+      <button class="live pf ${perfilOf() === 'agressivo' ? 'agr' : ''}" data-open-robot title="Perfil de operação"><span>${perfilOf() === 'agressivo' ? 'Agressivo' : 'Conservador'}</span></button>`;
   }
   function updateLivePill() {
-    updateSolBal(); updateAutoPill();
+    updateSolBal(); updateAutoPill(); updatePerfilRows();
     const el = $('live'); if (!el) return;
     const fresh = LIVE.ok && Date.now() - LIVE.at < 15000;
     try { updateMBadges(fresh); } catch {}
@@ -3624,9 +3780,16 @@
 
   // Simulação: o robô opera de mentira com o plano de trade e mostra se as regras dão lucro
   let simPage = 1;
+  let simView = store.get('faro-simview', 'conservador');
   function renderSim() {
     const el = $('rt-sim'); if (!el) return;
-    const sim = data.sim, st = sim?.stats;
+    const sim = simView === 'agressivo' ? data.simAgr : data.sim, st = sim?.stats;
+    const cmpCard = (name, label, x) => { const s2 = x?.stats; return `<button class="pf-cmp ${simView === name ? 'on' : ''} ${name === perfilOf() ? 'live' : ''}" data-simview="${name}">
+        <span>${label}${name === perfilOf() ? ' <i class="mini-tag ok">ativo</i>' : ''}</span>
+        <b class="num ${cls(s2?.pnlSol)}">${(s2?.pnlSol || 0) >= 0 ? '+' : ''}${solFmt(s2?.pnlSol || 0, 4)}</b>
+        <small>${s2?.ops || 0} operações - ${Math.round(s2?.winRate || 0)}% de acerto${s2?.open ? ` - ${s2.open} abertas` : ''}</small></button>`; };
+    const cmp = `<div class="pf-cmps">${cmpCard('conservador', 'Conservador', data.sim)}${cmpCard('agressivo', 'Agressivo', data.simAgr)}</div>`;
+    if (simView === 'agressivo' && !sim) { el.innerHTML = cmp + '<p class="note">A simulação do perfil Agressivo começa na próxima rodada do robô. Ela roda sempre, mesmo com o Conservador ativo, para você comparar.</p>'; return; }
     if (!sim) { el.innerHTML = '<p class="note">A simulação começa na próxima rodada do robô. A cada sinal de Boa entrada (nota 70+, risco/retorno 1:2 ou melhor), ele "entra" de mentira com o valor por operação e sai pelas mesmas regras do robô de verdade. Nenhum dinheiro é usado.</p>'; return; }
     const solUsd = LIVE.solUsd || 0;
     const usdOf = (sol) => (solUsd ? ` (${signedMoney(sol * solUsd)})` : '');
@@ -3634,7 +3797,7 @@
     const per = 10, pages = Math.max(1, Math.ceil(ops.length / per)); simPage = Math.min(simPage, pages);
     const whyTxt = { alvo: 'bateu o +100%', stop: 'bateu o stop', 'stop móvel': 'stop móvel', perigo: 'virou perigo', tempo: 'tempo máximo', sumiu: 'saiu do radar' };
     const pass = st && st.ops >= 30 && st.pnlSol > 0;
-    el.innerHTML = `
+    el.innerHTML = cmp + `
       <div class="sim-stats">
         <div><span>Operações</span><b class="num">${st?.ops || 0}</b><small>${st?.open || 0} abertas</small></div>
         <div><span>Acerto</span><b class="num">${(st?.winRate || 0).toFixed(0)}%</b><small>ganho médio ${pct(st?.avgWin || 0)} - perda média ${pct(st?.avgLoss || 0)}</small></div>
@@ -3646,13 +3809,14 @@
       <p class="note">${pass ? '<b>Critério atingido:</b> 30+ operações com resultado positivo. Dá para pensar na fase "um toque para executar".' : `Para avançar: 30 operações simuladas com resultado positivo (faltam ${Math.max(0, 30 - (st?.ops || 0))}). Nenhum dinheiro é usado.`}</p>
       <div class="sim-list">${ops.slice((simPage - 1) * per, simPage * per).map((o) => `
         <button class="sim-op" data-goto="${esc(o.mint)}">
-          <span><b>${esc(o.symbol || o.mint.slice(0, 6))}${o.curva ? ' <i class="mini-tag warn">curva</i>' : ''}${o.romp ? ' <i class="mini-tag new">rompimento</i>' : ''}${o.notaAprov ? ` <i class="mini-tag new" title="Entrou pela nota da aprovação (${o.approvalScore}); a nota de agora era ${o.score}">nota aprov.</i>` : ''}</b><small>${o.aberta ? `aberta ${ago(o.at)} - stop ${pct((o.stop / o.entry - 1) * 100)}, alvo ${pct((o.tp / o.entry - 1) * 100)}` : `${whyTxt[o.why] || o.why} - ${dt(o.exitAt)}`}</small></span>
+          <span><b>${esc(o.symbol || o.mint.slice(0, 6))}${o.curva ? ' <i class="mini-tag warn">curva</i>' : ''}${o.romp ? ' <i class="mini-tag new">rompimento</i>' : ''}${o.tipo && o.tipo !== 'zona' ? ` <i class="mini-tag warn">${esc(o.tipo)}</i>` : ''}${o.notaAprov ? ` <i class="mini-tag new" title="Entrou pela nota da aprovação (${o.approvalScore}); a nota de agora era ${o.score}">nota aprov.</i>` : ''}</b><small>${o.aberta ? `aberta ${ago(o.at)} - stop ${pct((o.stop / o.entry - 1) * 100)}, alvo ${pct((o.tp / o.entry - 1) * 100)}` : `${whyTxt[o.why] || o.why} - ${dt(o.exitAt)}`}</small></span>
           <b class="num ${o.aberta ? '' : cls(o.pnlPct)}">${o.aberta ? '1:' + o.rr.toFixed(1).replace('.', ',') : pct(o.pnlPct)}</b>
         </button>`).join('') || '<p class="note">Nenhuma operação ainda.</p>'}</div>
       ${pages > 1 ? `<div class="hpager"><button data-simpage="-1" ${simPage <= 1 ? 'disabled' : ''}>&larr;</button><span>${simPage} de ${pages}</span><button data-simpage="1" ${simPage >= pages ? 'disabled' : ''}>&rarr;</button></div>` : ''}`;
   }
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-simpage]'); if (b) { simPage += Number(b.dataset.simpage); renderSim(); }
+    const v = e.target.closest('[data-simview]'); if (v) { simView = v.dataset.simview; store.set('faro-simview', simView); simPage = 1; renderSim(); }
     if (e.target.closest('#rt-sim [data-goto]')) closeRobot();
   });
   function renderRobot() {

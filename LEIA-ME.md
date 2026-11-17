@@ -316,3 +316,10 @@ Limitação: o robô roda a cada 5 min. Altas muito rápidas, como a da goldie (
 - Teste na simulação: quando a nota de agora está abaixo de 70, vale a nota da aprovação (70+), desde que a parte sólida (holders, liquidez, segurança, distribuição) tenha 30 de 55 pontos ou mais, sem insiders/concentração novos e com a liquidez em 70%+ da referência.
 - Só para moedas aprovadas a partir de agora (a nota da aprovação passou a ser guardada). Resultado separado na aba Simulação ("nota aprov."). Desliga em `simulacao.notaAprovacao.ligado`.
 - A compra de verdade continua exigindo nota 70+ agora.
+
+### Perfis de operação: Conservador e Agressivo (16/11)
+- Select "Perfil" no card do Robô (computador) e na gaveta do Robô (celular). A troca é um memo `faro:perfil=agressivo|conservador` assinado pela carteira; o robô troca na rodada seguinte.
+- `config.json > perfis.agressivo` sobrescreve só o que muda: nota mínima 60 (ou a da aprovação, 70+, com a parte sólida de pé), risco/retorno 1:1,5, 3 abertas, 8 compras por dia, perda máxima 4x.
+- Sinais extras do agressivo (`t.sinalAgr`): zona com 1:1,5, entrada rasa na 38,2% em tendência forte (`shallowEntry`), rompimento de base de 1h+ (`baseBreakout`) e rompimento curto.
+- Travas de golpe, curva da pump.fun, stops e vigia são iguais nos dois perfis.
+- A simulação roda os dois perfis sempre (`state.sim` e `state.simAgr`), com comparação lado a lado na aba Simulação.

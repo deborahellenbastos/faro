@@ -66,9 +66,32 @@
       "alvoPct": 100,
       "ateUsd": 10
     },
-    "realizar": { "ligado": true, "faixas": [ { "lucroPct": 50, "sinais": 2 }, { "lucroPct": 80, "sinais": 1 } ] },
-    "stopMovel": { "ligado": true, "ativarPct": 30, "seguirAPartirPct": 60, "distanciaPct": 25, "minimoTravadoPct": 5, "confirmarSegundos": 30 },
-    "stopPerda": { "ligado": true, "pct": 25, "confirmarSegundos": 30 },
+    "realizar": {
+      "ligado": true,
+      "faixas": [
+        {
+          "lucroPct": 50,
+          "sinais": 2
+        },
+        {
+          "lucroPct": 80,
+          "sinais": 1
+        }
+      ]
+    },
+    "stopMovel": {
+      "ligado": true,
+      "ativarPct": 30,
+      "seguirAPartirPct": 60,
+      "distanciaPct": 25,
+      "minimoTravadoPct": 5,
+      "confirmarSegundos": 30
+    },
+    "stopPerda": {
+      "ligado": true,
+      "pct": 25,
+      "confirmarSegundos": 30
+    },
     "vigia": {
       "ligado": true,
       "quedaDoPicoPct": 40,
@@ -85,10 +108,21 @@
     "usd": 10,
     "riscoPorOperacaoPct": 2
   },
-  "curva": { "ligado": true, "somenteSimulacao": true, "marketCapMinUsd": 45000, "idadeMinMin": 15, "comprasHoraMin": 100, "compraPctMin": 55, "maxRugcheckPorRodada": 3 },
+  "curva": {
+    "ligado": true,
+    "somenteSimulacao": true,
+    "marketCapMinUsd": 45000,
+    "idadeMinMin": 15,
+    "comprasHoraMin": 100,
+    "compraPctMin": 55,
+    "maxRugcheckPorRodada": 3
+  },
   "simulacao": {
     "ligado": true,
-    "notaAprovacao": { "ligado": true, "solidaMin": 30 },
+    "notaAprovacao": {
+      "ligado": true,
+      "solidaMin": 30
+    },
     "maxAbertas": 2,
     "perdaMaxDiaVezesBase": 3,
     "riscoRetornoMin": 2,
@@ -98,5 +132,19 @@
     "slippagePct": 2,
     "slippageStopPct": 5,
     "horasMaximas": 24
+  },
+  "perfis": {
+    "_comentario": "Perfil ativo é trocado pelo painel (memo assinado pela carteira). Os dois rodam sempre na simulação. Travas de golpe, curva da pump.fun, stops e vigia são iguais nos dois.",
+    "agressivo": {
+      "compra": {
+        "scoreMinimo": 60,
+        "maxComprasPorDia": 8
+      },
+      "simulacao": {
+        "riscoRetornoMin": 1.5,
+        "maxAbertas": 3,
+        "perdaMaxDiaVezesBase": 4
+      }
+    }
   }
 }

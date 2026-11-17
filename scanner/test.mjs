@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce, dumpReason, lpFalseAlarm } from './run.mjs';
-import { buyScoreOk, entryCandidates as ecTest } from './autobuy.mjs';
+import { buyScoreOk, entryCandidates as ecTest, profileCfg, readProfile } from './autobuy.mjs';
+import { shallowEntry, baseBreakout } from './signals.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
 import { entrySignal, exitSignal, trailStop, weakSignals, realizeCheck, breakoutSignal } from './signals.mjs';
@@ -451,6 +452,40 @@ console.log(JSON.stringify(state.lastRun.counts));
   const fresh = { ...tok, score: 80, approvedAt: now - 9 * 60000 };
   assert.equal(ecTest({ X: fresh }, cfgT, now).length, 0, 'aprovada há 9 min: espera');
   assert.equal(ecTest({ X: { ...fresh, approvedAt: now - 16 * 60000 } }, cfgT, now).length, 1, 'aprovada há 16 min: pode');
+}
+
+// Perfis: Agressivo por cima da configuração, sem mexer na base
+{
+  const cfgT = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
+  const A = profileCfg(cfgT, 'agressivo');
+  assert.equal(A.compra.scoreMinimo, 60); assert.equal(A.simulacao.maxAbertas, 3); assert.equal(A.simulacao.riscoRetornoMin, 1.5);
+  assert.equal(cfgT.compra.scoreMinimo, 70); assert.equal(cfgT.simulacao.maxAbertas, 2);
+  assert.equal(A.filtros.bundlePctMin, cfgT.filtros.bundlePctMin); // travas de golpe iguais
+  const memos = [{ sig: 'b', memo: 'faro:perfil=agressivo' }, { sig: 'a', memo: 'faro:perfil=conservador' }];
+  assert.equal((await readProfile(memos, async () => true)).name, 'agressivo');
+  assert.equal((await readProfile(memos, async (sg) => sg === 'a')).name, 'conservador'); // memo não assinado pela carteira não vale
+  // Rompimento de base (GTA 16/11): 4h presa entre ~650 e ~830, depois fecha acima com volume
+  const t0 = Date.UTC(2026, 10, 16, 20);
+  const base = Array.from({ length: 48 }, (_, i) => { const m = 740 + 80 * Math.sin(i / 3); return [t0 + i * 3e5, m, m + 10, m - 10, m + 5, 100]; });
+  const brk = [...base, [t0 + 48 * 3e5, 830, 905, 828, 900, 400]];
+  const bb = baseBreakout(brk, { buys5: 80, sells5: 30, safety: 'ok' });
+  assert.ok(bb && bb.base && bb.rr >= 1.5, 'rompimento de base detectado');
+  assert.equal(baseBreakout([...base, [t0 + 48 * 3e5, 830, 905, 828, 900, 90]], { safety: 'ok' }), null); // sem volume não vale
+  // Entrada rasa na 38,2% (LEOSTAR 16/11): alta forte, corrige ~40% e reage com compra
+  const up = Array.from({ length: 20 }, (_, i) => { const p = 400 + i * 45; return [t0 + i * 3e5, p, p + 20, p - 5, p + 15, 100]; });
+  const top = up[19][2]; const lo0 = up[0][3]; const r40 = top - (top - lo0) * 0.4;
+  const dn = [[t0 + 20 * 3e5, top - 20, top - 10, r40 + 30, r40 + 40, 80], [t0 + 21 * 3e5, r40 + 40, r40 + 45, r40, r40 + 5, 80], [t0 + 22 * 3e5, r40 + 5, r40 + 10, r40 + 1, r40 + 2, 80], [t0 + 23 * 3e5, r40 + 2, r40 + 60, r40 + 1, r40 + 55, 150]];
+  const se = shallowEntry([...up, ...dn], { shape: 'organica', buyRatioH1: 62, buys5: 40, sells5: 20, safety: 'ok' });
+  assert.ok(se && se.raso && se.rr >= 1.5, 'entrada rasa detectada');
+  assert.equal(shallowEntry([...up, ...dn], { shape: 'organica', buyRatioH1: 45, safety: 'ok' }), null); // sem compra dominando não vale
+  // Candidatos do agressivo usam o sinal agressivo e a nota 60
+  const now = Date.now();
+  const tok = { mint: 'Y', symbol: 'Y', status: 'aprovada', approvedAt: Date.now() - 3600e3, dexId: 'pumpswap', score: 63, safety: { level: 'ok', alerts: [] }, sinal: { tipo: 'entrada', boa: false, at: now }, sinalAgr: { ...se, at: now } };
+  assert.equal(ecTest({ Y: tok }, cfgT, now).length, 0);
+  const ag = ecTest({ Y: tok }, A, now, { agr: true });
+  assert.equal(ag.length, 1); assert.equal(ag[0]._agrTipo, '38,2%'); assert.equal(ag[0].sinal.raso, true);
+  assert.equal(ecTest({ Y: { ...tok, dexId: 'pumpfun' } }, A, now, { agr: true }).length, 0); // nunca na curva
+  assert.equal(ecTest({ Y: { ...tok, safety: { level: 'danger', alerts: [] } } }, A, now, { agr: true }).length, 0);
 }
 if (process.argv.includes('--demo')) {
   state.config = cfg;
