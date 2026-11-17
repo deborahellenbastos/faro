@@ -597,6 +597,10 @@
   #dex-vault iframe { width: 100%; height: 100%; border: 0; }
   .list-sub { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .list-sub small { color: var(--faint); font-weight: 700; }
+  .list-sub.fold { width: 100%; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; padding-bottom: 10px; }
+  .list-sub.fold:hover { color: var(--text); }
+  .list-sub.fold .chev { width: 14px; height: 14px; margin-left: auto; transition: transform .15s; }
+  .list-sub.fold.open .chev { transform: rotate(180deg); }
   .chart-box:not(.max) .cmax-only { display: none !important; }
   .cmax-sym { font-size: 16px; font-weight: 800; }
   .chart-box.max { position: fixed; inset: 0; z-index: 60; margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-4); background: var(--bg); display: flex; flex-direction: column; }
@@ -1353,6 +1357,10 @@
     }
     return askPassword(file);
   }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-mortas]')) return;
+    prefs.mortasOpen = !prefs.mortasOpen; store.set('moeda-prefs', prefs); render();
+  });
   document.addEventListener('click', (e) => {
     if (!e.target.closest('[data-lock]')) return;
     sessionKey = null; try { localStorage.removeItem('faro-key'); } catch {}
@@ -3412,24 +3420,31 @@
 
     const ro = $('radar-ord'); ro.hidden = ui.tab !== 'aprovada';
     ro.querySelectorAll('[data-rord]').forEach((b) => b.classList.toggle('on', b.dataset.rord === radarOrd()));
-    $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em observação', reprovada: 'Reprovadas' }[ui.tab]}<small>${items.length}</small>`;
+    $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em observação', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
+    // Mortas ficam recolhidas (só o título com a contagem); um clique abre ou fecha
+    const realN = items.length;
+    if (ui.tab === 'minhas' && !q && dead.length) {
+      const at = items.findIndex((t) => isDead(t));
+      if (!prefs.mortasOpen) items = items.filter((t) => !isDead(t));
+      items = [...items.slice(0, at), { __deadHdr: true }, ...items.slice(at)];
+    }
     const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
     ui.page = Math.min(ui.page, pages);
     const slice = items.slice((ui.page - 1) * PAGE_SIZE, ui.page * PAGE_SIZE);
     let sel = ui.sel[ui.tab];
-    if (!items.some((t) => t.mint === sel)) sel = ui.sel[ui.tab] = items[0]?.mint;
+    if (!items.some((t) => t.mint && t.mint === sel)) sel = ui.sel[ui.tab] = items.find((t) => t.mint)?.mint;
     const empty = {
       minhas: ['Nenhuma moeda sua ainda', 'Coloque o endereço público da Phantom no config.json. O robô descobre o que você comprou e passa a vigiar aqui.'],
       aprovada: ['Radar limpo por enquanto', 'Os filtros estão rígidos de propósito. Melhor nenhuma do que uma ruim.'],
     }[ui.tab] || ['Nada por aqui', ''];
     const sub = (label, n) => `<div class="list-sub">${label}<small>${n}</small></div>`;
     const rows = slice.map((t, i) => {
+      if (t.__deadHdr) return `<button class="list-sub fold ${prefs.mortasOpen ? 'open' : ''}" data-mortas aria-expanded="${!!prefs.mortasOpen}">Mortas - valem menos de US$ 1<small>${dead.length}</small>${ICON.chev}</button>`;
       let head = '';
       if (ui.tab === 'minhas' && !q) {
         const c = isClosed(t), dd = !c && isDead(t), prev = slice[i - 1];
         if (!c && !dd && i === 0) head = sub('Em aberto', mine.length);
-        if (dd && (!prev || !isDead(prev))) head = sub('Mortas - valem menos de US$ 1', dead.length);
-        if (c && (!prev || !isClosed(prev))) head = sub('Encerradas', closed.length);
+        if (c && (!prev || prev.__deadHdr || !isClosed(prev))) head = sub('Encerradas', closed.length);
       }
       return head + rowHtml(t, t.mint === sel);
     }).join('');
