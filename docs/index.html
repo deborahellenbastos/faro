@@ -1136,8 +1136,6 @@
   @keyframes enterFwd { from { opacity: .2; transform: translateX(14px); } to { opacity: 1; transform: none; } }
   @keyframes enterBack { from { opacity: .2; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
   @keyframes rowIn { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
-  body.tab-enter.fwd #m-hero, body.tab-enter.fwd .summary, body.tab-enter.fwd .wallet-strip, body.tab-enter.fwd .list-head, body.tab-enter.fwd .radar-chips, body.tab-enter.fwd #list { animation: enterFwd .36s cubic-bezier(.2,.9,.25,1) both; }
-  body.tab-enter.back #m-hero, body.tab-enter.back .summary, body.tab-enter.back .wallet-strip, body.tab-enter.back .list-head, body.tab-enter.back .radar-chips, body.tab-enter.back #list { animation: enterBack .36s cubic-bezier(.2,.9,.25,1) both; }
 
   /* Barra de baixo: o fundo do item ativo desliza; ícones com animação própria ao tocar */
   .tabbar button { transition: color .25s, background .3s cubic-bezier(.2,.9,.25,1), transform .15s; }
@@ -1179,6 +1177,17 @@
   /* a barra de baixo nunca se mexe na troca de abas */
   .tabbar button.pop, .tabbar button:active { transform: none !important; }
   @media (max-width: 1099px) { .tabbar { transform: translateZ(0); will-change: auto; } }
+
+  /* Barra de baixo: pílula do item ativo deslizando */
+  @media (max-width: 1099px) {
+    .tabbar { position: fixed; }
+    .tabbar .tb-pill { position: absolute; left: 0; top: 0; z-index: 0; border-radius: 20px; background: rgba(16,210,127,.14); box-shadow: inset 0 0 0 1px rgba(16,210,127,.12);
+      transition: transform .38s cubic-bezier(.3,1.25,.4,1), width .38s cubic-bezier(.3,1.25,.4,1), opacity .2s; pointer-events: none; }
+    .tabbar button { position: relative; z-index: 1; }
+    .tabbar button.on { background: transparent !important; }
+    .tabbar button svg { transition: transform .3s cubic-bezier(.3,1.4,.5,1); }
+    .tabbar button.on svg { transform: translateY(-1px) scale(1.08); }
+  }
 </style>
 </head>
 <body>
@@ -1932,6 +1941,15 @@
   // Dentro do app da Phantom no celular: a barra de endereço dela fica por cima da parte de baixo da tela
   if (/iPhone|iPad|Android/i.test(navigator.userAgent) && (window.phantom?.solana?.isPhantom || window.solana?.isPhantom)) document.body.classList.add('in-phantom');
   const TAB_ORDER = ['minhas', 'aprovada', 'aguardando', 'reprovada'];
+  // Barra de baixo: o fundo do item ativo desliza de um item para o outro
+  function moveTabPill() {
+    const bar = $('tabbar'); if (!bar) return;
+    let pill = bar.querySelector('.tb-pill'); if (!pill) { pill = document.createElement('i'); pill.className = 'tb-pill'; bar.prepend(pill); }
+    const on = bar.querySelector('button.on'); if (!on || !on.offsetWidth) { pill.style.opacity = 0; return; }
+    pill.style.opacity = 1; pill.style.width = on.offsetWidth + 'px'; pill.style.height = on.offsetHeight + 'px';
+    pill.style.transform = `translate(${on.offsetLeft}px, ${on.offsetTop}px)`;
+  }
+  window.addEventListener('resize', moveTabPill);
   // Toque nos ícones: animação curta de "vida" (radar gira, carteira pula, olho pisca, escudo balança, robô acena, sino toca)
   document.addEventListener('click', (e) => {
     const b = e.target.closest('.tabbar button, .nav-item, .m-robot, #bell, .icon-btn[data-open-robot]'); if (!b) return;
@@ -4172,6 +4190,7 @@ function baseBreakout(c, ctx = {}) {
       clearTimeout(window.__tabT); window.__tabT = setTimeout(() => document.body.classList.remove('tab-enter', 'fwd', 'back'), 700);
     }
     window.__lastTab = ui.tab;
+    requestAnimationFrame(moveTabPill);
     document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === ui.tab));
     const unseenN = lists.aprovada.filter(isUnseen).length;
     document.querySelectorAll('[data-count]').forEach((e) => { e.textContent = (e.dataset.count === 'minhas' ? mine.length : lists[e.dataset.count].length) || ''; e.classList.toggle('has-new', e.dataset.count === 'aprovada' && unseenN > 0); e.title = e.dataset.count === 'aprovada' && unseenN ? `${unseenN} nova${unseenN > 1 ? 's' : ''} que você ainda não abriu` : ''; });
