@@ -171,6 +171,17 @@ export async function getSolBalance(owner) {
 
 // Compras e vendas da carteira, lidas das transações (só leitura).
 // Processa das mais antigas para as mais novas, no máximo maxTx por rodada, continuando de onde parou.
+// Últimas compras/vendas (para a vigia saber o preço de entrada de uma compra feita há poucos minutos)
+export async function getRecentOps(owner, n = 12) {
+  const sigs = await rpc('getSignaturesForAddress', [owner, { limit: n }]);
+  const ops = [];
+  for (const x of (sigs || []).filter((y) => !y.err)) {
+    const tx = await getTx(x.signature);
+    if (tx && !tx.meta?.err) ops.push(...parseOps(tx, owner, x.signature));
+    await sleep(120);
+  }
+  return ops;
+}
 export async function getWalletIncoming(owner, limit = 60) {
   const sigs = await rpc('getSignaturesForAddress', [owner, { limit }]);
   const ins = [];

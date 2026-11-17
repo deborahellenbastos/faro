@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { decrypt } from './vault.mjs';
 import { createTrader } from './trader.mjs';
-import { getRugReport, getWalletHoldings } from './api.mjs';
+import { getRugReport, getWalletHoldings, getRecentOps } from './api.mjs';
 import { summarizeRug, scamSignals, isLpSignal } from './analyze.mjs';
 import { weakSignals, realizeCheck } from './signals.mjs';
 
@@ -75,6 +75,21 @@ let lastHoldings = 0, lastRug = 0, lastAuth = 0;
 mem.base = mem.base || {};
 
 // Carteira ao vivo: moedas compradas depois da última rodada também entram na vigia
+// Compra recente que o robô ainda não leu (a posição só aparece na rodada seguinte): preço médio de entrada em SOL,
+// lido direto da blockchain, para o stop de perda já valer desde o primeiro minuto (17/11: Privium)
+const liveEntry = {};
+async function refreshEntries() {
+  const need = held.filter((t) => !(t.position?.known && t.position.costOpenUsd > 0) && !liveEntry[t.mint]);
+  if (!need.length || !wallet) return;
+  try {
+    const ops = await getRecentOps(wallet, 15);
+    for (const t of need) {
+      const buys = ops.filter((o) => o.mint === t.mint && o.tokens > 0 && o.sol < 0);
+      const tok = buys.reduce((a, o) => a + o.tokens, 0), sol = buys.reduce((a, o) => a - o.sol, 0);
+      if (tok > 0 && sol > 0) { liveEntry[t.mint] = sol / tok; log(`${t.symbol}: entrada lida da blockchain (${(sol / tok).toExponential(3)} SOL por moeda); stop de perda já vale`); }
+    }
+  } catch (e) { log(`não consegui ler as compras recentes: ${e.message}`, true); }
+}
 async function refreshHoldings() {
   try {
     const list = await getWalletHoldings(wallet);
@@ -161,12 +176,12 @@ for (const t of held) {
   const candleTop = Math.max(0, ...(t.candles || []).filter((c) => c[0] >= since - 300000).map((c) => c[2]));
   mem.peak[t.mint] = Math.max(mem.peak[t.mint] || 0, t.position?.avgPriceUsd || 0, candleTop, t.priceUsd || 0);
 }
-await refreshHoldings(); lastHoldings = Date.now();
+await refreshHoldings(); await refreshEntries(); lastHoldings = Date.now();
 if (!held.length && !wallet) { await idle(); process.exit(0); }
 log(`vigiando ${held.map((t) => t.symbol).join(', ') || '(carteira vazia)'}: golpe ${golpeOn ? 'sim' : 'não'}, queda -${dropPct}% do pico com confirmação (ou -${hardDrop}% sem), liquidez -${liqPct}% em ${liqWin / 60000} min, lucro ${lucroOn ? `+${L.alvoPct}%` : 'não'}, stop móvel ${trailOn ? `a partir de +${SM.ativarPct ?? 30}%` : 'não'}, realizar ${realizeOn ? 'com +50%/+80% se perder força' : 'não'}`);
 
 while (Date.now() < until) {
-  if (Date.now() - lastHoldings >= 30000) { lastHoldings = Date.now(); await refreshHoldings(); }
+  if (Date.now() - lastHoldings >= 30000) { lastHoldings = Date.now(); await refreshHoldings(); await refreshEntries(); }
   const live = held.filter((t) => !done(t));
   if (!live.length) { await sleep(Math.min(10000, Math.max(0, until - Date.now()))); continue; }
   try {
@@ -189,7 +204,8 @@ while (Date.now() < until) {
       const liqDrop = liqTop > 0 && liq > 0 ? (1 - liq / liqTop) * 100 : 0;
       // 1. Golpe no contrato  2. Queda forte  3. Lucro em posição pequena
       const cost = t.position?.known ? t.position.costOpenUsd : 0;
-      const gain = cost > 0 ? ((t.heldAmount * px) / cost - 1) * 100 : null;
+      const pxSol = /^W?SOL$/i.test(p?.quoteToken?.symbol || '') ? Number(p?.priceNative) : 0;
+      const gain = cost > 0 ? ((t.heldAmount * px) / cost - 1) * 100 : liveEntry[t.mint] && pxSol > 0 ? (pxSol / liveEntry[t.mint] - 1) * 100 : null;
       // Stop móvel: o da última rodada, subindo junto com o pico que a vigia vê ao vivo (nunca desce)
       let trailPx = 0;
       if (trailOn && t.trail?.ativo && t.position?.avgPriceUsd > 0) {
@@ -198,7 +214,7 @@ while (Date.now() < until) {
         trailPx = Math.max(t.trail.stop, follow, entry * (1 + (SM.minimoTravadoPct ?? 5) / 100));
       }
       const cost0 = t.position?.known ? t.position.costOpenUsd : 0;
-      const gain0 = cost0 > 0 ? ((t.heldAmount * px) / cost0 - 1) * 100 : null;
+      const gain0 = gain;
       if (mem.below?.[t.mint] && !(trailPx && px < trailPx) && !(lossOn && gain0 != null && gain0 <= -lossPct)) delete mem.below[t.mint]; // voltou acima: zera a confirmação
       // LP destravada só vende se a liquidez estiver saindo de verdade (15%+ na janela); os outros sinais de golpe vendem direto
       let golpe = scam[t.mint];
@@ -212,7 +228,7 @@ while (Date.now() < until) {
       else if (trailPx && px < trailPx && px >= trailPx * 0.9 && !confirmBelow(t, now, SM.confirmarSegundos ?? 30, 'stop móvel')) { /* aguardando confirmação */ }
       else if (trailPx && px < trailPx) await sell(t, `stop móvel: caiu abaixo de US$ ${trailPx.toPrecision(4)} (garantindo +${((trailPx / t.position.avgPriceUsd - 1) * 100).toFixed(0)}%)`, 'stop-movel', px);
       // Stop de perda: a posição ainda no prejuízo caiu stopPerda% desde a entrada (antes não existia: só o -40% do topo)
-      else if (lossOn && gain != null && gain <= -lossPct && gain > -(lossPct + 15) && !confirmBelow(t, now, SP.confirmarSegundos ?? 30, 'stop de perda')) { /* aguardando confirmação */ }
+      else if (lossOn && gain != null && gain <= -lossPct && gain > -(lossPct + 5) && !confirmBelow(t, now, SP.confirmarSegundos ?? 20, 'stop de perda')) { /* aguardando confirmação */ }
       else if (lossOn && gain != null && gain <= -lossPct) await sell(t, `stop de perda: caiu ${Math.abs(gain).toFixed(0)}% desde a entrada (limite -${lossPct}%)`, 'stop-perda', px);
       else if (realizeOn && gain != null && gain >= 50 && gain < (L.alvoPct ?? 100) && (() => {
         const weak = weakSignals({ candles: t.candles, entryAt: t.position?.lastBuyAt || t.heldSince || 0, buys5: Number(p?.txns?.m5?.buys) || 0, sells5: Number(p?.txns?.m5?.sells) || 0, vol5: Number(p?.volume?.m5), volH1: Number(p?.volume?.h1), fromPeak });

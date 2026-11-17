@@ -90,7 +90,7 @@
     "stopPerda": {
       "ligado": true,
       "pct": 15,
-      "confirmarSegundos": 30
+      "confirmarSegundos": 20
     },
     "vigia": {
       "ligado": true,
