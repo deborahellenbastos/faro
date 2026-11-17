@@ -772,7 +772,7 @@
         <div><b>Robô</b><span class="bot-line"><i class="dot" id="dot"></i><span id="updated">Carregando...</span></span></div>
       </div>
       <div class="side-sep"></div>
-      <div class="sw-row"><div><span id="t-sound-label">Sons</span><small id="t-sound-hint" hidden>Clique para liberar</small></div><button class="switch" id="t-sound" role="switch" aria-checked="false" aria-label="Sons"></button></div>
+      <div class="sw-row"><div><span id="t-sound-label">Sons</span><small id="t-sound-hint" hidden>Um som não tocou - toque na página</small></div><button class="switch" id="t-sound" role="switch" aria-checked="false" aria-label="Sons"></button></div>
       <div class="sw-row"><span>Notificações</span><button class="switch" id="t-notif" role="switch" aria-checked="false" aria-label="Notificações"></button></div>
       <div class="sw-row"><div><span>Gráfico da Dex<i class="info-btn tip" title="Desligado, o painel fica mais leve: não carrega os gráficos da DexScreener e mostra só o gráfico do Faro (com um link para abrir a Dex em outra aba)"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></i></span></div><button class="switch" id="t-dex" role="switch" aria-checked="true" aria-label="Gráfico da Dex"></button></div>
       <div class="sw-row"><span>Moedas mortas</span><button class="switch" id="t-mortas" role="switch" aria-checked="true" aria-label="Mostrar moedas mortas na Carteira"></button></div>
@@ -970,8 +970,10 @@
   }
   function unlockAudio() {
     const c = audio(); if (!c) return;
+    // O navegador só libera o som depois do primeiro toque/clique na página: libera em silêncio, sem pintar o switch.
+    // O amarelo só aparece se algum som tentou tocar antes disso (aí você sabe que perdeu um aviso sonoro).
     if (c.state === 'suspended') c.resume().then(() => setLocked(false)).catch(() => {});
-    setLocked(prefs.sound && c.state !== 'running');
+    else if (c.state === 'running') setLocked(false);
   }
   function tone(c, freq, at, dur, type, vol, slideTo) {
     const o = c.createOscillator(), g = c.createGain();
