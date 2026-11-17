@@ -1896,6 +1896,18 @@
     return why.length ? `O robô não compra sozinho (${why.join(', ')}).` : 'O robô compra sozinho se ainda houver espaço nos limites do dia.';
   }
   const START_MINT = new URLSearchParams(location.search).get('m');
+  // Ordem vinda do Safari/app (link "abrir na Phantom"): executa uma vez, só se for recente, e a Phantom pede a confirmação
+  function runStartOrder() {
+    const qs = new URLSearchParams(location.search), go = qs.get('go'); if (!go || !START_MINT) return;
+    const [side, amt, slip, ts, unit] = go.split('~');
+    const u = new URL(location.href); u.searchParams.delete('go'); history.replaceState(null, '', u.toString());
+    const key = 'faro-go-' + ts;
+    if (!(Date.now() - Number(ts) < 5 * 60000) || sessionStorage.getItem(key) || !getPhantom() || !(Number(amt) > 0)) return;
+    sessionStorage.setItem(key, '1');
+    const st = tradeState(START_MINT);
+    Object.assign(st, { side: side === 'sell' ? 'sell' : 'buy', mode: 'market', unit: unit === 'usd' ? 'usd' : 'sol', amt, slip: slip === 'auto' ? 'auto' : Number(slip) || 'auto', quote: null, msg: null });
+    setTimeout(() => onTradeGo(START_MINT), 400);
+  }
   // No celular a busca desce para baixo do resumo (o topo fica só com logo, Robô e notificações)
   const MQ = window.matchMedia('(max-width: 700px)');
   function placeSearch() {
@@ -1923,7 +1935,7 @@
   }
   function checkSignals() {
     try { checkRobotBuys(); } catch {}
-    if (START_MINT && !startDone && data?.tokens?.[START_MINT]) { startDone = true; setTimeout(() => goTo(START_MINT), 0); }
+    if (START_MINT && !startDone && data?.tokens?.[START_MINT]) { startDone = true; setTimeout(() => { goTo(START_MINT); runStartOrder(); }, 0); }
     if (!data?.tokens || isDemo()) return;
     let entrada = false, ruim = false, bom = false;
     for (const t of Object.values(data.tokens)) {
@@ -2039,7 +2051,7 @@
     document.addEventListener('touchend', () => { if (y0 == null) return; y0 = null; document.body.classList.remove('sheet-dragging'); if (dy > 110) closeSheet(); else document.body.style.removeProperty('--sheet-drag'); dy = 0; });
   }
   // Celular sem a Phantom (Safari ou app da tela inicial): botão que abre esta mesma moeda dentro do navegador da Phantom
-  const phantomLink = () => { const u = new URL(location.href); u.hash = ''; if (ui?.sel?.[ui.tab]) u.searchParams.set('m', ui.sel[ui.tab]); return `https://phantom.app/ul/browse/${encodeURIComponent(u.toString())}?ref=${encodeURIComponent(location.origin)}`; };
+  const phantomLink = (go) => { const u = new URL(location.href); u.hash = ''; u.searchParams.delete('go'); if (ui?.sel?.[ui.tab]) u.searchParams.set('m', ui.sel[ui.tab]); if (go) { u.searchParams.set('m', go.mint); u.searchParams.set('go', [go.side, go.amt, go.slip, Date.now(), go.unit || 'sol'].join('~')); } return `https://phantom.app/ul/browse/${encodeURIComponent(u.toString())}?ref=${encodeURIComponent(location.origin)}`; };
   function phantomHelp() {
     const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
     return mobile
@@ -4815,6 +4827,12 @@ function baseBreakout(c, ctx = {}) {
     st.msg = null;
     if (!isDemo() && !getPhantom()) {
       st.msg = { err: true, html: phantomHelp() };
+      // Celular fora da Phantom: abre o Faro dentro da Phantom já com a ordem (lá só falta confirmar)
+      if (/iPhone|iPad|Android/i.test(navigator.userAgent) && st.mode !== 'limit' && Number(String(st.amt).replace(',', '.')) > 0) {
+        st.msg = { html: 'Abrindo a Phantom com a ordem pronta... lá é só confirmar.' }; render();
+        location.href = phantomLink({ mint, side: st.side || 'buy', amt: String(st.amt).replace(',', '.'), slip: st.slip ?? 'auto', unit: st.unit });
+        return;
+      }
       return render();
     }
     st.busy = true; render();
