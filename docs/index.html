@@ -724,7 +724,24 @@
   .m-hero .mh-label small { margin-left: 6px; color: var(--faint); font-weight: 700; font-size: 12px; }
   .m-hero .mh-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .m-hero .mh-top .mh-day { margin-top: 4px; }
+  .tile span em.dk { font-style: normal; }
   @media (max-width: 700px) {
+    /* Moeda no celular: cabeçalho em grade (foto | nome e dados | nota) com as etiquetas na largura toda */
+    .d-back { margin-bottom: var(--sp-3); }
+    .d-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 2px; align-items: start; }
+    .d-head .avatar { width: 44px; height: 44px; grid-column: 1; grid-row: 1 / span 3; align-self: center; }
+    .d-head .ident { display: contents; }
+    .d-head .pair { grid-column: 2; grid-row: 1; }
+    .d-head .route { grid-column: 2; grid-row: 2; }
+    .d-head .meta { grid-column: 2; grid-row: 3; }
+    .d-head .tags { grid-column: 1 / -1; grid-row: 4; margin-top: 10px; }
+    .d-head .d-actions { grid-column: 3; grid-row: 1 / span 3; align-self: center; }
+    .d-hero { margin-top: var(--sp-4); }
+    .chart-tools { flex-wrap: nowrap; }
+    .chart-tools .btn-sm { padding: 0 10px; }
+    .chart-tools [data-chart] .lbl { display: none; }
+    .d-split > * { width: 100%; align-self: stretch; }
+    .tile span em.dk { display: none; }
     .summary, .wallet-strip, .page-h { display: none !important; }
     .m-robot { display: inline-grid; }
     .m-badges { display: flex; }
@@ -1999,10 +2016,10 @@
         <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
         <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
         ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
-        <button class="btn btn-sm" data-askclaude="${esc(t.mint)}" title="Abre o Claude com os dados desta moeda e copia a foto do gráfico do Faro para você colar">${ICON.claude}Perguntar ao Claude</button>
+        <button class="btn btn-sm" data-askclaude="${esc(t.mint)}" title="Abre o Claude com os dados desta moeda e copia a foto do gráfico do Faro para você colar">${ICON.claude}<span class="lbl">Perguntar ao Claude</span></button>
         <span style="flex:1"></span>
         ${dexOn() ? '' : `<a class="btn btn-sm" href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}Abrir na Dex</a>`}
-        <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}">${ICON.expand}Expandir</button>
+        <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}" aria-label="Expandir" title="Expandir">${ICON.expand}<span class="lbl">Expandir</span></button>
       </div>
       <div class="lw-slot" data-lwslot="${esc(t.mint)}"><div class="dexwrap" data-dexslot></div><div class="farowrap" data-faroslot>
         <div class="ov-tools" title="Ferramentas de traço">
@@ -2426,7 +2443,7 @@
     </section>`;
     const perf = t.status === 'aprovada' && !mine ? `<div class="perf-strip">
         <div class="tile"><span>Desde o alerta</span><b class="num ${cls(t.changePct)}">${pct(t.changePct)}</b></div>
-        <div class="tile"><span>Máxima desde o alerta</span><b class="num pos">${pct(t.maxChangePct)}</b></div>
+        <div class="tile"><span>Máxima<em class="dk"> desde o alerta</em></span><b class="num pos">${pct(t.maxChangePct)}</b></div>
         <div class="tile"><span>Preço no alerta</span><b class="num">${price(t.entryPriceUsd)}</b></div>
       </div>` : '';
     // Operação e compra/venda ficam numa coluna ao lado do gráfico (fixa ao rolar)
