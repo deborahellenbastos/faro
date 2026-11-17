@@ -1300,6 +1300,12 @@
     .m-hero .mh-chips b { white-space: nowrap; }
     .m-hero .mh-chips > div { padding-left: 12px !important; padding-right: 12px !important; }
   }
+  /* Nota dividida: qualidade x movimento */
+  .qm { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 10px; }
+  .qm > div { padding: 12px; border-radius: 14px; background: rgba(255,255,255,.035); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); display: grid; gap: 4px; }
+  .qm span { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+  .qm b { font-size: 22px; font-weight: 800; }
+  .qm small { color: var(--faint); font-size: 12px; line-height: 1.35; }
 </style>
 </head>
 <body>
@@ -2739,9 +2745,10 @@ function trendEntry(c, ctx = {}) {
       if (!z.boa && SG.tendencia?.ligado !== false) {
         const SEC = new Set(['rugged', 'mint', 'freeze', 'lp', 'risco-novo', 'dev-vendendo', 'concentracao', 'insiders', 'liq-sumiu', 'score']);
         const secOk = !(t.safety?.alerts || []).some((a) => a.level === 'danger' || (SEC.has(a.id) && a.level === 'warn')) && (t.checks || []).every((k) => k.ok !== false);
-        const te = trendEntry(c, { ...ctx, safety: secOk ? 'ok' : 'warn', notaTendencia: SG.tendencia?.notaMinima ?? 70 });
+        const qual = splitScore(t)?.qualidade ?? 0;
+        const te = trendEntry(c, { ...ctx, score: qual, safety: secOk ? 'ok' : 'warn', notaTendencia: SG.tendencia?.qualidadeMinima ?? 70 });
         if (te) return { tipo: 'entrada', reentrada: reent, ...te };
-        if (secOk && SG.rompimentoBase?.ligado !== false && (t.score || 0) >= (SG.rompimentoBase?.notaMinima ?? 70) && !['morta', 'reta'].includes(t.shape?.tipo)) {
+        if (secOk && SG.rompimentoBase?.ligado !== false && qual >= (SG.rompimentoBase?.qualidadeMinima ?? 70) && !['morta', 'reta'].includes(t.shape?.tipo)) {
           const bb = baseBreakout(c, { ...ctx, safety: 'ok' });
           if (bb) return { tipo: 'entrada', reentrada: reent, ...bb };
         }
@@ -3081,6 +3088,13 @@ function trendEntry(c, ctx = {}) {
   document.addEventListener('toggle', (e) => { const d = e.target; if (d?.matches?.('details[data-keep]')) OPEN.set(d.dataset.keep, d.open); }, true);
 
   // Por que essa nota: cada critério com os pontos que ganhou
+  // Nota dividida: QUALIDADE (holders, liquidez, segurança, distribuição) e MOVIMENTO (compras, volume, tendência da hora)
+  function splitScore(t) {
+    const parts = t.scoreParts || []; if (!parts.length) return null;
+    const Q = /Holders|liquidez|Segurança|Distribuição/;
+    const sum = (ps) => { const max = ps.reduce((a, p) => a + (p.max || 0), 0); return max ? Math.round((ps.reduce((a, p) => a + (p.pts || 0), 0) / max) * 100) : null; };
+    return { qualidade: sum(parts.filter((p) => Q.test(p.label))), movimento: sum(parts.filter((p) => !Q.test(p.label))) };
+  }
   function scoreHtml(t) {
     const parts = t.scoreParts; if (!parts?.length || t.score == null) return '';
     const rows = parts.map((x) => {
@@ -3090,7 +3104,9 @@ function trendEntry(c, ctx = {}) {
     }).join('');
     const weak = [...parts].sort((a, b) => a.pts / a.max - b.pts / b.max).slice(0, 2).map((x) => x.label.toLowerCase());
     return `<section class="panel d-card"><details class="checks" data-keep="nota:${esc(t.mint)}"${isOpen('nota:' + t.mint, false) ? ' open' : ''}><summary class="sc-sum">${scoreBadge(t.score, true)}<span class="sc-txt"><b>Por que nota ${t.score}</b><small>Mais fraca em ${weak.join(' e ')}</small></span>${ICON.chev}</summary>
-      <p class="sp-note">A nota mede a <b>força</b> da moeda (compras, volume, holders). Quem decide se ela entra no radar são os <b>filtros de segurança</b> abaixo: uma moeda pode ser segura e ainda ter nota média.</p>
+      ${(() => { const sp = splitScore(t); if (!sp) return ''; const bar = (v) => `<div class="sp-bar"><i class="${v >= 70 ? 'g' : v >= 40 ? 'm' : 'w'}" style="width:${v}%"></i></div>`;
+        return `<div class="qm"><div><span>Qualidade</span><b class="num">${sp.qualidade}</b>${bar(sp.qualidade)}<small>holders, liquidez, segurança e distribuição. Muda pouco.</small></div><div><span>Movimento</span><b class="num">${sp.movimento}</b>${bar(sp.movimento)}<small>compras, volume e alta da última hora. Sobe e desce com o gráfico.</small></div></div>`; })()}
+      <p class="sp-note">A nota junta as duas. As entradas de <b>subida saudável</b> e <b>rompimento de base</b> exigem <b>qualidade 70+</b>; o movimento quem lê é o próprio gráfico.</p>
       <div class="sp-list">${rows}</div></details></section>`;
   }
 

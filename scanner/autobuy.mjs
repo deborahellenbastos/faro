@@ -40,6 +40,14 @@ const SECURITY_IDS = new Set(['rugged', 'mint', 'freeze', 'lp', 'risco-novo', 'd
 export function securityOk(t) {
   return !(t.safety?.alerts || []).some((a) => a.level === 'danger' || (SECURITY_IDS.has(a.id) && a.level === 'warn'));
 }
+// Nota dividida em duas (17/11, ideia da Kerah): QUALIDADE (holders, liquidez, segurança, distribuição: não muda numa correção)
+// e MOVIMENTO (força de compra, giro de volume, tendência da hora: sobe e desce com o gráfico). Cada uma de 0 a 100.
+const QUAL_RE = /Holders|liquidez|Segurança|Distribuição/;
+export function splitScore(t) {
+  const parts = t.scoreParts || []; if (!parts.length) return null;
+  const sum = (ps) => { const max = ps.reduce((a, p) => a + (p.max || 0), 0); return max ? Math.round((ps.reduce((a, p) => a + (p.pts || 0), 0) / max) * 100) : null; };
+  return { qualidade: sum(parts.filter((p) => QUAL_RE.test(p.label))), movimento: sum(parts.filter((p) => !QUAL_RE.test(p.label))) };
+}
 export const isReentry = (t, cfg, now) => !!(t.reentry && !t.held && now - t.reentry.at < (cfg.compra?.reentradaHoras ?? 3) * 3600000);
 
 // Moedas com sinal de boa entrada que acabou de aparecer, dentro das regras

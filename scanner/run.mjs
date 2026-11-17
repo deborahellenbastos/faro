@@ -1,6 +1,6 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { simStep, simCrazy, marketTide } from './sim.mjs';
-import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk } from './autobuy.mjs';
+import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore } from './autobuy.mjs';
 import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
@@ -405,6 +405,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     const ctx = { px: t.priceUsd, buys5: p5.buys, sells5: p5.sells, safety: t.safety?.level, shape: t.shape?.tipo, rrMin,
       score: t.score, notaMin: SG.notaMinima ?? 0, boaPrev: t.boa, now, repetirSeSubiuPct: SG.naoRepetirSeNaoSubiuPct ?? 10, repetirHoras: SG.repeticaoJanelaHoras ?? 24 };
     const prev = t.sinal;
+    { const sp = splitScore(t); if (sp) { t.qualidade = sp.qualidade; t.movimento = sp.movimento; } }
     let sig = null;
     if (t.held && t.position?.known && t.position.avgPriceUsd > 0) {
       // início da posição aberta = primeira compra depois da última vez que zerou
@@ -423,13 +424,15 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t) || curveOn(t)) {
       sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };
       // Subida saudável (aula de análise técnica): moeda segura que sobe sem corrigir até a zona. Vale para o Conservador
+      // A trava é a QUALIDADE (segurança e holders), não a nota total: o movimento é o próprio gráfico que o sinal lê
+      const qual = splitScore(t)?.qualidade ?? 0;
       if (!sig.boa && SG.tendencia?.ligado !== false) {
-        const te = trendEntry(t.candles, { ...ctx, safety: securityOk(t) && (t.checks || []).every((k) => k.ok !== false) ? 'ok' : 'warn', notaTendencia: SG.tendencia?.notaMinima ?? 70 });
+        const te = trendEntry(t.candles, { ...ctx, score: qual, safety: securityOk(t) && (t.checks || []).every((k) => k.ok !== false) ? 'ok' : 'warn', notaTendencia: SG.tendencia?.qualidadeMinima ?? 70 });
         if (te) sig = { tipo: 'entrada', ...te };
       }
       // Rompimento de base (aula: rompimento com volume explodindo): mesmas travas da subida saudável
       if (!sig.boa && SG.rompimentoBase?.ligado !== false && securityOk(t) && (t.checks || []).every((k) => k.ok !== false)
-        && (t.score || 0) >= (SG.rompimentoBase?.notaMinima ?? 70) && !['morta', 'reta'].includes(t.shape?.tipo)) {
+        && qual >= (SG.rompimentoBase?.qualidadeMinima ?? 70) && !['morta', 'reta'].includes(t.shape?.tipo)) {
         const bb = baseBreakout(t.candles, { ...ctx, safety: 'ok' });
         if (bb) sig = { tipo: 'entrada', ...bb };
       }

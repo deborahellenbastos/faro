@@ -114,8 +114,8 @@
     }
   },
   "sinais": {
-    "tendencia": { "ligado": true, "notaMinima": 70 },
-    "rompimentoBase": { "ligado": true, "notaMinima": 70 },
+    "tendencia": { "ligado": true, "qualidadeMinima": 70 },
+    "rompimentoBase": { "ligado": true, "qualidadeMinima": 70 },
     "notaMinima": 60,
     "naoRepetirSeNaoSubiuPct": 10,
     "repeticaoJanelaHoras": 24
