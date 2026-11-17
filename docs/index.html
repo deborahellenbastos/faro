@@ -3530,21 +3530,20 @@ function trendEntry(c, ctx = {}) {
   function closeMosaic() { const m = $('mosaic'); if (m) m.remove(); MOS.tiles.forEach((x) => { try { x.ch.remove(); } catch {} }); MOS.tiles = []; clearInterval(MOS.timer); MOS.timer = null; document.body.classList.remove('mosaic-on'); }
   const MO_TOOLS = [['cursor', TOOL_ICON?.cursor || '&#8598;', 'Cursor'], ['h', TOOL_ICON?.h || '&#8212;', 'Linha horizontal: clique no preço'], ['t', TOOL_ICON?.t || '&#8599;', 'Tendência: clique no início e no fim']];
   function moHead(t) { const p = t.position || {}; return `<div class="mo-h"><button class="mo-open" data-mosaicgo="${esc(t.mint)}" title="Abrir a moeda">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b><small>${levelOf(t) === 'ok' ? 'Segura' : levelOf(t) === 'warn' ? 'Atenção' : 'Perigo'}</small></span></button><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div>`; }
+  // Usa o mesmo desenho do gráfico principal (entrada, meta, stop de perda/móvel, metas do robô, fib, ordens, traços,
+  // marcas de compra/venda e sinais), apontando o desenho para o gráfico deste quadro
   function moDraw(x) {
-    (x.lines || []).forEach((l) => { try { x.cs.removePriceLine(l); } catch {} }); x.lines = [];
-    (x.segs || []).forEach((sr) => { try { x.ch.removeSeries(sr); } catch {} }); x.segs = [];
-    const t = data?.tokens?.[x.mint] || x.t, d = getDraw(x.mint);
-    const pl = (price, color, title, style = 2) => x.lines.push(x.cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }));
-    if (t.position?.avgPriceUsd > 0) pl(t.position.avgPriceUsd, '#a78bfa', 'entrada');
-    if (t.trail?.ativo && t.trail.stop > 0) pl(t.trail.stop, '#f5b14c', 'stop');
-    d.h.forEach((p) => pl(p, '#c9ced6', '', 0));
-    d.t.forEach(([t1, p1, t2, p2]) => { const sr = x.ch.addLineSeries({ color: '#60a5fa', lineWidth: 2, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false }); sr.setData([{ time: t1 + TZ, value: p1 }, { time: t2 + TZ, value: p2 }]); x.segs.push(sr); });
+    const t = data?.tokens?.[x.mint] || x.t;
+    const keep = { chart: CH.chart, candle: CH.candle, lines: CH.lines, trends: CH.trends, bars: CH.bars, interval: CH.interval, mint: CH.mint };
+    Object.assign(CH, { chart: x.ch, candle: x.cs, lines: x.lines || [], trends: x.trends || [], bars: x.bars || [], interval: MOS.iv, mint: x.mint, __mosaic: true });
+    try { decorate(t); } catch {} finally { x.lines = CH.lines; x.trends = CH.trends; Object.assign(CH, keep); CH.__mosaic = false; }
   }
   async function moFill(x) {
     const bars = await fetchCandles(x.t, MOS.iv).catch(() => null); if (!bars?.length || !$('mosaic')) return;
     x.cs.setData(bars.map((b) => ({ time: b.time + TZ, open: b.open, high: b.high, low: b.low, close: b.close })));
     x.vs.setData(bars.map((b) => ({ time: b.time + TZ, value: b.value || 0, color: b.close >= b.open ? 'rgba(16,210,127,.28)' : 'rgba(255,91,91,.28)' })));
-    if (!x.drawn) { x.drawn = true; moDraw(x); x.ch.timeScale().scrollToRealTime(); }
+    x.bars = bars; moDraw(x);
+    if (!x.drawn) { x.drawn = true; x.ch.timeScale().scrollToRealTime(); }
   }
   async function openMosaic() {
     closeMosaic();
@@ -3554,6 +3553,7 @@ function trendEntry(c, ctx = {}) {
         <div class="ov-ivals mo-ivals">${IVALS.map(([k]) => `<button data-moiv="${k}" class="${k === MOS.iv ? 'on' : ''}">${k}</button>`).join('')}</div></div>
       <div class="mo-grid ${list.length <= 2 ? 'two' : ''}">${list.map((t) => `<div class="mo-tile" data-motile="${esc(t.mint)}">${moHead(t)}
         <div class="mo-body"><div class="mo-tools">${MO_TOOLS.map(([k, ic, tt]) => `<button data-motool="${k}" data-momint="${esc(t.mint)}" class="${k === 'cursor' ? 'on' : ''}" title="${tt}">${ic}</button>`).join('')}<i></i>
+          <button data-mofib class="${store.get('faro-fib', true) ? 'on' : ''}" title="Fibonacci do último movimento">${TOOL_ICON?.fib || 'F'}</button><button data-mometas class="${store.get('faro-metas', false) ? 'on' : ''}" title="Metas do robô (stop móvel e realização)">${TOOL_ICON?.metas || 'M'}</button><i></i>
           <button data-monav="out" data-momint="${esc(t.mint)}" title="Ver mais tempo">&minus;</button><button data-monav="in" data-momint="${esc(t.mint)}" title="Velas mais largas">+</button>
           <button data-monav="reset" data-momint="${esc(t.mint)}" title="Voltar ao normal">${TOOL_ICON?.reset || '&#8635;'}</button><button data-motrash="${esc(t.mint)}" title="Apagar os traços desta moeda">${TOOL_ICON?.trash || '&#10005;'}</button></div>
         <div class="mo-chart" data-mochart="${esc(t.mint)}"></div></div></div>`).join('')}</div>`;
@@ -3596,6 +3596,8 @@ function trendEntry(c, ctx = {}) {
       if (nv.dataset.monav === 'reset') { ts.applyOptions({ barSpacing: 6 }); ts.scrollToRealTime(); x.ch.priceScale('right').applyOptions({ autoScale: true }); }
       else { const bs = ts.options().barSpacing || 6; ts.applyOptions({ barSpacing: Math.max(2, Math.min(40, nv.dataset.monav === 'in' ? bs * 1.3 : bs / 1.3)) }); }
       return; }
+    const fb = e.target.closest('[data-mofib], [data-mometas]'); if (fb) { const k = fb.hasAttribute('data-mofib') ? 'faro-fib' : 'faro-metas'; const on = !store.get(k, k === 'faro-fib'); store.set(k, on);
+      $('mosaic').querySelectorAll(fb.hasAttribute('data-mofib') ? '[data-mofib]' : '[data-mometas]').forEach((b) => b.classList.toggle('on', on)); MOS.tiles.forEach(moDraw); return; }
     const tr = e.target.closest('[data-motrash]'); if (tr) { const m = tr.dataset.motrash; saveDraw(m, { h: [], t: [], r: [] }); const x = MOS.tiles.find((y) => y.mint === m); if (x) moDraw(x); toast('Traços apagados'); return; }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('mosaic')) closeMosaic(); });
@@ -3814,7 +3816,7 @@ function trendEntry(c, ctx = {}) {
     if (t.approvedAt && t.approvedAt / 1000 >= first) marks.push({ time: Math.floor(t.approvedAt / 1000 / sec) * sec + TZ, position: 'aboveBar', color: '#a78bfa', shape: 'arrowDown', text: 'R' });
     marks.sort((a, b) => a.time - b.time);
     CH.candle.setMarkers(marks);
-    updateSince(t);
+    if (!CH.__mosaic) updateSince(t);
   }
 
   async function showChart(t, slot) {
