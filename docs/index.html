@@ -615,6 +615,8 @@
   .pf-cmps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: var(--sp-4); }
   .pf-cmp { text-align: left; padding: 9px 10px; min-width: 0; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-family: inherit; color: var(--text); display: grid; gap: 2px; }
   .pf-cmp.on { border-color: var(--line-2); background: var(--panel-3); }
+  .pf-cmp.live { box-shadow: inset 3px 0 0 var(--green); }
+  .pf-cmp em { font-style: normal; font-size: 10px; font-weight: 700; color: var(--green); } .pf-cmp em.pf-sim { color: var(--faint); }
   .pf-cmp span { font-size: 12px; font-weight: 700; color: var(--muted); } .pf-cmp b { font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .pf-cmp small { font-size: 11px; color: var(--faint); }
   .r-arrow { font-style: normal; color: var(--faint); font-weight: 600; margin: 0 8px; }
   .r-tri { font-style: normal; font-size: .8em; margin: 0 3px 0 12px; }
@@ -3785,7 +3787,7 @@ function baseBreakout(c, ctx = {}) {
     const el = $('rt-sim'); if (!el) return;
     const sim = simView === 'agressivo' ? data.simAgr : simView === 'enlouquecido' ? data.simLouco : data.sim, st = sim?.stats;
     const cmpCard = (name, label, x) => { const s2 = x?.stats; return `<button class="pf-cmp ${simView === name ? 'on' : ''} ${name === perfilOf() ? 'live' : ''}" data-simview="${name}">
-        <span>${label}${name === perfilOf() ? ' <i class="mini-tag ok">ativo</i>' : ''}</span>
+        <span>${label}</span>${name === perfilOf() ? '<em class="pf-live">em uso</em>' : name === 'enlouquecido' ? '<em class="pf-sim">só simulação</em>' : ''}
         <b class="num ${cls(s2?.pnlSol)}">${(s2?.pnlSol || 0) >= 0 ? '+' : ''}${solFmt(s2?.pnlSol || 0, 4)}</b>
         <small>${s2?.ops || 0} operações - ${Math.round(s2?.winRate || 0)}% de acerto${s2?.open ? ` - ${s2.open} abertas` : ''}</small></button>`; };
     const cmp = `<div class="pf-cmps">${cmpCard('conservador', 'Conservador', data.sim)}${cmpCard('agressivo', 'Agressivo', data.simAgr)}${cmpCard('enlouquecido', 'Enlouquecido', data.simLouco)}</div>
