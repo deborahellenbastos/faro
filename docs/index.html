@@ -1193,6 +1193,24 @@
   /* Cabeçalho da moeda: coração embaixo da nota/status, sem invadir o nome */
   .d-head .d-actions { flex-direction: column !important; align-items: flex-end !important; gap: 10px !important; }
   .d-head .d-actions .fav-btn { order: 2; }
+
+  /* ===== Desempenho no iPhone: sem fundo "fixo" e sem desfoque pesado durante a troca de abas (causavam tela preta por um instante) ===== */
+  body { background: var(--bg) !important; background-attachment: scroll !important; min-height: 100dvh; }
+  html { background: var(--bg); }
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(900px 520px at 12% -8%, rgba(16,210,127,.07), transparent 60%), radial-gradient(700px 480px at 100% 0%, rgba(167,139,250,.045), transparent 60%); }
+  @media (max-width: 1099px) {
+    .sheet-scrim { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; visibility: hidden; transition: opacity .25s, visibility 0s linear .25s !important; }
+    body.show-detail .sheet-scrim { visibility: visible; transition: opacity .25s !important; }
+    body.no-sheet-anim .sheet-scrim { transition: none !important; }
+    .tabbar { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: rgba(20,22,27,.97) !important; transform: none !important; }
+    .detail:not(.x) { will-change: transform; }
+    body:not(.show-detail) .detail { pointer-events: none; }
+  }
+  /* Filtros em pílula: troca suave, sem pulsar */
+  .radar-chips button.on { animation: none !important; }
+  .radar-chips button { transition: background .25s ease, color .25s ease !important; }
+  .radar-chips button:active { transform: none !important; }
 </style>
 </head>
 <body>
@@ -4459,7 +4477,7 @@ function baseBreakout(c, ctx = {}) {
     const tab = e.target.closest('[data-tab]');
     if (tab) { ui.tab = tab.dataset.tab; ui.page = 1; save();
       if (document.body.classList.contains('show-detail')) { document.body.classList.add('no-sheet-anim'); document.body.classList.remove('show-detail'); setTimeout(() => document.body.classList.remove('no-sheet-anim'), 60); }
-      render(); window.scrollTo({ top: 0 }); return; }
+      window.scrollTo(0, 0); render(); return; }
     const row = e.target.closest('[data-sel]');
     if (row) { markSeen(row.dataset.sel); ui.sel[ui.tab] = row.dataset.sel; if (isNarrow()) openSheet(); render(); return; }
     if (e.target.closest('[data-back], [data-sheetclose]')) { closeSheet(); return; }
