@@ -1587,7 +1587,24 @@
   }
   MQ.addEventListener?.('change', placeSearch); placeSearch();
   let startDone = false;
+  // Compras automáticas do robô: avisa cada uma (inclusive as feitas com o painel fechado, nas últimas 12h)
+  const BUYSEEN = new Set(store.get('faro-robo-compras', []));
+  function checkRobotBuys() {
+    if (!data?.trades || isDemo()) return;
+    const novas = data.trades.filter((x) => x.ok && x.auto && x.sig && !BUYSEEN.has(x.sig) && Date.now() - (x.at || 0) < 12 * 3600000);
+    for (const x of novas) {
+      BUYSEEN.add(x.sig);
+      const t = data.tokens?.[x.mint], sym = x.symbol || t?.symbol || x.mint.slice(0, 6);
+      const usdV = x.sol && (LIVE.solUsd || 0) ? ` (${money(x.sol * LIVE.solUsd)})` : '';
+      const quando = Date.now() - x.at > 10 * 60000 ? ` ${ago(x.at)}` : '';
+      addInbox(`Robô comprou: ${sym}`, `Compra automática de ${solFmt(x.sol, 4)}${usdV}${quando}. ${x.sinal || 'No sinal de boa entrada.'} A vigia e os stops já estão protegendo a posição.`, x.mint, 'good', 'tx-' + x.sig, { kind: 'compra', sig: x.sig, txAt: x.at, sym });
+      toast(`Robô comprou ${sym}`);
+      sysNotify(`Robô comprou: ${sym}`, `${solFmt(x.sol, 4)}${usdV}. ${x.sinal || ''}`, 'compra-' + x.mint, x.mint);
+    }
+    if (novas.length) { store.set('faro-robo-compras', [...BUYSEEN].slice(-300)); play('boa'); }
+  }
   function checkSignals() {
+    try { checkRobotBuys(); } catch {}
     if (START_MINT && !startDone && data?.tokens?.[START_MINT]) { startDone = true; setTimeout(() => goTo(START_MINT), 0); }
     if (!data?.tokens || isDemo()) return;
     let entrada = false, ruim = false, bom = false;
