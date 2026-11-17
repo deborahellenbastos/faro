@@ -1145,8 +1145,6 @@
   @keyframes ring { 0%,100% { transform: rotate(0); } 10% { transform: rotate(16deg); } 25% { transform: rotate(-14deg); } 40% { transform: rotate(10deg); } 55% { transform: rotate(-7deg); } 70% { transform: rotate(3deg); } }
   @keyframes wave { 0%,100% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-3px) rotate(-8deg); } 55% { transform: translateY(-1px) rotate(7deg); } }
   @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
-  .pop[data-tab="aprovada"] svg { animation: spinOnce .6s cubic-bezier(.3,.8,.3,1); }
-  .pop[data-tab="minhas"] svg { animation: pulse .45s ease; }
   @keyframes pulse { 0%,100% { transform: scale(1); } 45% { transform: scale(1.14); } }
   .pop[data-tab="aguardando"] svg { animation: blink .45s ease; }
   .pop[data-tab="reprovada"] svg { animation: wiggle .55s ease; }
@@ -1230,6 +1228,14 @@
     #inbox .inbox-grip::before { content: ""; display: block; width: 44px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.22); }
     .nt { padding: 12px !important; }
   }
+  /* Ícones da barra ao tocar: radar com o ponteiro varrendo; carteira abrindo e fechando de leve */
+  [data-tab="aprovada"] svg path, [data-tab="minhas"] svg path:first-child { transform-box: view-box; }
+  [data-tab="aprovada"] svg path { transform-origin: 12px 12px; }
+  .pop[data-tab="aprovada"] svg path { animation: sweep .75s cubic-bezier(.35,.1,.25,1); }
+  @keyframes sweep { to { transform: rotate(360deg); } }
+  [data-tab="minhas"] svg path:first-child { transform-origin: 4px 7px; }
+  .pop[data-tab="minhas"] svg path:first-child { animation: walletOpen .6s ease-in-out; }
+  @keyframes walletOpen { 0%,100% { transform: none; } 40%,55% { transform: translateY(-1.5px) rotate(-12deg); } }
 </style>
 </head>
 <body>
