@@ -1410,6 +1410,8 @@
   .favbtn.on { color: #f472b6; } .favbtn.on svg { fill: currentColor; }
   .favbtn .fav-dot { position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: #f472b6; box-shadow: 0 0 0 2px var(--bg); }
   .favbtn .fav-dot[hidden] { display: none; }
+  /* Título da Carteira: mesma fonte do nome das moedas e dos KPIs, maior e sem caixa alta */
+  #list-title.page-title { font-size: 20px !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: -.01em !important; color: var(--text) !important; }
 </style>
 </head>
 <body>
@@ -4894,7 +4896,9 @@ function trendEntry(c, ctx = {}) {
     const ro = $('radar-ord'); ro.hidden = true;
     ro.querySelectorAll('[data-rord]').forEach((b) => b.classList.toggle('on', b.dataset.rord === radarOrd()));
     renderFavSync();
-    $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em análise', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
+    // Carteira é título da página (não categoria): sem contador e maior; as categorias (Em aberto, Mortas, Encerradas) mantêm o contador
+    $('list-title').innerHTML = ui.tab === 'minhas' ? 'Carteira' : `${{ aprovada: 'No radar', aguardando: 'Em análise', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
+    $('list-title').classList.toggle('page-title', ui.tab === 'minhas');
     // Encerradas: abre/fecha pelo título (começa aberta)
     if (ui.tab === 'minhas' && !q && closed.length && prefs.encOpen === false) {
       items = [...items.filter((t) => !isClosed(t)), { __encHdr: true }];
