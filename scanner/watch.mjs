@@ -120,7 +120,9 @@ async function refreshHoldings() {
     for (const h of list) {
       if (held.some((t) => t.mint === h.mint)) continue;
       const old = state.tokens?.[h.mint] || { mint: h.mint, symbol: h.mint.slice(0, 6) };
-      const t = { ...old, held: true, heldAmount: h.amount, position: old.position, isNew: !old.held, reboughtAt: old.held ? 0 : Date.now() };
+      // Entrou na carteira (ou voltou) depois da rodada: o custo guardado é de outra operação, então não vale até ler a compra
+      const stale = !!old.position?.known && Math.abs(h.amount - (old.heldAmount || 0)) > Math.max(1e-9, (old.heldAmount || 0) * 0.02);
+      const t = { ...old, held: true, heldAmount: h.amount, snapAmount: h.amount, staleCost: stale || !old.held, position: old.position, isNew: !old.held, reboughtAt: old.held ? 0 : Date.now() };
       if (!done(t)) { held.push(t); log(`nova na carteira: ${t.symbol}`); }
     }
   } catch (e) { log(`não consegui ler a carteira: ${e.message}`, true); }
