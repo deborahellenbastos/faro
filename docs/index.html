@@ -387,7 +387,9 @@
   .sim-op { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-2); border: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; }
   .sim-op:hover { background: var(--panel-2); }
   .sim-op span { display: grid; gap: 2px; } .sim-op small { color: var(--muted); font-size: 11px; }
-  #robot-seg { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.1fr; }
+  #robot-seg { display: flex; overflow-x: auto; scrollbar-width: none; }
+  #robot-seg::-webkit-scrollbar { display: none; }
+  #robot-seg button { flex: 1 0 auto; padding: 0 10px; }
   #robot-seg button { padding: 0 4px; white-space: nowrap; }
   .new-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #60a5fa; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 0 3px rgba(96,165,250,.18); }
   .mini-tag.new { color: #60a5fa; background: rgba(96,165,250,.14); }
@@ -601,6 +603,16 @@
   #dex-vault iframe { width: 100%; height: 100%; border: 0; }
   .list-sub { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .list-sub small { color: var(--faint); font-weight: 700; }
+  .lic-f { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; }
+  .lic-f button { height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; }
+  .lic-f button.on { background: var(--panel-3); color: var(--text); border-color: var(--line-2); }
+  .lic-list { display: grid; gap: 8px; }
+  .lic { padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg); }
+  .lic-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .lic-h b { font-size: 14px; }
+  .lic > small { display: block; color: var(--faint); font-size: 11px; margin-top: 2px; }
+  .lic p { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--text); }
+  .lic p span { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 1px; }
   .pfrow { flex-wrap: wrap; row-gap: 8px; }
   .pfrow small[data-pfstate] { color: var(--muted); font-weight: 600; } .pfrow.agr small[data-pfstate] { color: #f5b14c; }
   .pfrow[hidden] { display: none; }
@@ -904,6 +916,7 @@
         <button data-rt="filtros" aria-pressed="false">Filtros</button>
         <button data-rt="rodada" aria-pressed="false">Rodada</button>
         <button data-rt="sim" aria-pressed="false">Simulação</button>
+        <button data-rt="licoes" aria-pressed="false">Lições</button>
       </div>
       <div class="drawer-body">
         <div id="rt-config">
@@ -922,6 +935,7 @@
           <p class="note">Para mudar, edite o arquivo <b>config.json</b> no GitHub. A próxima rodada já usa os valores novos.</p>
         </div>
         <div id="rt-sim" hidden></div>
+        <div id="rt-licoes" hidden></div>
         <div id="rt-rodada" hidden>
           <div class="kv" id="run"></div>
           <div class="log" id="log"></div>
@@ -3788,6 +3802,29 @@ function baseBreakout(c, ctx = {}) {
 
   // Simulação: o robô opera de mentira com o plano de trade e mostra se as regras dão lucro
   let simPage = 1;
+  // ---------- Caderno de lições: cada erro vira regra (com teste) para não se repetir ----------
+  let licFiltro = 'todas', licPage = 1;
+  function renderLicoes() {
+    const el = $('rt-licoes'); if (!el) return;
+    const all = [...(data?.licoes || [])].reverse();
+    const st = { aplicada: ['ok', 'aplicada'], 'em teste': ['new', 'em teste'], sugerida: ['warn', 'sugerida'] };
+    const list = licFiltro === 'todas' ? all : all.filter((l) => l.status === licFiltro);
+    const per = 10, pages = Math.max(1, Math.ceil(list.length / per)); licPage = Math.min(licPage, pages);
+    const n = (s2) => all.filter((l) => l.status === s2).length;
+    const dt2 = (d) => { const [y, m, dd] = String(d).split('-'); return dd && m ? `${dd}/${m}` : d; };
+    el.innerHTML = `<p class="note">Cada erro ou oportunidade perdida vira uma regra no robô, com teste, para não se repetir. A análise diária acrescenta as lições novas.</p>
+      <div class="lic-f">${[['todas', `Todas (${all.length})`], ['aplicada', `Aplicadas (${n('aplicada')})`], ['em teste', `Em teste (${n('em teste')})`], ['sugerida', `Sugeridas (${n('sugerida')})`]].map(([k, l]) => `<button data-licf="${k}" class="${licFiltro === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="lic-list">${list.slice((licPage - 1) * per, licPage * per).map((l) => `<div class="lic">
+        <div class="lic-h"><b>${esc(l.titulo)}</b><i class="mini-tag ${(st[l.status] || st.aplicada)[0]}">${(st[l.status] || st.aplicada)[1]}</i></div>
+        <small>${dt2(l.data)}${l.moedas?.length ? ` - ${l.moedas.map(esc).join(', ')}` : ''}</small>
+        <p><span>O que aconteceu</span>${esc(l.aconteceu)}</p>
+        <p><span>Regra que nasceu</span>${esc(l.regra)}</p></div>`).join('') || '<p class="note">Nenhuma lição aqui ainda.</p>'}</div>
+      ${pages > 1 ? `<div class="hpager"><button data-licpage="-1" ${licPage <= 1 ? 'disabled' : ''}>&larr;</button><span>${licPage} de ${pages}</span><button data-licpage="1" ${licPage >= pages ? 'disabled' : ''}>&rarr;</button></div>` : ''}`;
+  }
+  document.addEventListener('click', (e) => {
+    const f = e.target.closest('[data-licf]'); if (f) { licFiltro = f.dataset.licf; licPage = 1; renderLicoes(); return; }
+    const pg = e.target.closest('[data-licpage]'); if (pg) { licPage += Number(pg.dataset.licpage); renderLicoes(); }
+  });
   let simView = store.get('faro-simview', 'conservador');
   function renderSim() {
     const el = $('rt-sim'); if (!el) return;
@@ -3994,6 +4031,8 @@ function baseBreakout(c, ctx = {}) {
     $('rt-filtros').hidden = b.dataset.rt !== 'filtros';
     $('rt-rodada').hidden = b.dataset.rt !== 'rodada';
     $('rt-sim').hidden = b.dataset.rt !== 'sim';
+    $('rt-licoes').hidden = b.dataset.rt !== 'licoes';
+    if (b.dataset.rt === 'licoes') renderLicoes();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;

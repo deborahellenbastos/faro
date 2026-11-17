@@ -329,3 +329,8 @@ Limitação: o robô roda a cada 5 min. Altas muito rápidas, como a da goldie (
 - Entra uma vez por moeda: depois da aprovação, espera a primeira correção (15% a 45% abaixo da máxima) e a primeira vela de reação com compra. Nota 50+, sem perigo, nunca na curva da pump.fun.
 - Valor fixo de US$ 3. Vende em +50%; se a alta estiver muito forte (compra 60%+ na hora e gráfico orgânico), segura com stop colado no topo (12% abaixo) e vende de vez em +80%. Stop -20%, no máximo 2h, até 4 abertas e 15 por dia.
 - Aparece como terceiro cartão na aba Simulação. Não compra de verdade.
+
+### Caderno de lições (16/11)
+- `licoes.json` na raiz: cada erro ou oportunidade perdida vira uma lição (data, moedas, o que aconteceu, a regra que nasceu, status aplicada / em teste / sugerida).
+- O robô leva o caderno para o painel junto com os dados (criptografado). Aba **Lições** na gaveta do Robô, com filtro por status.
+- A análise diária das 21:40 acrescenta as lições novas do dia (status "sugerida") e atualiza as "em teste" com o resultado da simulação. Só a Kerah decide aplicar.

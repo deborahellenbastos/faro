@@ -39,6 +39,8 @@ const trader = await createTrader(cfg, (m, e) => (e ? console.error : console.lo
 state = await runOnce({ api, cfg, state, trader });
 // O painel mostra os limites usados; o endereço da carteira não vai junto
 state.config = { ...cfg, carteira: { conectada: !!cfg.carteira?.enderecoPublico } };
+// Caderno de lições (licoes.json): vai junto para o painel, criptografado como o resto
+try { state.licoes = JSON.parse(await readFile(path.join(root, 'licoes.json'), 'utf8')).licoes || []; } catch { state.licoes = state.licoes || []; }
 
 await mkdir(path.dirname(plainPath), { recursive: true });
 if (password) {
