@@ -63,7 +63,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       log(`Carteira: ${held.length} moedas encontradas`);
       // Compras e vendas (para calcular preço médio e resultado)
       // v3: custo = valor da troca em si, igual à Phantom (sem taxas de rede e de criação de conta) -> relê o histórico uma vez
-      state.wallet = state.wallet && state.wallet.address === wallet && state.wallet.v === 3 ? state.wallet : { address: wallet, ops: [], lastSig: null, v: 3 };
+      // v4: ignora poeira de outra moeda deixada pela rota da Jupiter (17/11: compras da Minnie não eram registradas)
+      state.wallet = state.wallet && state.wallet.address === wallet && state.wallet.v === 4 ? state.wallet : { address: wallet, ops: [], lastSig: null, v: 4 };
       if (api.getSolBalance) { try { state.wallet.solBalance = await api.getSolBalance(wallet); } catch {} }
       if (api.getWalletOps) {
         try {

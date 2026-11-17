@@ -155,7 +155,7 @@ export async function getWalletHoldings(owner) {
     for (const acc of r?.value || []) {
       const info = acc.account?.data?.parsed?.info;
       const amount = Number(info?.tokenAmount?.uiAmount || 0);
-      if (!info?.mint || amount <= 0 || IGNORE.has(info.mint)) continue;
+      if (!info?.mint || amount < 1e-6 || IGNORE.has(info.mint)) continue; // poeira (ex.: sobra de rota da Jupiter) não conta
       const cur = out.get(info.mint) || { mint: info.mint, amount: 0, decimals: info.tokenAmount.decimals };
       cur.amount += amount;
       out.set(info.mint, cur);
@@ -244,6 +244,8 @@ export function parseOps(tx, owner, sig) {
     else if (STABLE.has(mint)) stable += d; // compra/venda paga em dólar (USDC/USDT)
     else if (!IGNORE.has(mint)) deltas.push([mint, d]);
   }
+  // Rotas da Jupiter às vezes deixam "poeira" de outra moeda (ex.: 0,000000005 de uma ação tokenizada): ignora
+  if (deltas.length > 1) { const big = Math.max(...deltas.map(([, d]) => Math.abs(d))); deltas.splice(0, deltas.length, ...deltas.filter(([, d]) => Math.abs(d) >= 1e-4 && Math.abs(d) >= big * 1e-6)); }
   // Só registramos troca simples (1 moeda contra SOL), que é o caso de compra/venda de memecoin
   if (deltas.length !== 1) return [];
   const mint = deltas[0][0];

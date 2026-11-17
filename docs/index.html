@@ -4011,6 +4011,7 @@ function baseBreakout(c, ctx = {}) {
       if (Math.abs(d) < 1e-12) continue;
       if (mint === SOL) sol += d; else if (STABLES.has(mint)) stable += d; else deltas.push([mint, d]);
     }
+    if (deltas.length > 1) { const big = Math.max(...deltas.map(([, d]) => Math.abs(d))); deltas.splice(0, deltas.length, ...deltas.filter(([, d]) => Math.abs(d) >= 1e-4 && Math.abs(d) >= big * 1e-6)); }
     if (deltas.length !== 1) return out;
     const mint = deltas[0][0];
     if (!owned(meta.preTokenBalances, mint) && owned(meta.postTokenBalances, mint)) sol += 0.00203928;
@@ -4088,10 +4089,10 @@ function baseBreakout(c, ctx = {}) {
     for (const mint of touched) {
       let t = data.tokens[mint];
       const b = WAL.bal[mint];
-      if (!t) { if (!(b?.amount > 0)) continue; t = data.tokens[mint] = { mint, firstSeen: Date.now(), status: 'carteira', source: 'sua carteira', heldSince: Date.now() }; }
+      if (!t) { if (!(b?.amount >= 1e-6)) continue; t = data.tokens[mint] = { mint, firstSeen: Date.now(), status: 'carteira', source: 'sua carteira', heldSince: Date.now() }; }
       const ops = [...(data.wallet.ops || []).filter((o) => o.mint === mint), ...WAL.ops.filter((o) => o.mint === mint)].sort((a, b2) => a.at - b2.at);
       const lastOpAt = ops.length ? ops[ops.length - 1].at : 0;
-      if (b && b.at > robotAt && b.at >= lastOpAt - 5000) { t.heldAmount = b.amount; if (b.amount > 0 && !t.held) t.heldSince = Date.now(); t.held = b.amount > 0; }
+      if (b && b.at > robotAt && b.at >= lastOpAt - 5000) { t.heldAmount = b.amount; if (b.amount >= 1e-6 && !t.held) t.heldSince = Date.now(); t.held = b.amount >= 1e-6; }
       else if (lastOpAt > robotAt) {
         // Saldo da moeda ainda não foi lido depois da última operação: usa o que as operações dizem (comprou e não vendeu tudo = ainda tem)
         const net = ops.reduce((a, o) => a + (o.tokens || 0), 0), bought = ops.reduce((a, o) => a + Math.max(0, o.tokens || 0), 0);
