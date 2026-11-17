@@ -1059,6 +1059,18 @@
     body.in-phantom .detail { bottom: 84px; border-radius: 28px; }
     body.in-phantom .toast { bottom: calc(196px + env(safe-area-inset-bottom)); }
   }
+
+  /* Celular: bordas mais justas (topo e barra de baixo mais perto da borda da tela) */
+  @media (max-width: 1099px) {
+    .main { padding-top: calc(env(safe-area-inset-top) + 6px) !important; padding-bottom: calc(max(10px, env(safe-area-inset-bottom) - 14px) + 96px) !important; }
+    .tabbar { bottom: max(8px, calc(env(safe-area-inset-bottom) - 14px)) !important; }
+    body::after { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: calc(max(8px, env(safe-area-inset-bottom) - 14px) + 46px); background: linear-gradient(rgba(6,7,9,0), var(--bg) 70%); z-index: 29; pointer-events: none; }
+    body.show-detail::after { display: none; }
+    .toast { bottom: calc(max(8px, env(safe-area-inset-bottom) - 14px) + 96px) !important; }
+    body.in-phantom .tabbar { bottom: calc(env(safe-area-inset-bottom) + 92px) !important; }
+    body.in-phantom .main { padding-bottom: calc(env(safe-area-inset-bottom) + 200px) !important; }
+    body.in-phantom::after { height: calc(env(safe-area-inset-bottom) + 170px); }
+  }
 </style>
 </head>
 <body>
