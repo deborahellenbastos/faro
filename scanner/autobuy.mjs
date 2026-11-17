@@ -27,6 +27,13 @@ export async function readProfile(memos, verify) {
 }
 
 // Saiu no stop há pouco e a moeda segue viva: pode reentrar se o fundo se confirmar (uma vez por moeda no dia)
+// Quanto o preço está abaixo do pico das últimas 6h (pontos guardados a cada rodada + velas)
+export function peakDropPct(t, now = Date.now()) {
+  const since = now - 6 * 3600000;
+  const pts = [...(t.hist || []).filter((h) => h[0] >= since).map((h) => h[1]), ...(t.candles || []).filter((c) => c[0] >= since).map((c) => c[2])].filter((x) => x > 0);
+  const top = Math.max(0, ...pts), px = t.priceUsd || 0;
+  return top > 0 && px > 0 ? (1 - px / top) * 100 : 0;
+}
 export const isReentry = (t, cfg, now) => !!(t.reentry && !t.held && now - t.reentry.at < (cfg.compra?.reentradaHoras ?? 3) * 3600000);
 
 // Moedas com sinal de boa entrada que acabou de aparecer, dentro das regras
@@ -68,6 +75,8 @@ function filterCandidates(list, cfg, now, scoreOk, byApproval) {
     .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || isReentry(t, cfg, now))
     // reentrada: só com a liquidez ainda de pé (golpe tira a liquidez) e sem alerta de perigo
     .filter((t) => !isReentry(t, cfg, now) || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
+    // reentrada: selo "Segura" (sem nenhum alerta) e sem queda maior que 80% do pico das últimas horas (cara de rug)
+    .filter((t) => !isReentry(t, cfg, now) || ((t.safety?.level || 'ok') === 'ok' && peakDropPct(t, now) < 80))
     .filter((t) => !t.held && t.safety?.level !== 'danger' && scoreOk(t))
     .filter((t) => !byApproval || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => t.dexId !== 'pumpfun') // compra de verdade nunca na curva da pump.fun (modo curva é só simulação)

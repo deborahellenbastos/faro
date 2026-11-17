@@ -27,6 +27,7 @@
     "comprasSobreTotalH1MinPct": 50
   },
   "compra": {
+    "reentradaHoras": 6,
     "ativada": true,
     "sinalValidoMin": 10,
     "minutosNoRadarMin": 15,

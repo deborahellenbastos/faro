@@ -59,7 +59,12 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         t.heldAmount = h.amount;
         t.decimals = h.decimals;
       }
-      for (const t of Object.values(tokens)) if (t.held && !heldSet.has(t.mint)) { t.held = false; t.soldAt = now; }
+      for (const t of Object.values(tokens)) if (t.held && !heldSet.has(t.mint)) {
+        t.held = false; t.soldAt = now;
+        // Vendida à mão (não foi o robô nos últimos 15 min): também fica vigiada para reentrada
+        const robo = [t.watchSell, t.autoSell, t.takeProfit].some((x) => x?.ok && now - x.at < 15 * 60000);
+        if (!robo && t.position?.buys) t.reentry = { at: now, kind: 'manual', exitPx: t.priceUsd || null };
+      }
       log(`Carteira: ${held.length} moedas encontradas`);
       // Compras e vendas (para calcular preço médio e resultado)
       // v3: custo = valor da troca em si, igual à Phantom (sem taxas de rede e de criação de conta) -> relê o histórico uma vez
