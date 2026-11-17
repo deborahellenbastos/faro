@@ -3769,7 +3769,13 @@ function trendEntry(c, ctx = {}) {
     CH.lines = []; CH.trends = [];
     const add = (price, color, title, style = 2, width = 1) => { if (price > 0) CH.lines.push(CH.candle.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title })); };
     if (t.position?.known) {
-      add(t.position.avgPriceUsd, '#a78bfa', (t.position.buys || 1) > 1 ? 'entrada (média)' : 'entrada', 2, 2);
+      // Saiu e entrou de novo: a entrada é só a da operação aberta agora (sem misturar com a anterior) e a saída antiga some
+      const H = [...(t.history || [])].filter((o) => o.tokens && !o.est).sort((a, b) => a.at - b.at);
+      const allBuys = H.filter((o) => o.tokens > 0), from = t.held ? posStart(t) : 0;
+      const runBuys = allBuys.filter((o) => o.at >= from);
+      const avgSol = (L) => { const tok = L.reduce((a, o) => a + o.tokens, 0), sol = L.reduce((a, o) => a - (o.sol || 0), 0); return tok > 0 ? sol / tok : 0; };
+      const entryPx = t.held && runBuys.length && runBuys.length < allBuys.length && avgSol(allBuys) > 0 ? t.position.avgPriceUsd * (avgSol(runBuys) / avgSol(allBuys)) : t.position.avgPriceUsd;
+      add(entryPx, '#a78bfa', runBuys.length > 1 || (!t.held && allBuys.length > 1) ? 'entrada (média)' : 'entrada', 2, 2);
       // Meta: +100% (ou o alvo configurado) sobre a entrada. Em posição pequena é onde o robô vende sozinho
       const tp = metaOf(t);
       if (t.held && tp) add(tp.px, '#10d27f', tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
@@ -3787,7 +3793,8 @@ function trendEntry(c, ctx = {}) {
       // Saída: preço médio das suas vendas
       const sells = (t.history || []).filter((o) => o.tokens < 0);
       const soldTok = sells.reduce((a, o) => a - o.tokens, 0);
-      if (soldTok > 0 && t.position.receivedUsd > 0) add(t.position.receivedUsd / soldTok, '#f472b6', sells.length > 1 ? 'saída (média)' : 'saída', 2, 2);
+      const runSells = t.held ? sells.filter((o) => o.at >= from) : sells;
+      if (runSells.length && soldTok > 0 && t.position.receivedUsd > 0) add(t.position.receivedUsd / soldTok, '#f472b6', runSells.length > 1 ? 'saída (média)' : 'saída', 2, 2);
     }
     else if (t.entryPriceUsd) add(t.entryPriceUsd, '#a78bfa', 'radar', 2, 1);
     for (const o of LIM.orders[t.mint] || []) {
