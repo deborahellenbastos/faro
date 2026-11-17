@@ -89,7 +89,7 @@
     },
     "stopPerda": {
       "ligado": true,
-      "pct": 25,
+      "pct": 15,
       "confirmarSegundos": 30
     },
     "vigia": {
@@ -130,7 +130,7 @@
     "maxAbertas": 2,
     "perdaMaxDiaVezesBase": 3,
     "riscoRetornoMin": 2,
-    "stopPadraoPct": 25,
+    "stopPadraoPct": 15,
     "alvoPadraoPct": 100,
     "taxaPct": 1,
     "slippagePct": 2,
