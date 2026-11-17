@@ -1107,7 +1107,7 @@
     if (/^Venda confirmada/.test(T)) return 'venda';
     if (/^Nova no radar/.test(T)) return 'nova';
     if (/^Boa (re)?entrada/.test(T)) return 'entrada';
-    if (/^(Robô vendeu|Não vendida|Venda automática falhou|Vigia)/.test(T)) return 'robo';
+    if (/^(Robô vendeu|Não vendida|Já vendida antes do robô|Venda automática falhou|Vigia)/.test(T)) return 'robo';
     if (/^(Perigo|Atenção) em/.test(T)) return 'alerta';
     if (/^(Saída|Atenção): .+ - /.test(T)) return 'saida';
     if (/^Recuperou/.test(T)) return 'recupera';
@@ -1255,7 +1255,7 @@
 
   // Compara com o que você já viu e dispara sons/avisos só para o que é novo
   const ROBO_IDS = new Set(['vigia', 'auto-venda', 'lucro-auto']);
-  const roboTitle = (msg) => /não compensa/.test(msg) ? 'Não vendida (operação menor que US$ 1)' : /falh/i.test(msg) ? 'Venda automática falhou' : 'Robô vendeu';
+  const roboTitle = (msg) => /já tinha saído da carteira/.test(msg) ? 'Já vendida antes do robô' : /não compensa/.test(msg) ? 'Não vendida (operação menor que US$ 1)' : /falh/i.test(msg) ? 'Venda automática falhou' : 'Robô vendeu';
   // Limpa avisos repetidos de versões anteriores: mesma moeda e mesmo texto ficam uma vez só (o mais antigo)
   (() => {
     const seenK = new Set(); const out = [];
@@ -1299,7 +1299,7 @@
     store.set('moeda-seen', seen);
     if (!events.length) return;
     // Um som por atualização: problema numa moeda sua tem prioridade (venda no lucro toca o som bom)
-    const loud = events.filter((e) => !(e.kind === 'robo' && /não compensa/.test(e.alerts[0].msg)));
+    const loud = events.filter((e) => !(e.kind === 'robo' && /não compensa|já tinha saído da carteira/.test(e.alerts[0].msg)));
     if (!loud.length) return;
     // Venda do robô é proteção funcionando: toca o som de venda. Só falha de venda e perigo tocam o som de problema
     const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && /falh/i.test(e.alerts[0].msg)));
@@ -1310,7 +1310,7 @@
         notify(`Nova no radar: ${e.t.symbol}`, `Nota ${e.t.score} - market cap ${usd(e.t.mcapUsd)}`, 'nova-' + e.t.mint);
       } else if (e.kind === 'robo') {
         const a = e.alerts[0];
-        if (/não compensa/.test(a.msg)) continue; // não vendida por valer pouco: só fica registrada, sem som nem aviso
+        if (/não compensa|já tinha saído da carteira/.test(a.msg)) continue; // não vendida por valer pouco ou já vendida: só fica registrada, sem som nem aviso
         toast(`${e.t.symbol}: ${a.msg.split('.')[0]}`);
         sysNotify(`Robô vendeu: ${e.t.symbol}`, a.msg, 'robo-' + e.t.mint, e.t.mint);
       } else {
@@ -1332,6 +1332,8 @@
     if (!g.reentrada && t.status === 'aguardando' && (t.score || 0) < 75) why.push('ainda em observação');
     if ((t.score || 0) < min) why.push(`nota ${t.score || 0}, abaixo de ${min}`);
     if (t.dexId === 'pumpfun') why.push('ainda na curva da pump.fun');
+    const noRadar = (Date.now() - (t.approvedAt || t.firstSeen || Date.now())) / 60000, minR = c.minutosNoRadarMin ?? 0;
+    if (!g.reentrada && minR > 0 && noRadar < minR) why.push(`no Radar há ${Math.floor(noRadar)} min, o robô espera ${minR}`);
     if (t.shape && ['morta', 'reta'].includes(t.shape.tipo)) why.push('gráfico sem vida');
     if ((g.rr || 0) < rrMin) why.push(`risco/retorno abaixo de 1:${rrMin}`);
     return why.length ? `O robô não compra sozinho (${why.join(', ')}).` : 'O robô compra sozinho se ainda houver espaço nos limites do dia.';
@@ -1647,6 +1649,18 @@
     const confirmed = held && green && (volOk || buyOk) && buyOk;
     const where = deep ? 'na parte funda da zona (61,8% a 78,6%)' : 'na zona de 50% a 61,8%';
     if (confirmed && rr >= rrMin && ctx.safety !== 'warn') {
+      // Não repete o sinal numa moeda em que o último "Boa entrada" não andou (16/11: GOAT 4 sinais, ANGSTIPAN 3, nenhum passou de +11%)
+      const bp = ctx.boaPrev, now = ctx.now || Date.now();
+      const subiu = bp?.px > 0 ? (bp.max / bp.px - 1) * 100 : null;
+      if (bp && subiu != null && now - bp.at >= 20 * 60000 && now - bp.at < (ctx.repetirHoras ?? 24) * 3600000 && subiu < (ctx.repetirSeSubiuPct ?? 10)) {
+        const ha = now - bp.at < 3600000 ? `${Math.round((now - bp.at) / 60000)} min` : `${Math.round((now - bp.at) / 3600000)}h`;
+        return { ...base, fase: 'repetido', titulo: 'Sinal repetido', msg: `O último "Boa entrada" desta moeda (há ${ha}) não andou: subiu no máximo ${Math.max(0, subiu).toFixed(0)}%. O Faro não repete o sinal.`, boa: false };
+      }
+      // Nota baixa demais para o sinal (16/11: GOAT deu "Boa entrada" com nota 38 e caiu 29%).
+      // notaBaixa: o teste da nota da aprovação (só simulação) ainda pode usar esse sinal
+      if (ctx.notaMin > 0 && ctx.score != null && ctx.score < ctx.notaMin) {
+        return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: `Reagiu ${where}, mas a nota da moeda está em ${Math.round(ctx.score)} (o sinal pede ${ctx.notaMin}+).`, boa: false, notaBaixa: true };
+      }
       return { ...base, fase: 'entrada', titulo: 'Boa entrada', msg: `Segurou ${where} e reagiu com compra. Stop abaixo do fundo, alvo no topo anterior.`, boa: true };
     }
     if (confirmed) return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: ctx.safety === 'warn' ? 'Reagiu na zona, mas há um alerta de atenção na moeda.' : `Reagiu ${where}, mas o alvo paga menos de ${rrMin}x o risco.`, boa: false };
@@ -1841,7 +1855,9 @@
     const c = candlesOf(t);
     if (c.length < 6) return null;
     const p5 = t.periods?.m5 || {};
-    const ctx = { px: t.priceUsd, buys5: p5.buys, sells5: p5.sells, safety: levelOf(t), shape: t.shape?.tipo, rrMin: data?.config?.simulacao?.riscoRetornoMin || 2 };
+    const SG = data?.config?.sinais || {};
+    const ctx = { px: t.priceUsd, buys5: p5.buys, sells5: p5.sells, safety: levelOf(t), shape: t.shape?.tipo, rrMin: data?.config?.simulacao?.riscoRetornoMin || 2,
+      score: t.score, notaMin: SG.notaMinima ?? 0, boaPrev: t.boa, now: Date.now(), repetirSeSubiuPct: SG.naoRepetirSeNaoSubiuPct ?? 10, repetirHoras: SG.repeticaoJanelaHoras ?? 24 };
     if (t.held && t.position?.known && t.position.avgPriceUsd > 0) {
       let net = 0, start = null;
       for (const o of [...(t.history || [])].reverse()) { if (!o.tokens) continue; if (net <= 0 && o.tokens > 0) start = o.at; net += o.tokens; if (net <= 0) start = null; }

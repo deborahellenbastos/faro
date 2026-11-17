@@ -105,8 +105,41 @@ export async function createTrader(cfg, log) {
     return { sig, outSol: Number(quote.outAmount) / LAMPORTS_PER_SOL };
   }
 
+  // Fecha contas de moeda que ficaram zeradas e devolve o "aluguel" para a carteira (~0,0015 a 0,002 SOL cada).
+  // A compra cria a conta, a venda não fecha (16/11: 15 contas, 0,0227 SOL parados). O programa de tokens só deixa
+  // fechar conta com saldo zero, então isso nunca mexe em moeda que você tem.
+  async function closeEmpty(max = 10, skip = new Set()) {
+    const W3 = await import('@solana/web3.js');
+    const empty = [];
+    for (const programId of ['TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb']) {
+      const prog = new W3.PublicKey(programId);
+      const r = await conn.getParsedTokenAccountsByOwner(wallet.publicKey, { programId: prog });
+      for (const a of r.value) {
+        const amt = a.account.data.parsed.info.tokenAmount?.amount;
+        if (amt === '0' && !skip.has(a.pubkey.toBase58())) empty.push({ pubkey: a.pubkey, prog, lamports: a.account.lamports });
+      }
+    }
+    const todo = empty.slice(0, max);
+    let closed = 0, sol = 0, failed = 0; const bad = [];
+    const ix = (x) => new W3.TransactionInstruction({ programId: x.prog, data: Buffer.from([9]), // 9 = CloseAccount
+      keys: [{ pubkey: x.pubkey, isSigner: false, isWritable: true }, { pubkey: wallet.publicKey, isSigner: false, isWritable: true }, { pubkey: wallet.publicKey, isSigner: true, isWritable: false }] });
+    const send = async (list) => {
+      const tx = new W3.Transaction().add(...list.map(ix)); tx.feePayer = wallet.publicKey;
+      await W3.sendAndConfirmTransaction(conn, tx, [wallet], { commitment: 'confirmed' });
+      closed += list.length; sol += list.reduce((a, x) => a + x.lamports, 0) / LAMPORTS_PER_SOL;
+    };
+    for (let i = 0; i < todo.length; i += 5) {
+      const chunk = todo.slice(i, i + 5);
+      try { await send(chunk); }
+      catch { for (const x of chunk) { try { await send([x]); } catch { failed++; bad.push(x.pubkey.toBase58()); } } } // uma conta com problema não trava as outras
+    }
+    return { closed, sol, failed, bad, left: empty.length - closed - failed };
+  }
+
   return {
     canBuy: buyOn,
+    canClean: mine && cfg?.venda?.fecharContasVazias !== false,
+    closeEmpty,
     canSell,
     canTakeProfit,
     canWatch,

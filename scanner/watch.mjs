@@ -47,6 +47,7 @@ const confSells = V.confirmaVendasPct ?? 60;
 const liqPct = V.quedaLiquidezPct ?? 30;
 const liqWin = (V.janelaLiquidezMin ?? 5) * 60000;
 const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
+const dustUsd = cfg.venda?.restoSemValorUsd ?? 0.05;
 const SM = cfg.venda?.stopMovel || {};
 const trailOn = SM.ligado === true;
 const SP = cfg.venda?.stopPerda || {};
@@ -65,7 +66,7 @@ const realizeOn = RZ.ligado === true && process.env.LUCRO_AUTO !== 'false';
 // Uma venda feita antes de uma nova compra da mesma moeda não conta mais
 // (também vale o que ficou registrado nas rodadas anteriores, para não repetir o mesmo aviso)
 // "Não vendida por valer pouco" não tira a moeda da vigia para sempre: depois de 10 min ela volta a ser vigiada (pode ter subido)
-const done = (t) => [mem.sold[t.mint], t.watchSell].some((x) => x && x.at > (t.position?.lastBuyAt || 0) && (!x.skipped || Date.now() - x.at < 600000));
+const done = (t) => [mem.sold[t.mint], t.watchSell].some((x) => x && x.at > (t.position?.lastBuyAt || 0) && (!x.skipped || Date.now() - x.at < (x.dust ? 6 * 3600000 : 600000)));
 let held = Object.values(state.tokens || {}).filter((t) => t.held && t.heldAmount > 0 && !done(t));
 const L = cfg.venda?.lucro || {};
 const lucroOn = L.ligado === true && process.env.LUCRO_AUTO !== 'false';
@@ -138,12 +139,16 @@ async function contractCheck(now) {
 async function sell(t, why, kind, px) {
   // Posição que vale menos de US$ 1 agora: não vende sozinho (a taxa não compensa e ela pode ter um bump). Se passar a valer US$ 1+, as proteções voltam
   const worth = (t.heldAmount || 0) * px, cost = t.position?.known ? t.position.costOpenUsd || 0 : 0;
+  // Resto sem valor (menos de US$ 0,05, ex.: AI e ANGSTIPAN em 16/11): nem avisa, só volta a olhar daqui a 6h
+  if (worth < dustUsd) { mem.sold[t.mint] = { skipped: true, dust: true, at: Date.now(), why, worth, kind }; return; }
   if (worth < minUsd) { mem.sold[t.mint] = { skipped: true, at: Date.now(), why, worth, kind }; log(`${t.symbol}: ${why}, mas a operação é pequena (investido US$ ${cost.toFixed(2)}, vale US$ ${worth.toFixed(2)}). Não vendi.`); return; }
   log(`${t.symbol}: ${why}. Vendendo 100%...`);
   try {
     const s = await trader.sellAll(t.mint);
+    // Nada na carteira: alguém vendeu antes (16/11: SENT saiu 7 s antes). Não é "Robô vendeu"
+    if (s.nada) { mem.sold[t.mint] = { nada: true, at: Date.now(), why, kind }; log(`${t.symbol}: ia vender (${why}), mas a moeda já tinha saído da carteira.`); return; }
     mem.sold[t.mint] = { ok: true, at: Date.now(), sig: s.sig, outSol: s.outSol, why, kind };
-    log(s.nada ? `${t.symbol}: nada para vender.` : `VENDEU 100% de ${t.symbol} por ${s.outSol.toFixed(4)} SOL (tx ${s.sig.slice(0, 8)}...)`);
+    log(`VENDEU 100% de ${t.symbol} por ${s.outSol.toFixed(4)} SOL (tx ${s.sig.slice(0, 8)}...)`);
   } catch (e) {
     const tries = ((mem.retry || {})[t.mint] || 0) + 1;
     log(`Venda de ${t.symbol} falhou (${tries}/3): ${e.message}`, true);

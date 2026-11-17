@@ -52,6 +52,18 @@ export function entrySignal(c, ctx = {}) {
   const confirmed = held && green && (volOk || buyOk) && buyOk;
   const where = deep ? 'na parte funda da zona (61,8% a 78,6%)' : 'na zona de 50% a 61,8%';
   if (confirmed && rr >= rrMin && ctx.safety !== 'warn') {
+    // Não repete o sinal numa moeda em que o último "Boa entrada" não andou (16/11: GOAT 4 sinais, ANGSTIPAN 3, nenhum passou de +11%)
+    const bp = ctx.boaPrev, now = ctx.now || Date.now();
+    const subiu = bp?.px > 0 ? (bp.max / bp.px - 1) * 100 : null;
+    if (bp && subiu != null && now - bp.at >= 20 * 60000 && now - bp.at < (ctx.repetirHoras ?? 24) * 3600000 && subiu < (ctx.repetirSeSubiuPct ?? 10)) {
+      const ha = now - bp.at < 3600000 ? `${Math.round((now - bp.at) / 60000)} min` : `${Math.round((now - bp.at) / 3600000)}h`;
+      return { ...base, fase: 'repetido', titulo: 'Sinal repetido', msg: `O último "Boa entrada" desta moeda (há ${ha}) não andou: subiu no máximo ${Math.max(0, subiu).toFixed(0)}%. O Faro não repete o sinal.`, boa: false };
+    }
+    // Nota baixa demais para o sinal (16/11: GOAT deu "Boa entrada" com nota 38 e caiu 29%).
+    // notaBaixa: o teste da nota da aprovação (só simulação) ainda pode usar esse sinal
+    if (ctx.notaMin > 0 && ctx.score != null && ctx.score < ctx.notaMin) {
+      return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: `Reagiu ${where}, mas a nota da moeda está em ${Math.round(ctx.score)} (o sinal pede ${ctx.notaMin}+).`, boa: false, notaBaixa: true };
+    }
     return { ...base, fase: 'entrada', titulo: 'Boa entrada', msg: `Segurou ${where} e reagiu com compra. Stop abaixo do fundo, alvo no topo anterior.`, boa: true };
   }
   if (confirmed) return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: ctx.safety === 'warn' ? 'Reagiu na zona, mas há um alerta de atenção na moeda.' : `Reagiu ${where}, mas o alvo paga menos de ${rrMin}x o risco.`, boa: false };

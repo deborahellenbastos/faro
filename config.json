@@ -29,6 +29,7 @@
   "compra": {
     "ativada": true,
     "sinalValidoMin": 10,
+    "minutosNoRadarMin": 15,
     "solPorCompra": 0.05,
     "maxComprasPorDia": 5,
     "scoreMinimo": 70,
@@ -57,6 +58,9 @@
     "automatica": true,
     "slippageMaxPct": 30,
     "valorMinimoUsd": 1,
+    "restoSemValorUsd": 0.05,
+    "fecharContasVazias": true,
+    "contasPorRodada": 10,
     "lucro": {
       "ligado": true,
       "alvoPct": 100,
@@ -75,6 +79,7 @@
       "confirmaVendasPct": 60
     }
   },
+  "sinais": { "notaMinima": 60, "naoRepetirSeNaoSubiuPct": 10, "repeticaoJanelaHoras": 24 },
   "perfil": "equilibrado",
   "banca": {
     "usd": 10,

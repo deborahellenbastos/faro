@@ -284,6 +284,18 @@ assert.equal(state.lastRun.autoCompra, null);
   push(1.38, 1.40, 1.37, 1.39, 60); push(1.39, 1.47, 1.385, 1.46, 150);
   const e = entrySignal(c, { buys5: 12, sells5: 6, safety: 'ok', shape: 'organica' });
   assert.equal(e.fase, 'entrada'); assert.ok(e.rr >= 2 && e.stop < 1.37 && e.alvo === 2.12);
+  // 16/11: nota baixa não vira "Boa entrada" (mas fica marcada para o teste da nota da aprovação)
+  const ok = { buys5: 12, sells5: 6, safety: 'ok', shape: 'organica' };
+  const lowS = entrySignal(c, { ...ok, score: 38, notaMin: 60 });
+  assert.ok(!lowS.boa && lowS.notaBaixa && /nota da moeda está em 38/.test(lowS.msg), 'nota 38: sem sinal');
+  assert.equal(entrySignal(c, { ...ok, score: 65, notaMin: 60 }).boa, true, 'nota 65: sinal normal');
+  // 16/11: não repete o sinal se o último "Boa entrada" da moeda não subiu 10%
+  const nowS = Date.now();
+  const rep = entrySignal(c, { ...ok, now: nowS, boaPrev: { at: nowS - 40 * 60000, px: 1.4, max: 1.48 } });
+  assert.ok(!rep.boa && rep.fase === 'repetido' && /há 40 min/.test(rep.msg), 'GOAT: sinal repetido');
+  assert.equal(entrySignal(c, { ...ok, now: nowS, boaPrev: { at: nowS - 40 * 60000, px: 1.4, max: 1.6 } }).boa, true, 'o anterior andou: pode repetir');
+  assert.equal(entrySignal(c, { ...ok, now: nowS, boaPrev: { at: nowS - 5 * 60000, px: 1.4, max: 1.4 } }).boa, true, 'o mesmo sinal, ainda fresco');
+  assert.equal(entrySignal(c, { ...ok, now: nowS, boaPrev: { at: nowS - 25 * 3600000, px: 1.4, max: 1.4 } }).boa, true, 'passou 24h: vale de novo');
   const at = c[c.length - 1][0];
   assert.equal(exitSignal(c, { entryPx: 1.45, entryAt: at }, { px: 2.1 }).fase, 'realizar');
   assert.equal(exitSignal(c, { entryPx: 1.45, entryAt: at }, { px: 1.0 }).fase, 'sair');
@@ -429,9 +441,16 @@ console.log(JSON.stringify(state.lastRun.counts));
   assert.equal(buyScoreOk({ ...base, safety: { level: 'warn', alerts: [{ id: 'insiders' }] } }, cfgT, true), false);
   assert.equal(buyScoreOk({ ...base, score: 75 }, cfgT, true), false); // já entra pela regra normal
   const now = Date.now();
-  const tok = { mint: 'X', symbol: 'X', status: 'aprovada', dexId: 'pumpswap', liquidityUsd: 15000, entryLiquidityUsd: 16000, sinal: { tipo: 'entrada', boa: true, at: now, rr: 3 }, ...base };
+  const tok = { mint: 'X', symbol: 'X', status: 'aprovada', approvedAt: now - 3600e3, dexId: 'pumpswap', liquidityUsd: 15000, entryLiquidityUsd: 16000, sinal: { tipo: 'entrada', boa: true, at: now, rr: 3 }, ...base };
   assert.equal(ecTest({ X: tok }, cfgT, now).length, 0);
   assert.equal(ecTest({ X: tok }, cfgT, now, { byApproval: true }).length, 1);
+  // sinal com nota abaixo de 60 (notaBaixa) ainda serve só para o teste da nota da aprovação
+  const tokNb = { ...tok, sinal: { tipo: 'entrada', boa: false, notaBaixa: true, at: now, rr: 3 } };
+  assert.equal(ecTest({ X: tokNb }, cfgT, now, { byApproval: true }).length, 1);
+  // 16/11: compra automática só depois de 15 min no Radar (PASSED, VI e SENT viraram rug comprados com 2 a 9 min)
+  const fresh = { ...tok, score: 80, approvedAt: now - 9 * 60000 };
+  assert.equal(ecTest({ X: fresh }, cfgT, now).length, 0, 'aprovada há 9 min: espera');
+  assert.equal(ecTest({ X: { ...fresh, approvedAt: now - 16 * 60000 } }, cfgT, now).length, 1, 'aprovada há 16 min: pode');
 }
 if (process.argv.includes('--demo')) {
   state.config = cfg;

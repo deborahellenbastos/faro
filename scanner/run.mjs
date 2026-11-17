@@ -383,11 +383,16 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
 
   // 5d. Sinais de entrada (radar) e de saída (suas posições), com as lições dos vídeos
   const rrMin = cfg.simulacao?.riscoRetornoMin || 2;
+  const SG = cfg.sinais || {};
   const opsOf = (mint) => (state.wallet?.ops || []).filter((o) => o.mint === mint && o.tokens).sort((a, b) => a.at - b.at);
   for (const t of Object.values(tokens)) {
     if (!t.candles?.length) continue;
     const p5 = t.periods?.m5 || {};
-    const ctx = { px: t.priceUsd, buys5: p5.buys, sells5: p5.sells, safety: t.safety?.level, shape: t.shape?.tipo, rrMin };
+    // Último "Boa entrada" da moeda: guarda o preço e a máxima depois dele (para não repetir sinal que não andou)
+    if (t.boa && now - t.boa.at >= (SG.repeticaoJanelaHoras ?? 24) * 3600000) delete t.boa;
+    if (t.boa) t.boa.max = Math.max(t.boa.max || 0, t.priceUsd || 0, ...t.candles.filter((x) => x[0] >= t.boa.at).map((x) => x[2]));
+    const ctx = { px: t.priceUsd, buys5: p5.buys, sells5: p5.sells, safety: t.safety?.level, shape: t.shape?.tipo, rrMin,
+      score: t.score, notaMin: SG.notaMinima ?? 0, boaPrev: t.boa, now, repetirSeSubiuPct: SG.naoRepetirSeNaoSubiuPct ?? 10, repetirHoras: SG.repeticaoJanelaHoras ?? 24 };
     const prev = t.sinal;
     let sig = null;
     if (t.held && t.position?.known && t.position.avgPriceUsd > 0) {
@@ -415,6 +420,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     // "desde" muda só quando a fase muda (para o painel avisar uma vez)
     sig.at = prev && prev.tipo === sig.tipo && prev.fase === sig.fase && prev.key === sig.key ? prev.at : now;
     t.sinal = sig;
+    if (sig.tipo === 'entrada' && (sig.boa || sig.notaBaixa) && sig.at === now) t.boa = { at: now, px: t.priceUsd, max: t.priceUsd, key: sig.key };
     if (sig.at === now && (sig.boa || sig.bom || sig.ruim)) log(`SINAL: ${t.symbol} - ${sig.titulo}`);
   }
 
@@ -456,8 +462,9 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     if (a.ok) log(`Vigia vendeu 100% de ${t.symbol}: ${a.why}${a.outSol ? ` (${a.outSol.toFixed(4)} SOL)` : ''}`);
   }
   for (const t of Object.values(tokens)) {
-    const a = t.watchSell; if (!a || !t.safety) continue;
-    const msg = a.skipped ? `${a.kind === 'golpe' ? 'Golpe' : 'Sinal de venda'} (${a.why}), mas a operação é menor que US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender`
+    const a = t.watchSell; if (!a || !t.safety || a.dust) continue; // resto sem valor: sem aviso
+    const msg = a.nada ? `A vigia ia vender (${a.why}), mas a moeda já tinha saído da carteira (venda feita antes, fora do robô)`
+      : a.skipped ? `${a.kind === 'golpe' ? 'Golpe' : 'Sinal de venda'} (${a.why}), mas a operação é menor que US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender`
       : a.ok ? `Robô vendeu 100%${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`
       : `Vigia rápida tentou vender (${a.why}) e falhou: ${a.erro}. Venda manualmente!`;
     // Golpe no contrato = perigo; queda de liquidez = atenção; queda de preço ou lucro = só aviso (a moeda pode seguir viva)
@@ -465,7 +472,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     // "LP destravada" com a liquidez ainda de pé no mercado: foi alarme falso do RugCheck, a moeda não fica marcada como perigo
     const falso = lpFalseAlarm(t, a);
     if (falso) lvl = 'info';
-    t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: a.skipped ? 'info' : lvl, at: a.at, msg: falso ? `${msg} (depois se viu que foi alarme falso: a liquidez seguiu no mercado)` : msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
+    t.safety = mergeSafety(t.safety, [{ id: 'vigia', level: a.skipped || a.nada ? 'info' : lvl, at: a.at, msg: falso ? `${msg} (depois se viu que foi alarme falso: a liquidez seguiu no mercado)` : msg, ...(a.sig ? { sig: a.sig } : {}) }, ...t.safety.alerts.filter((x) => x.id !== 'vigia')], now);
   }
 
   // 6c2. Valor por operação conforme a banca: SOL na carteira + valor das moedas abertas, em dólar
@@ -477,6 +484,19 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     const faixa = bancaUsd != null ? faixas.find((f) => bancaUsd >= f.bancaMinUsd) : null;
     if (faixa && solUsd) cfg.compra.solPorCompra = +(faixa.usd / solUsd).toFixed(4);
     state.banca = { usd: bancaUsd, faixaUsd: faixa?.usd ?? null, solPorCompra: cfg.compra?.solPorCompra, at: now };
+  }
+
+  // 6c3. Recupera o SOL parado em contas de moeda zeradas (o aluguel que a compra pagou e a venda não devolveu)
+  if (trader?.canClean && trader.closeEmpty) {
+    state.contas = state.contas || { fechadas: 0, sol: 0, naoFecham: [] };
+    try {
+      const r = await trader.closeEmpty(cfg.venda?.contasPorRodada ?? 10, new Set(state.contas.naoFecham));
+      if (r.closed) {
+        state.contas.fechadas += r.closed; state.contas.sol = +(state.contas.sol + r.sol).toFixed(9); state.contas.at = now;
+        log(`Recuperou ${r.sol.toFixed(4)} SOL fechando ${r.closed} conta(s) de moeda vazia${r.left > 0 ? ` (faltam ${r.left})` : ''}`);
+      }
+      if (r.bad?.length) state.contas.naoFecham = [...new Set([...state.contas.naoFecham, ...r.bad])].slice(-50);
+    } catch (e) { log(`Não consegui fechar as contas vazias: ${e.message}`, true); }
   }
 
   // 6d. Compra no sinal de boa entrada: interruptor (memo assinado pela sua carteira), simulação e compra real

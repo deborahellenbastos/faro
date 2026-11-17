@@ -24,13 +24,15 @@ export function entryCandidates(tokens, cfg, now, opts = {}) {
   const c = cfg.compra || {};
   const fresh = (c.sinalValidoMin ?? 10) * 60000;
   return Object.values(tokens)
-    .filter((t) => t.sinal?.tipo === 'entrada' && t.sinal.boa && now - (t.sinal.at || 0) <= fresh)
+    .filter((t) => t.sinal?.tipo === 'entrada' && (t.sinal.boa || (opts.byApproval && t.sinal.notaBaixa)) && now - (t.sinal.at || 0) <= fresh)
     .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || isReentry(t, cfg, now))
     // reentrada: só com a liquidez ainda de pé (golpe tira a liquidez) e sem alerta de perigo
     .filter((t) => !isReentry(t, cfg, now) || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => !t.held && t.safety?.level !== 'danger' && buyScoreOk(t, cfg, opts.byApproval))
     .filter((t) => !opts.byApproval || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => t.dexId !== 'pumpfun') // compra de verdade nunca na curva da pump.fun (modo curva é só simulação)
+    // Tempo mínimo no Radar (16/11: os 3 rugs comprados entraram 2 a 9 min depois da aprovação). Reentrada já passou por isso
+    .filter((t) => isReentry(t, cfg, now) || now - (t.approvedAt || t.firstSeen || now) >= (c.minutosNoRadarMin ?? 0) * 60000)
     .filter((t) => !(t.shape && ['morta', 'reta'].includes(t.shape.tipo)))
     .filter((t) => (t.sinal.rr || 0) >= (cfg.simulacao?.riscoRetornoMin ?? 2))
     .sort((a, b) => (b.sinal.rr || 0) - (a.sinal.rr || 0) || (b.score || 0) - (a.score || 0));
