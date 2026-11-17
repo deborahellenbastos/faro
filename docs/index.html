@@ -1131,6 +1131,44 @@
     .m-hero { margin-top: 6px !important; }
     .m-hero > .mh-row:first-child { margin-top: 0 !important; }
   }
+
+  /* ================= Movimento: troca de abas e ícones vivos ================= */
+  @keyframes enterFwd { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+  @keyframes enterBack { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+  @keyframes rowIn { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
+  body.tab-enter.fwd #m-hero, body.tab-enter.fwd .summary, body.tab-enter.fwd .wallet-strip, body.tab-enter.fwd .list-head, body.tab-enter.fwd .radar-chips { animation: enterFwd .36s cubic-bezier(.2,.9,.25,1) both; }
+  body.tab-enter.back #m-hero, body.tab-enter.back .summary, body.tab-enter.back .wallet-strip, body.tab-enter.back .list-head, body.tab-enter.back .radar-chips { animation: enterBack .36s cubic-bezier(.2,.9,.25,1) both; }
+  body.tab-enter #list > * { animation: rowIn .42s cubic-bezier(.2,.9,.25,1) both; }
+  body.tab-enter #list > *:nth-child(1) { animation-delay: .04s; } body.tab-enter #list > *:nth-child(2) { animation-delay: .07s; }
+  body.tab-enter #list > *:nth-child(3) { animation-delay: .1s; } body.tab-enter #list > *:nth-child(4) { animation-delay: .13s; }
+  body.tab-enter #list > *:nth-child(5) { animation-delay: .16s; } body.tab-enter #list > *:nth-child(6) { animation-delay: .19s; }
+  body.tab-enter #list > *:nth-child(7) { animation-delay: .22s; } body.tab-enter #list > *:nth-child(n+8) { animation-delay: .25s; }
+
+  /* Barra de baixo: o fundo do item ativo desliza; ícones com animação própria ao tocar */
+  .tabbar button { transition: color .25s, background .3s cubic-bezier(.2,.9,.25,1), transform .15s; }
+  .tabbar button:active { transform: scale(.94); }
+  .tabbar button svg, .nav-item svg, .icon-btn svg { transform-origin: 50% 50%; }
+  @keyframes spinOnce { to { transform: rotate(360deg); } }
+  @keyframes hop { 0%,100% { transform: translateY(0); } 35% { transform: translateY(-5px) scale(1.06); } 60% { transform: translateY(1px) scale(.98); } }
+  @keyframes blink { 0%,100% { transform: scaleY(1); } 40% { transform: scaleY(.12); } 60% { transform: scaleY(1); } }
+  @keyframes wiggle { 0%,100% { transform: rotate(0); } 20% { transform: rotate(-14deg); } 45% { transform: rotate(11deg); } 70% { transform: rotate(-6deg); } }
+  @keyframes ring { 0%,100% { transform: rotate(0); } 10% { transform: rotate(16deg); } 25% { transform: rotate(-14deg); } 40% { transform: rotate(10deg); } 55% { transform: rotate(-7deg); } 70% { transform: rotate(3deg); } }
+  @keyframes wave { 0%,100% { transform: translateY(0) rotate(0); } 25% { transform: translateY(-3px) rotate(-8deg); } 55% { transform: translateY(-1px) rotate(7deg); } }
+  @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+  .pop[data-tab="aprovada"] svg { animation: spinOnce .6s cubic-bezier(.3,.8,.3,1); }
+  .pop[data-tab="minhas"] svg { animation: hop .5s ease; }
+  .pop[data-tab="aguardando"] svg { animation: blink .45s ease; }
+  .pop[data-tab="reprovada"] svg { animation: wiggle .55s ease; }
+  .pop[data-open-robot] svg, .pop.m-robot svg { animation: wave .6s ease; }
+  #bell.pop svg, #bell.ring svg { transform-origin: 50% 10%; animation: ring .8s ease; }
+  .tabbar button.on svg, .nav-item.on svg { filter: drop-shadow(0 0 8px rgba(16,210,127,.45)); }
+  .m-robot svg { animation: floaty 3.2s ease-in-out infinite; }
+  #bell.has-unread svg { animation: ring .9s ease 0s 1, none; }
+  .icon-btn { transition: transform .15s, background .2s; } .icon-btn:active { transform: scale(.92); }
+  .row, .btn, .radar-chips button, .soc.link { transition: transform .15s, background .2s, box-shadow .2s; }
+  .row:active, .btn:active, .radar-chips button:active { transform: scale(.985); }
+  .radar-chips button.on { animation: hop .35s ease; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -1422,6 +1460,7 @@
   function renderInbox() {
     const unreadN = INBOX.list.filter((x) => !x.read).length;
     const b = $('bell-n'); if (b) { b.hidden = !unreadN; b.textContent = unreadN > 99 ? '99+' : unreadN; }
+    { const bell = $('bell'); if (bell) { if (unreadN > (INBOX.lastUnread || 0)) { bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring'); } bell.classList.toggle('has-unread', !!unreadN); INBOX.lastUnread = unreadN; } }
     try { if (navigator.setAppBadge) unreadN ? navigator.setAppBadge(unreadN) : navigator.clearAppBadge(); } catch {}
     const el = $('inbox-list'); if (!el || !$('inbox').classList.contains('show')) return;
     // No celular: só o que cabe na tela (sem rolagem), o resto vai para as páginas
@@ -1881,6 +1920,13 @@
   }
   // Dentro do app da Phantom no celular: a barra de endereço dela fica por cima da parte de baixo da tela
   if (/iPhone|iPad|Android/i.test(navigator.userAgent) && (window.phantom?.solana?.isPhantom || window.solana?.isPhantom)) document.body.classList.add('in-phantom');
+  const TAB_ORDER = ['minhas', 'aprovada', 'aguardando', 'reprovada'];
+  // Toque nos ícones: animação curta de "vida" (radar gira, carteira pula, olho pisca, escudo balança, robô acena, sino toca)
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.tabbar button, .nav-item, .m-robot, #bell, .icon-btn[data-open-robot]'); if (!b) return;
+    b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+    setTimeout(() => b.classList.remove('pop'), 700);
+  }, true);
   function goTo(mint) {
     markSeen(mint);
     const t = data?.tokens?.[mint]; if (!t) return;
@@ -4108,6 +4154,13 @@ function baseBreakout(c, ctx = {}) {
     updateSolBal();
     // Navegação
     document.body.classList.toggle('tab-minhas', ui.tab === 'minhas');
+    if (window.__lastTab !== undefined && window.__lastTab !== ui.tab) {
+      const dir = TAB_ORDER.indexOf(ui.tab) > TAB_ORDER.indexOf(window.__lastTab) ? 'fwd' : 'back';
+      document.body.classList.remove('tab-enter', 'fwd', 'back'); void document.body.offsetWidth;
+      document.body.classList.add('tab-enter', dir);
+      clearTimeout(window.__tabT); window.__tabT = setTimeout(() => document.body.classList.remove('tab-enter', 'fwd', 'back'), 700);
+    }
+    window.__lastTab = ui.tab;
     document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === ui.tab));
     const unseenN = lists.aprovada.filter(isUnseen).length;
     document.querySelectorAll('[data-count]').forEach((e) => { e.textContent = (e.dataset.count === 'minhas' ? mine.length : lists[e.dataset.count].length) || ''; e.classList.toggle('has-new', e.dataset.count === 'aprovada' && unseenN > 0); e.title = e.dataset.count === 'aprovada' && unseenN ? `${unseenN} nova${unseenN > 1 ? 's' : ''} que você ainda não abriu` : ''; });
