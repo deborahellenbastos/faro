@@ -304,3 +304,9 @@ Limitação: o robô roda a cada 5 min. Altas muito rápidas, como a da goldie (
 - Venda por "liquidez destravada" em que a liquidez continuou no mercado (80%+ da referência) passa a ser só aviso: a moeda não fica marcada como perigo para sempre.
 - Notificação de boa entrada diz se o robô vai comprar sozinho e, se não, por quê. Moeda reprovada ou já vendida (fora reentrada) não gera aviso de entrada.
 - "Bloquear painel" virou "Sair do painel" (esquece a senha neste navegador; o robô continua rodando).
+
+### Faro como app no iPhone (16/11)
+- `docs/manifest.json`, ícones `icon-180/192/512.png` (o mesmo logo do painel) e `docs/sw.js` (service worker).
+- Notificações saem pelo service worker (o iPhone só aceita assim, com o Faro adicionado à Tela de Início) e o ícone mostra o número de avisos não lidos.
+- Tocar na notificação abre a moeda. No celular, Sons, Notificações, Gráfico da Dex e Moedas mortas ficam na gaveta do Robô.
+- Limite: com o app totalmente fechado, o iPhone não deixa a página rodar. Aviso com o app fechado precisa de push enviado pelo robô (o sw.js já está pronto para receber).

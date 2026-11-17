@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Faro">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#0b0d10">
 <meta name="theme-color" content="#0a0b0d">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <title>Faro</title>
@@ -597,6 +600,8 @@
   #dex-vault iframe { width: 100%; height: 100%; border: 0; }
   .list-sub { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .list-sub small { color: var(--faint); font-weight: 700; }
+  .m-set { display: none; gap: 12px; padding: 12px 14px; margin-bottom: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg); }
+  @media (max-width: 1099px) { .m-set { display: grid; } }
   .list-sub.fold { width: 100%; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; padding-bottom: 10px; }
   .list-sub.fold:hover { color: var(--text); }
   .list-sub.fold .chev { width: 14px; height: 14px; margin-left: auto; transition: transform .15s; }
@@ -732,6 +737,7 @@
       <div class="sw-row"><div><span id="t-sound-label">Sons</span><small id="t-sound-hint" hidden>Clique para liberar</small></div><button class="switch" id="t-sound" role="switch" aria-checked="false" aria-label="Sons"></button></div>
       <div class="sw-row"><span>Notificações</span><button class="switch" id="t-notif" role="switch" aria-checked="false" aria-label="Notificações"></button></div>
       <div class="sw-row"><div><span>Gráfico da Dex<i class="info-btn tip" title="Desligado, o painel fica mais leve: não carrega os gráficos da DexScreener e mostra só o gráfico do Faro (com um link para abrir a Dex em outra aba)"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></i></span></div><button class="switch" id="t-dex" role="switch" aria-checked="true" aria-label="Gráfico da Dex"></button></div>
+      <div class="sw-row"><span>Moedas mortas</span><button class="switch" id="t-mortas" role="switch" aria-checked="true" aria-label="Mostrar moedas mortas na Carteira"></button></div>
       <div class="sw-row autorow" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
       <div class="side-sep" data-lock-sep hidden></div><button class="lock-btn" data-lock hidden title="Esquece a senha neste navegador e fecha o painel. Para entrar de novo, pede a senha. O robô continua rodando."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sair do painel</button>
     </div>
@@ -807,6 +813,12 @@
       </div>
       <div class="drawer-body">
         <div class="sw-row autorow in-drawer" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
+        <div class="m-set" id="m-set">
+          <div class="sw-row"><span>Sons</span><button class="switch" data-proxy="t-sound" role="switch" aria-checked="false" aria-label="Sons"></button></div>
+          <div class="sw-row"><span>Notificações</span><button class="switch" data-proxy="t-notif" role="switch" aria-checked="false" aria-label="Notificações"></button></div>
+          <div class="sw-row"><span>Gráfico da Dex</span><button class="switch" data-proxy="t-dex" role="switch" aria-checked="true" aria-label="Gráfico da Dex"></button></div>
+          <div class="sw-row"><span>Moedas mortas</span><button class="switch" data-proxy="t-mortas" role="switch" aria-checked="true" aria-label="Mostrar moedas mortas"></button></div>
+        </div>
         <div id="rt-filtros">
           <div class="kv" id="cfg"></div>
           <p class="note">Para mudar, edite o arquivo <b>config.json</b> no GitHub. A próxima rodada já usa os valores novos.</p>
@@ -967,6 +979,7 @@
   function renderInbox() {
     const unreadN = INBOX.list.filter((x) => !x.read).length;
     const b = $('bell-n'); if (b) { b.hidden = !unreadN; b.textContent = unreadN > 99 ? '99+' : unreadN; }
+    try { if (navigator.setAppBadge) unreadN ? navigator.setAppBadge(unreadN) : navigator.clearAppBadge(); } catch {}
     const el = $('inbox-list'); if (!el || !$('inbox').classList.contains('show')) return;
     const per = 10, pages = Math.max(1, Math.ceil(INBOX.list.length / per));
     INBOX.page = Math.min(INBOX.page, pages);
@@ -1130,7 +1143,17 @@
   function notify(title, body, tag) {
     addInbox(title, body, tag ? tag.split('-').slice(1).join('-') : null, /^Perigo|falh/i.test(title) ? 'danger' : /^Atenção/.test(title) ? 'warn' : /^(Nova|Boa entrada|Saída)/.test(title) ? 'good' : 'info');
     if (!prefs.notif || !('Notification' in window) || Notification.permission !== 'granted') return;
-    try { const n = new Notification(title, { body, tag, renotify: true }); n.onclick = () => { window.focus(); goTo(tag.split('-').slice(1).join('-')); n.close(); }; } catch {}
+    sysNotify(title, body, tag, tag ? tag.split('-').slice(1).join('-') : '');
+  }
+  // Notificação do sistema: pelo service worker quando dá (obrigatório no iPhone), senão pelo jeito antigo
+  let SWREG = null;
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then((r) => { SWREG = r; }).catch(() => {});
+  navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.faroGoto) goTo(e.data.faroGoto); });
+  function sysNotify(title, body, tag, mint) {
+    if (!prefs.notif || !('Notification' in window) || Notification.permission !== 'granted') return;
+    const opts = { body, tag, renotify: true, icon: 'icon-192.png', badge: 'icon-192.png', data: { mint: mint || '' } };
+    if (SWREG) { SWREG.showNotification(title, opts).catch(() => {}); return; }
+    try { const n = new Notification(title, opts); n.onclick = () => { window.focus(); if (mint) goTo(mint); n.close(); }; } catch {}
   }
 
   const walletOn = () => !!data?.lastRun?.wallet;
@@ -1216,7 +1239,7 @@
         const a = e.alerts[0];
         if (/não compensa/.test(a.msg)) continue; // não vendida por valer pouco: só fica registrada, sem som nem aviso
         toast(`${e.t.symbol}: ${a.msg.split('.')[0]}`);
-        if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') { try { new Notification(`Robô vendeu: ${e.t.symbol}`, { body: a.msg, tag: 'robo-' + e.t.mint }); } catch {} }
+        sysNotify(`Robô vendeu: ${e.t.symbol}`, a.msg, 'robo-' + e.t.mint, e.t.mint);
       } else {
         notify(`${e.kind === 'perigo' ? 'Perigo' : 'Atenção'} em ${e.t.symbol}`, e.alerts.map((a) => a.msg).join('. '), 'alerta-' + e.t.mint);
       }
@@ -1240,7 +1263,10 @@
     if ((g.rr || 0) < rrMin) why.push(`risco/retorno abaixo de 1:${rrMin}`);
     return why.length ? `O robô não compra sozinho (${why.join(', ')}).` : 'O robô compra sozinho se ainda houver espaço nos limites do dia.';
   }
+  const START_MINT = new URLSearchParams(location.search).get('m');
+  let startDone = false;
   function checkSignals() {
+    if (START_MINT && !startDone && data?.tokens?.[START_MINT]) { startDone = true; setTimeout(() => goTo(START_MINT), 0); }
     if (!data?.tokens || isDemo()) return;
     let entrada = false, ruim = false, bom = false;
     for (const t of Object.values(data.tokens)) {
@@ -1273,7 +1299,7 @@
         toast(`${sym}: ${g.titulo.toLowerCase()}`);
       }
       if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') {
-        try { const n = new Notification(g.tipo === 'entrada' ? `Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}` : `${sym}: ${g.titulo}`, { body: g.msg, tag: 'sinal-' + t.mint }); n.onclick = () => { window.focus(); goTo(t.mint); n.close(); }; } catch {}
+        sysNotify(g.tipo === 'entrada' ? `Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}` : `${sym}: ${g.titulo}`, g.msg, 'sinal-' + t.mint, t.mint);
       }
     }
     // Perdida que voltou a valer US$ 1 ou mais: aí vale a pena vender (avisa uma vez; se cair de novo, pode avisar de novo)
@@ -3423,7 +3449,8 @@
     ro.querySelectorAll('[data-rord]').forEach((b) => b.classList.toggle('on', b.dataset.rord === radarOrd()));
     $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em observação', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
     // Mortas ficam recolhidas (só o título com a contagem); um clique abre ou fecha
-    if (ui.tab === 'minhas' && !q && dead.length) {
+    if (ui.tab === 'minhas' && !q && prefs.mortas === false) items = items.filter((t) => !isDead(t));
+    else if (ui.tab === 'minhas' && !q && dead.length) {
       const at = items.findIndex((t) => isDead(t));
       if (!prefs.mortasOpen) items = items.filter((t) => !isDead(t));
       items = [...items.slice(0, at), { __deadHdr: true }, ...items.slice(at)];
@@ -3580,7 +3607,18 @@
     $('t-sound').setAttribute('aria-checked', prefs.sound);
     $('t-dex') && $('t-dex').setAttribute('aria-checked', dexOn());
     $('t-notif').setAttribute('aria-checked', !!(prefs.notif && 'Notification' in window && Notification.permission === 'granted'));
+    $('t-mortas').setAttribute('aria-checked', prefs.mortas !== false);
+    document.querySelectorAll('[data-proxy]').forEach((b) => b.setAttribute('aria-checked', $(b.dataset.proxy)?.getAttribute('aria-checked')));
   };
+  // Configurações no celular (gaveta do Robô): repassam o clique para os mesmos switches da barra lateral
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-proxy]'); if (!b) return;
+    $(b.dataset.proxy)?.click(); setTimeout(syncToggles, 300);
+  });
+  $('t-mortas').addEventListener('click', () => {
+    prefs.mortas = prefs.mortas === false; store.set('moeda-prefs', prefs); syncToggles(); render();
+    toast(prefs.mortas ? 'Moedas mortas visíveis na Carteira' : 'Moedas mortas escondidas da Carteira');
+  });
   $('t-dex')?.addEventListener('click', () => {
     const on = !dexOn(); store.set('faro-dexon', on);
     if (!on) { for (const f of DEXF.values()) f.remove(); DEXF.clear(); chartSrc = 'faro'; }
