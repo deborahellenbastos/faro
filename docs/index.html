@@ -1012,6 +1012,32 @@
     .switch { width: 48px; height: 28px; } .switch::after { width: 22px; height: 22px; } .switch[aria-checked="true"]::after { transform: translateX(20px); }
     .nt { padding: 14px 10px; column-gap: 14px; }
   }
+
+  /* ---------- Moeda como folha (sheet) que sobe de baixo no celular ---------- */
+  .sheet-scrim { display: none; }
+  @media (max-width: 1099px) {
+    body.show-detail .list-panel, body.show-detail .topbar, body.show-detail .m-badges, body.show-detail .m-search-slot, body.show-detail .m-hero { display: revert !important; }
+    body.show-detail .topbar { display: flex !important; }
+    body.show-detail .m-badges { display: flex !important; }
+    body.show-detail .list-panel { display: flex !important; }
+    body.show-detail .m-hero, body.show-detail .m-search-slot { display: block !important; }
+    .detail { display: block !important; position: fixed; left: 0; right: 0; bottom: 0; top: calc(env(safe-area-inset-top) + 14px); z-index: 45; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+      background: #0b0d10; border-radius: 28px 28px 0 0; box-shadow: 0 -24px 60px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08);
+      padding: 26px 14px calc(env(safe-area-inset-bottom) + 28px); transform: translateY(105%); visibility: hidden; transition: transform .32s cubic-bezier(.2,.9,.25,1), visibility 0s linear .32s; }
+    body.show-detail .detail { transform: translateY(var(--sheet-drag, 0px)); visibility: visible; transition: transform .32s cubic-bezier(.2,.9,.25,1); }
+    body.sheet-dragging .detail { transition: none; }
+    .detail > .d-split, .detail .d-main { gap: 14px; }
+    .sheet-grip { position: sticky; top: -26px; margin: -26px -14px 6px; height: 30px; display: grid; place-items: center; z-index: 3; background: linear-gradient(#0b0d10 60%, transparent); touch-action: none; cursor: grab; }
+    .sheet-grip::before { content: ""; width: 44px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.22); }
+    .sheet-scrim { display: block; position: fixed; inset: 0; z-index: 44; background: rgba(0,0,0,.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity .3s; }
+    body.show-detail .sheet-scrim { opacity: 1; pointer-events: auto; }
+    body.show-detail { overflow: hidden; }
+    body.show-detail .tabbar { z-index: 30; }
+    .d-back { display: none !important; }
+    .detail .d-card:first-child { padding-top: 6px; }
+    .sheet-close { position: absolute; top: 14px; right: 14px; z-index: 4; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(255,255,255,.08); color: var(--muted); display: grid; place-items: center; }
+    .sheet-close svg { width: 16px; height: 16px; }
+  }
 </style>
 </head>
 <body>
@@ -1085,6 +1111,7 @@
         </div>
       </section>
       <section class="detail" id="detail"></section>
+      <div class="sheet-scrim" data-sheetclose></div>
     </div>
   </div>
 
@@ -1719,11 +1746,25 @@
     return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline fill="none" stroke="${c}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" points="${xy.map((p) => p.map((n) => n.toFixed(1)).join(',')).join(' ')}"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.2" fill="${c}"/></svg>`;
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-rord]'); if (b) { store.set('faro-radar-ord', b.dataset.rord); ui.page = 1; render(); } });
+  // Folha da moeda (celular): sobe de baixo; fecha no X, tocando fora ou arrastando a alça para baixo
+  function openSheet() { const d = $('detail'); document.body.style.removeProperty('--sheet-drag'); document.body.classList.add('show-detail'); if (d) d.scrollTop = 0; }
+  function closeSheet() { document.body.classList.remove('show-detail'); document.body.style.removeProperty('--sheet-drag'); setTimeout(render, 330); }
+  function sheetChrome() {
+    const d = $('detail'); if (!d || !isNarrow() || d.querySelector('.sheet-grip')) return;
+    d.insertAdjacentHTML('afterbegin', '<div class="sheet-grip" aria-hidden="true"></div><button class="sheet-close" data-sheetclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>');
+  }
+  new MutationObserver(() => sheetChrome()).observe(document.getElementById('detail'), { childList: true });
+  { let y0 = null, dy = 0;
+    document.addEventListener('touchstart', (e) => { const d = $('detail'); if (!document.body.classList.contains('show-detail') || !d) return;
+      if (e.target.closest('.sheet-grip') || (d.contains(e.target) && d.scrollTop <= 0 && !e.target.closest('.lw-slot, .dexwrap, .chart-box, input, .tfs, .rail'))) { y0 = e.touches[0].clientY; dy = 0; } }, { passive: true });
+    document.addEventListener('touchmove', (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 4) { document.body.classList.add('sheet-dragging'); document.body.style.setProperty('--sheet-drag', dy + 'px'); } }, { passive: true });
+    document.addEventListener('touchend', () => { if (y0 == null) return; y0 = null; document.body.classList.remove('sheet-dragging'); if (dy > 110) closeSheet(); else document.body.style.removeProperty('--sheet-drag'); dy = 0; });
+  }
   function goTo(mint) {
     markSeen(mint);
     const t = data?.tokens?.[mint]; if (!t) return;
     ui.tab = isMine(t) ? 'minhas' : t.status; ui.sel[ui.tab] = mint; ui.page = 1;
-    if (isNarrow()) document.body.classList.add('show-detail');
+    if (isNarrow()) openSheet();
     render();
   }
 
@@ -4187,8 +4228,8 @@ function baseBreakout(c, ctx = {}) {
     const tab = e.target.closest('[data-tab]');
     if (tab) { ui.tab = tab.dataset.tab; ui.page = 1; save(); document.body.classList.remove('show-detail'); render(); window.scrollTo({ top: 0 }); return; }
     const row = e.target.closest('[data-sel]');
-    if (row) { markSeen(row.dataset.sel); ui.sel[ui.tab] = row.dataset.sel; if (isNarrow()) { document.body.classList.add('show-detail'); window.scrollTo({ top: 0 }); } render(); return; }
-    if (e.target.closest('[data-back]')) { document.body.classList.remove('show-detail'); render(); return; }
+    if (row) { markSeen(row.dataset.sel); ui.sel[ui.tab] = row.dataset.sel; if (isNarrow()) openSheet(); render(); return; }
+    if (e.target.closest('[data-back], [data-sheetclose]')) { closeSheet(); return; }
     const tf = e.target.closest('[data-tf]');
     if (tf) { ui.tf[tf.dataset.tfmint] = tf.dataset.tf; render(); return; }
     const mk = e.target.closest('[data-mine]');
@@ -4315,7 +4356,7 @@ function baseBreakout(c, ctx = {}) {
     if (e.key !== 'Escape') return;
     if (chartIsMax()) setChartMax(false);
     else if ($('robot').classList.contains('show')) closeRobot();
-    else if (document.body.classList.contains('show-detail')) { document.body.classList.remove('show-detail'); render(); }
+    else if (document.body.classList.contains('show-detail')) closeSheet();
   });
 
   // ---------- Comprar / vender (Jupiter + Phantom) ----------
