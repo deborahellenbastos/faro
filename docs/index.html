@@ -1101,6 +1101,15 @@
   .m-hero .mh-row small, .m-hero .mh-chips small { font-size: 11.5px !important; letter-spacing: .05em !important; }
   .list-head { padding-top: 14px !important; padding-bottom: 10px !important; }
   .list-sub { padding-top: 16px !important; padding-bottom: 8px !important; }
+
+  /* Links da moeda (Site, X, Telegram): ícone e seta de "abre fora" */
+  .soc.link { gap: 6px; padding: 0 10px; color: var(--text); text-decoration: none; background: rgba(255,255,255,.05); }
+  .soc.link svg { width: 13px; height: 13px; flex: none; }
+  .soc.link .soc-go { width: 11px; height: 11px; color: var(--faint); margin-left: -1px; }
+  .soc.link:hover { background: rgba(255,255,255,.1); }
+  /* Coração e nota alinhados ao topo no cabeçalho da moeda */
+  .d-head .d-actions { align-items: flex-start !important; align-self: start !important; }
+  @media (max-width: 1099px) { .d-head .d-actions { align-self: start !important; } }
 </style>
 </head>
 <body>
@@ -1975,7 +1984,14 @@
     const L = (t.links || []).filter((x) => x.url);
     if (!L.length) return `<span class="soc warn" title="Sem site, X ou Telegram: confira a narrativa com cuidado">Sem rede social</span>`;
     const name = (x) => { const u = x.url.toLowerCase(); return /x\.com|twitter/.test(u) ? 'X' : /t\.me|telegram/.test(u) ? 'Telegram' : /discord/.test(u) ? 'Discord' : 'Site'; };
-    return L.slice(0, 4).map((x) => `<a class="soc" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${name(x)}</a>`).join('');
+    const SI = {
+      X: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.3l4.4 5.9L17.8 3zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5z"/></svg>',
+      Telegram: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.4 3.6 2.9 10.7c-1.3.5-1.2 1.3-.2 1.6l4.7 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.4l2.3-2.2 4.7 3.5c.9.5 1.5.2 1.7-.8l3.1-14.6c.3-1.3-.5-1.9-1.4-1.6zM9.8 14.3l-.4 3.6-1.4-4.4 9.6-6.1c.4-.3.8-.1.5.2l-8.3 6.7z"/></svg>',
+      Discord: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.5 5.3A16.5 16.5 0 0 0 15.4 4l-.5 1a15 15 0 0 0-5.8 0L8.6 4a16.5 16.5 0 0 0-4.1 1.3C1.9 9.2 1.2 13 1.5 16.7a16.7 16.7 0 0 0 5 2.6l1.1-1.7-1.8-.9.4-.3a11.8 11.8 0 0 0 11.6 0l.4.3-1.8.9 1.1 1.7a16.6 16.6 0 0 0 5-2.6c.4-4.3-.6-8-2.9-11.4zM8.7 14.5c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2z"/></svg>',
+      Site: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+    };
+    const ARR = '<svg class="soc-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>';
+    return L.slice(0, 4).map((x) => `<a class="soc link" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" title="Abrir ${name(x)} em outra aba">${SI[name(x)]}${name(x) === 'X' ? '' : name(x)}${ARR}</a>`).join('');
   }
   // ---------- Plano de trade: stop, alvo, risco/retorno e tamanho da posição ----------
   const RISK = () => ({ banca: Number(store.get('faro-banca', 0)) || Number(data?.config?.banca?.usd) || 0, pct: Number(store.get('faro-risco', 0)) || Number(data?.config?.banca?.riscoPorOperacaoPct) || 2 });
