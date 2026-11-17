@@ -694,7 +694,26 @@
     .tabbar .nav-dot { position: absolute; top: 4px; left: calc(50% + 8px); }
     .toast { right: var(--sp-4); bottom: calc(96px + env(safe-area-inset-bottom)); }
   }
+  /* Celular: resumo enxuto no estilo da Phantom (total grande, resultado de hoje e 3 números pequenos) */
+  .m-hero { display: none; }
+  .m-hero .mh-label { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .m-hero .mh-big { font-size: 40px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin-top: 2px; }
+  .m-hero .mh-day { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 15px; font-weight: 700; }
+  .m-hero .mh-day em { font-style: normal; font-size: 13px; padding: 2px 7px; border-radius: 6px; background: var(--panel-3); }
+  .m-hero .mh-day em.pos { background: rgba(16,210,127,.16); } .m-hero .mh-day em.neg { background: var(--red-bg); }
+  .m-hero .mh-day small { color: var(--faint); font-weight: 600; font-size: 13px; }
+  .m-hero .mh-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); }
+  .m-hero .mh-chips > div { padding: 10px 12px; min-width: 0; }
+  .m-hero .mh-chips > div + div { border-left: 1px solid var(--line); }
+  .m-hero .mh-chips small { display: block; font-size: 11px; font-weight: 600; color: var(--faint); }
+  .m-hero .mh-chips b { display: block; font-size: 15px; font-weight: 800; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-hero .mh-row { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); font-size: 13px; color: var(--muted); }
+  .m-hero .mh-row b { color: var(--text); }
   @media (max-width: 700px) {
+    .summary, .wallet-strip, .page-h { display: none !important; }
+    .m-hero { display: block; }
+    body.show-detail .m-hero { display: none; }
+    .list-panel { background: none; border: 0; padding: 0; box-shadow: none; }
     .op-grid { grid-template-columns: 1fr; }
     .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .check-list { grid-template-columns: 1fr; }
@@ -759,6 +778,7 @@
     </header>
 
     <section class="summary" id="summary"></section>
+    <section class="m-hero" id="m-hero"></section>
     <div class="wallet-strip" id="wallet-strip" hidden></div>
 
     <div class="workspace">
@@ -3407,6 +3427,14 @@
         // "Investido" somava todas as compras (o mesmo dinheiro girando várias vezes) e confundia: mostra a média por operação
         stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, (() => { const n = ps.length + shut.length; return n ? `${n} ${n === 1 ? 'operação' : 'operações'} - média de ${pct((pnl / spent) * 100)} por operação` : ''; })()),
       ].join('');
+      $('m-hero').innerHTML = `<div class="mh-label">Total na carteira</div>
+        <div class="mh-big num">${W.total != null ? money(W.total) : '-'}</div>
+        <div class="mh-day num">${D.n ? `<span class="${cls(D.pnl)}">${signedMoney(D.pnl)}</span>${D.spent ? `<em class="${cls(D.pnl)}">${pct((D.pnl / D.spent) * 100)}</em>` : ''}<small>hoje</small>` : '<small>nenhuma operação hoje</small>'}</div>
+        <div class="mh-chips">
+          <div><small>Em aberto${mine.length ? ` (${mine.length})` : ''}</small><b class="num">${money(value)}</b></div>
+          <div><small>Disponível</small><b class="num">${W.sol != null ? solFmt(W.sol, 4) : '-'}</b></div>
+          <div><small>Resultado</small><b class="num ${cls(pnl)}">${signedMoney(pnl)}</b></div>
+        </div>`;
     } else {
       const recent = approved.filter((t) => t.approvedAt > day);
       const avg = approved.length ? approved.reduce((s2, t) => s2 + (Number(t.changePct) || 0), 0) / approved.length : null;
@@ -3419,6 +3447,8 @@
         stat('Subiram desde o alerta', approved.length ? `${up} de ${approved.length}` : '-', approved.length ? `${Math.round((up / approved.length) * 100)}% de acerto` : ''),
         stat('Melhor do radar', best ? `<a class="stat-link" data-goto="${esc(best.mint)}">${esc(best.symbol)}</a>` : '-', best ? `máxima ${pct(best.maxChangePct)} - agora ${pct(best.changePct)}` : 'nenhuma no radar agora'),
       ].join('');
+      { const W = walletTotals();
+        $('m-hero').innerHTML = W.sol == null ? '' : `<div class="mh-row"><span>Disponível <b class="num">${solFmt(W.sol, 4)}</b>${W.solUsd != null ? ` (${money(W.solUsd)})` : ''}</span><span>Total <b class="num">${W.total != null ? money(W.total) : '-'}</b></span></div>`; }
     }
 
     // Carteira resumida nas outras abas: quanto tenho para gastar
