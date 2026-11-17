@@ -4047,7 +4047,7 @@ function baseBreakout(c, ctx = {}) {
         <div class="mh-day num" title="Resultado das operações de hoje">${D.n ? `<span class="${cls(D.pnl)}">${signedMoney(D.pnl)}</span>${D.spent ? `<em class="${cls(D.pnl)}">${pct((D.pnl / D.spent) * 100)}</em>` : ''}` : '<small>sem operações hoje</small>'}</div></div>
         <div class="mh-chips">
           <div><small>Em aberto${mine.length ? ` (${mine.length})` : ''}</small><b class="num">${money(value)}</b></div>
-          <div><small>Disponível</small><b class="num">${W.sol != null ? solFmt(W.sol, 4) : '-'}</b></div>
+          <div><small>Disponível${W.solUsd != null ? ` (${money(W.solUsd)})` : ''}</small><b class="num">${W.sol != null ? solFmt(W.sol, 4) : '-'}</b></div>
           <div><small>Resultado</small><b class="num ${cls(pnl)}">${signedMoney(pnl)}</b></div>
         </div>`;
     } else {
@@ -4063,7 +4063,7 @@ function baseBreakout(c, ctx = {}) {
         stat('Melhor do radar', best ? `<a class="stat-link" data-goto="${esc(best.mint)}">${esc(best.symbol)}</a>` : '-', best ? `máxima ${pct(best.maxChangePct)} - agora ${pct(best.changePct)}` : 'nenhuma no radar agora'),
       ].join('');
       { const W = walletTotals();
-        $('m-hero').innerHTML = W.sol == null ? '' : `<div class="mh-row"><div><small>Disponível</small><b class="num">${solFmt(W.sol, 4)}</b></div><div class="r"><small>Total</small><b class="num">${W.total != null ? money(W.total) : '-'}</b></div></div>`; }
+        $('m-hero').innerHTML = W.sol == null ? '' : `<div class="mh-row"><div><small>Disponível${W.solUsd != null ? ` (${money(W.solUsd)})` : ''}</small><b class="num">${solFmt(W.sol, 4)}</b></div><div class="r"><small>Total</small><b class="num">${W.total != null ? money(W.total) : '-'}</b></div></div>`; }
     }
 
     // Carteira resumida nas outras abas: quanto tenho para gastar
