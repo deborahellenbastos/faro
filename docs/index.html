@@ -1340,6 +1340,21 @@
   /* Card "Em transações abertas": fundo semântico pelo resultado de hoje (verde no lucro, vermelho no prejuízo) */
   .stat.hero.pos { background: linear-gradient(140deg, rgba(16,210,127,.18), #0f1215 62%) !important; box-shadow: inset 0 1px 0 rgba(120,255,200,.14), inset 0 0 0 1px rgba(16,210,127,.18) !important; }
   .stat.hero.neg { background: linear-gradient(140deg, rgba(255,91,91,.16), #0f1215 62%) !important; box-shadow: inset 0 1px 0 rgba(255,150,150,.12), inset 0 0 0 1px rgba(255,91,91,.18) !important; }
+  /* Mosaico das compradas */
+  #mosaic { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 14px); gap: 12px; }
+  body.mosaic-on { overflow: hidden; }
+  #mosaic .back { display: inline-flex; }
+  .mo-top { display: flex; align-items: center; gap: 12px; } .mo-top > b { font-size: 16px; } .mo-top > b small { margin-left: 8px; color: var(--faint); font-weight: 700; }
+  .mo-hint { color: var(--faint); font-size: 12px; }
+  .mo-grid { flex: 1; min-height: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); grid-auto-rows: minmax(240px, 1fr); overflow-y: auto; }
+  .mo-tile { display: flex; flex-direction: column; min-height: 0; border-radius: 18px; background: #0c0e11; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); overflow: hidden; cursor: pointer; transition: box-shadow .2s; }
+  .mo-tile:hover { box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+  .mo-h { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .mo-h .avatar { width: 30px; height: 30px; font-size: 11px; }
+  .mo-n { display: grid; min-width: 0; flex: 1; } .mo-n b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .mo-n small { color: var(--faint); font-size: 11.5px; }
+  .mo-v { display: grid; text-align: right; } .mo-v b { font-size: 14px; } .mo-v small { font-size: 12px; }
+  .mo-chart { flex: 1; min-height: 160px; }
+  @media (max-width: 700px) { .mo-grid { grid-template-columns: 1fr; grid-auto-rows: 260px; } .mo-hint { display: none; } }
 </style>
 </head>
 <body>
@@ -1557,6 +1572,7 @@
   const ICON = {
     ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
     claude: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>',
+    grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
     chev: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>',
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
     expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>',
@@ -2963,8 +2979,8 @@ function trendEntry(c, ctx = {}) {
       <div class="chart-tools">
         <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
         <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
+        ${(Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x)).length > 1) ? `<button class="btn btn-sm cmax-only" data-mosaic title="Ver todas as compradas lado a lado">${ICON.grid || '&#9638;'}<span class="lbl">Mosaico</span></button>` : ''}
         ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
-        <button class="btn btn-sm" data-askclaude="${esc(t.mint)}" title="Abre o Claude com os dados desta moeda e copia a foto do gráfico do Faro para você colar">${ICON.claude}<span class="lbl">Perguntar ao Claude</span></button>
         <span style="flex:1"></span>
         ${dexOn() ? '' : `<a class="btn btn-sm" href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}Abrir na Dex</a>`}
         <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}" aria-label="Expandir" title="Expandir">${ICON.expand}<span class="lbl">Expandir</span></button>
@@ -3470,6 +3486,54 @@ function trendEntry(c, ctx = {}) {
   const fmtSpan = (sec) => { sec = Math.abs(sec); const m = Math.round(sec / 60); return m < 60 ? `${m} min` : m < 1440 ? `${(m / 60).toFixed(m < 600 ? 1 : 0).replace('.', ',')} h` : `${(m / 1440).toFixed(1).replace('.', ',')} d`; };
   const rulerText = (p1, p2, sec) => { const c = (p2 / p1 - 1) * 100; return `${c >= 0 ? '+' : ''}${c.toFixed(c > -10 && c < 10 ? 2 : 1).replace('.', ',')}% em ${fmtSpan(sec)}`; };
   const ivalSec = () => (IVALS.find((x) => x[0] === CH.interval) || IVALS[1])[3];
+
+  // ---------- Mosaico: todas as moedas compradas lado a lado, cada uma com o seu gráfico de 5 min ----------
+  const MOS = { charts: [], timer: null };
+  function closeMosaic() { const m = $('mosaic'); if (m) m.remove(); MOS.charts.forEach((c) => { try { c.remove(); } catch {} }); MOS.charts = []; clearInterval(MOS.timer); MOS.timer = null; document.body.classList.remove('mosaic-on'); }
+  async function openMosaic() {
+    closeMosaic();
+    const list = Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x)).sort((a, b) => (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
+    const el = document.createElement('div'); el.id = 'mosaic'; document.body.appendChild(el); document.body.classList.add('mosaic-on');
+    const head = (t) => { const p = t.position || {}; return `<div class="mo-h">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b><small>${levelOf(t) === 'ok' ? 'Segura' : levelOf(t) === 'warn' ? 'Atenção' : 'Perigo'}</small></span><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div>`; };
+    el.innerHTML = `<div class="mo-top"><button class="back" data-mosaicclose>${ICON.back}Voltar</button><b>Compradas<small>${list.length}</small></b><span style="flex:1"></span><small class="mo-hint">velas de 5 min - toque numa para abrir</small></div>
+      <div class="mo-grid ${list.length <= 2 ? 'two' : ''}">${list.map((t) => `<div class="mo-tile" data-mosaicgo="${esc(t.mint)}">${head(t)}<div class="mo-chart" data-mochart="${esc(t.mint)}"></div></div>`).join('')}</div>`;
+    const LW = await loadLW().catch(() => null); if (!LW) return;
+    for (const t of list) {
+      const host = el.querySelector(`[data-mochart="${CSS.escape(t.mint)}"]`); if (!host) continue;
+      const ch = LW.createChart(host, { autoSize: true, layout: { background: { type: 'solid', color: '#0c0e11' }, textColor: '#8c939f', fontFamily: 'Plus Jakarta Sans, system-ui', fontSize: 10 },
+        grid: { vertLines: { color: '#15181d' }, horzLines: { color: '#15181d' } }, rightPriceScale: { borderColor: '#22262d', scaleMargins: { top: 0.1, bottom: 0.22 } },
+        timeScale: { borderColor: '#22262d', timeVisible: true, secondsVisible: false, rightOffset: 3 }, localization: { locale: 'pt-BR', priceFormatter: pxFmt },
+        handleScroll: false, handleScale: false, crosshair: { mode: 0 } });
+      const cs = ch.addCandlestickSeries({ upColor: '#10d27f', downColor: '#ff5b5b', borderVisible: false, wickUpColor: '#10d27f', wickDownColor: '#ff5b5b', priceFormat: { type: 'custom', formatter: pxFmt, minMove: 1e-12 } });
+      const vs = ch.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
+      ch.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+      MOS.charts.push(ch);
+      const fill = async () => {
+        const bars = await fetchCandles(t, '5m').catch(() => null); if (!bars?.length || !$('mosaic')) return;
+        cs.setData(bars.map((b) => ({ time: b.time + TZ, open: b.open, high: b.high, low: b.low, close: b.close })));
+        vs.setData(bars.map((b) => ({ time: b.time + TZ, value: b.value || 0, color: b.close >= b.open ? 'rgba(16,210,127,.28)' : 'rgba(255,91,91,.28)' })));
+        if (!fill.lines && t.position?.avgPriceUsd > 0) {
+          fill.lines = true;
+          cs.createPriceLine({ price: t.position.avgPriceUsd, color: '#a78bfa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'entrada' });
+          if (t.trail?.ativo && t.trail.stop > 0) cs.createPriceLine({ price: t.trail.stop, color: '#f5b14c', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'stop' });
+        }
+        ch.timeScale().scrollToRealTime();
+      };
+      fill();
+      MOS.fills = [...(MOS.fills || []), fill];
+    }
+    MOS.timer = setInterval(() => {
+      if (!$('mosaic')) return closeMosaic();
+      (MOS.fills || []).forEach((f) => f());
+      list.forEach((t) => { const h = $('mosaic')?.querySelector(`[data-mosaicgo="${CSS.escape(t.mint)}"] .mo-h`); const nt = data?.tokens?.[t.mint]; if (h && nt) h.outerHTML = head(nt); });
+    }, 30000);
+  }
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-mosaic]')) { e.preventDefault(); openMosaic(); return; }
+    if (e.target.closest('[data-mosaicclose]')) { closeMosaic(); return; }
+    const go = e.target.closest('[data-mosaicgo]'); if (go) { const m = go.dataset.mosaicgo; closeMosaic(); goTo(m); }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('mosaic')) closeMosaic(); });
 
   async function buildChart() {
     const LW = await loadLW();
