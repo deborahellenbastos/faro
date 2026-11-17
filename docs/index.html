@@ -2208,7 +2208,7 @@
   const ALT_ICON = store.get('faro-alt-icon', {}); // mint -> { u: url ou '', at }
   const ALT_Q = new Set(); let altT = null;
   function queueAltIcon(mint) {
-    const c = ALT_ICON[mint]; if (c && (c.u || Date.now() - c.at < 6 * 3600000)) return; // sem foto: tenta de novo a cada 6h
+    const c = ALT_ICON[mint]; if (c && (c.u || Date.now() - c.at < 10 * 60000)) return; // sem foto ainda: tenta de novo a cada 10 min (moeda nova costuma ganhar foto depois)
     ALT_Q.add(mint); clearTimeout(altT); altT = setTimeout(fetchAltIcons, 400);
   }
   async function fetchAltIcons() {
@@ -2226,6 +2226,7 @@
     if (!n && !ALT_ICON[t.mint]) queueAltIcon(t.mint);
     return n || t.symbol || t.mint.slice(0, 6);
   }
+  setInterval(() => { if (document.querySelector('#list .avatar:not(:has(img))')) { try { render(); } catch {} } }, 10 * 60000 + 5000);
   function avatar(t) {
     const letter = esc((t.symbol || '?').slice(0, 2).toUpperCase());
     const cands = [ALT_ICON[t.mint]?.u, t.icon, `https://dd.dexscreener.com/ds-data/tokens/solana/${encodeURIComponent(t.mint)}.png`].filter(Boolean);
