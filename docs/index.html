@@ -1049,6 +1049,16 @@
     .sheet-close { position: absolute; top: 14px; right: 14px; z-index: 4; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(255,255,255,.08); color: var(--muted); display: grid; place-items: center; }
     .sheet-close svg { width: 16px; height: 16px; }
   }
+
+  /* Navegador do app da Phantom: sem rolagem lateral e com a barra de baixo acima da barra de endereço dela */
+  html, body { overflow-x: hidden; max-width: 100%; }
+  .app, .main, .workspace, .list-panel, .rows { min-width: 0; max-width: 100%; }
+  @media (max-width: 1099px) {
+    body.in-phantom .tabbar { bottom: calc(env(safe-area-inset-bottom) + 92px) !important; }
+    body.in-phantom .main { padding-bottom: calc(env(safe-area-inset-bottom) + 200px); }
+    body.in-phantom .detail { bottom: 84px; border-radius: 28px; }
+    body.in-phantom .toast { bottom: calc(196px + env(safe-area-inset-bottom)); }
+  }
 </style>
 </head>
 <body>
@@ -1779,6 +1789,8 @@
       ? `No celular, a compra só funciona com o Faro aberto dentro do app da Phantom. <a class="ph-open" href="${phantomLink()}">Abrir esta moeda na Phantom</a><small>Lá dentro o Faro pede a senha uma vez (o app da Phantom guarda os dados à parte).</small>`
       : 'Phantom não encontrada neste navegador. Instale a extensão da Phantom e recarregue a página.';
   }
+  // Dentro do app da Phantom no celular: a barra de endereço dela fica por cima da parte de baixo da tela
+  if (/iPhone|iPad|Android/i.test(navigator.userAgent) && (window.phantom?.solana?.isPhantom || window.solana?.isPhantom)) document.body.classList.add('in-phantom');
   function goTo(mint) {
     markSeen(mint);
     const t = data?.tokens?.[mint]; if (!t) return;
