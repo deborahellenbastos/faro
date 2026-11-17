@@ -3332,8 +3332,7 @@ function trendEntry(c, ctx = {}) {
       const p = t.position;
       const l = levelOf(t);
       if (isSold(t) || isDust(t)) {
-        const wo = whoOfOp(t), lbl = { robo: 'robô', voce: 'você' };
-        main = `<b>${esc(dispName(t))}</b><small>Vendida ${t.history?.[0] ? ago(t.history[0].at) : ''}${wo.buy ? ` - ${wo.buy === wo.sell || !wo.sell ? `${lbl[wo.buy]}` : `comprou ${lbl[wo.buy]}, vendeu ${lbl[wo.sell]}`}` : ''}</small>`;
+        main = `<b>${esc(dispName(t))}</b><small>Vendida ${t.history?.[0] ? ago(t.history[0].at) : ''}</small>`;
         const r = closedResult(t);
         side = r ? `<b class="num" title="Quanto você colocou e quanto voltou para a carteira">${money(r.spent)}<i class="r-arrow">→</i>${money(r.received)}</b><small class="num sold-line ${cls(r.pnl)}">${signedMoney(r.pnl)}<i class="r-tri">${r.pct >= 0 ? '▲' : '▼'}</i>${Math.abs(r.pct).toFixed(1)}%</small>` : '';
       } else {
@@ -4656,7 +4655,7 @@ function trendEntry(c, ctx = {}) {
       if (ui.tab === 'minhas' && !q) {
         const c = isClosed(t), dd = !c && isDead(t), prev = slice[i - 1];
         if (!c && !dd && i === 0) head = sub('Em aberto', mine.length);
-        if (c && (!prev || prev.__deadHdr || !isClosed(prev))) head = `<button class="list-sub fold open" data-encfold aria-expanded="true">Encerradas<small>${closed.length}</small>${ICON.chev}</button>${whoSummary(closed)}`;
+        if (c && (!prev || prev.__deadHdr || !isClosed(prev))) head = `<button class="list-sub fold open" data-encfold aria-expanded="true">Encerradas<small>${closed.length}</small>${ICON.chev}</button>`;
       }
       return head + rowHtml(t, t.mint === sel);
     }).join('');
