@@ -4311,7 +4311,7 @@ function baseBreakout(c, ctx = {}) {
         // "Investido" somava todas as compras (o mesmo dinheiro girando várias vezes) e confundia: mostra a média por operação
         stat('Resultado total', `<span class="${cls(pnl)}">${signedMoney(pnl)}</span>`, (() => { const n = ps.length + shut.length; return n ? `${n} ${n === 1 ? 'operação' : 'operações'} - média de ${pct((pnl / spent) * 100)} por operação` : ''; })()),
       ].join('');
-      $('m-hero').innerHTML = `<div class="mh-label">Total na carteira<small>${held.length + closed.filter(isSold).length}</small></div>
+      $('m-hero').innerHTML = `<div class="mh-label">Total na carteira</div>
         <div class="mh-top"><div class="mh-big num">${W.total != null ? money(W.total) : '-'}</div>
         <div class="mh-day num" title="Resultado das operações de hoje">${D.n ? `<span class="${cls(D.pnl)}">${signedMoney(D.pnl)}</span>${D.spent ? `<em class="${cls(D.pnl)}">${pct((D.pnl / D.spent) * 100)}</em>` : ''}` : '<small>sem operações hoje</small>'}</div></div>
         <div class="mh-chips">
