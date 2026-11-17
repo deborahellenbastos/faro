@@ -4079,6 +4079,8 @@ function baseBreakout(c, ctx = {}) {
   // Junta o que o robô gravou com o que acabou de acontecer (chamado a cada carga de dados e a cada transação)
   function applyLive() {
     if (!data?.wallet?.address) return;
+    // Poeira (sobra minúscula deixada por rota da Jupiter, ex.: 0,000000005 ANTHROPIC): não é moeda sua
+    for (const t of Object.values(data.tokens || {})) if (t.held && t.heldAmount != null && t.heldAmount < 1e-6) { t.held = false; t.dustOnly = true; }
     const robotAt = data.wallet.updatedAt || 0;
     const robotSigs = new Set((data.wallet.ops || []).map((o) => o.sig));
     WAL.ops = WAL.ops.filter((o) => !robotSigs.has(o.sig) && Date.now() - o.at < 3 * 86400000);
