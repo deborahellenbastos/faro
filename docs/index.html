@@ -715,13 +715,18 @@
   .m-hero .mh-row small { display: block; font-size: 11px; font-weight: 600; color: var(--faint); }
   .m-hero .mh-row b { display: block; margin-top: 2px; font-size: 15px; font-weight: 800; color: var(--text); }
   .m-hero .mh-row .r { text-align: right; }
-  .m-robot, .m-search-slot { display: none; }
+  .m-robot, .m-search-slot, .m-badges { display: none; }
+  .m-badges { gap: 6px; flex-wrap: wrap; margin-top: calc(var(--sp-2) * -1); }
+  .m-badges .live { height: 26px; font-size: 11px; padding: 0 9px; font-family: inherit; cursor: pointer; }
+  .m-badges button.live.on i { animation: none; }
   .m-hero .mh-label small { margin-left: 6px; color: var(--faint); font-weight: 700; font-size: 12px; }
   .m-hero .mh-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .m-hero .mh-top .mh-day { margin-top: 4px; }
   @media (max-width: 700px) {
     .summary, .wallet-strip, .page-h { display: none !important; }
     .m-robot { display: inline-grid; }
+    .m-badges { display: flex; }
+    body.show-detail .m-badges { display: none; }
     .tabbar { grid-template-columns: repeat(4, 1fr) !important; }
     .tabbar .tb-robot { display: none !important; }
     .topbar .top-tools { flex: 0 0 auto; margin-left: auto; }
@@ -802,6 +807,7 @@
     </header>
 
     <section class="summary" id="summary"></section>
+    <div class="m-badges" id="m-badges"></div>
     <section class="m-hero" id="m-hero"></section>
     <div class="m-search-slot" id="m-search-slot"></div>
     <div class="wallet-strip" id="wallet-strip" hidden></div>
@@ -3013,10 +3019,21 @@
     }
   });
 
+  // Celular: selos de "Ao vivo" e do robô (compra e venda automáticas) logo abaixo do topo
+  function updateMBadges(fresh) {
+    const el = $('m-badges'); if (!el) return;
+    if (!data || isDemo()) { el.innerHTML = ''; return; }
+    const A = autoState(), sell = !!data.lastRun?.autoSell;
+    const buy = A.pend ? null : !!(A.on && A.canBuy);
+    el.innerHTML = `<span class="live ${fresh ? 'on' : ''}"><i></i><span>${fresh ? 'Ao vivo' : 'Conectando...'}</span></span>
+      <button class="live ${buy ? 'on' : ''}" data-open-robot title="Compra automática nos sinais"><i></i><span>Compra auto ${A.pend ? (A.pend.on ? 'ligando...' : 'desligando...') : buy ? 'ligada' : 'desligada'}</span></button>
+      <button class="live ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática"><i></i><span>Venda auto ${sell ? 'ligada' : 'desligada'}</span></button>`;
+  }
   function updateLivePill() {
     updateSolBal(); updateAutoPill();
     const el = $('live'); if (!el) return;
     const fresh = LIVE.ok && Date.now() - LIVE.at < 15000;
+    try { updateMBadges(fresh); } catch {}
     el.className = 'live ' + (fresh ? 'on' : '');
     el.querySelector('span').textContent = fresh ? 'Ao vivo' : 'Conectando...';
     el.title = `Preço: a cada 2,5s - Mercado: a cada 10s - Carteira: ${WAL.ws ? 'na hora' : 'a cada 20s'}`;
