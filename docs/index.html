@@ -1294,6 +1294,12 @@
   .ntm-x { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(255,255,255,.07); color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: background .2s, color .2s; }
   .ntm-x svg { width: 16px; height: 16px; }
   .ntm-x:hover, .ntm-x:active { background: rgba(255,255,255,.12); color: var(--text); }
+  /* KPIs no celular: bloco do meio (Disponível) mais largo, saldo em uma linha só */
+  @media (max-width: 1099px) {
+    .m-hero .mh-chips { grid-template-columns: minmax(0, .85fr) minmax(0, 1.45fr) minmax(0, .9fr) !important; }
+    .m-hero .mh-chips b { white-space: nowrap; }
+    .m-hero .mh-chips > div { padding-left: 12px !important; padding-right: 12px !important; }
+  }
 </style>
 </head>
 <body>
@@ -3240,6 +3246,11 @@ function baseBreakout(c, ctx = {}) {
       main = `<b>${esc(dispName(t))} ${l !== 'ok' && !isLost(t) ? `<i class="sdot ${l}" title="${l === 'danger' ? 'Perigo' : 'Atenção'}"></i>` : ''}${isLost(t) ? '' : sigTag(t)}</b><small class="num">${isLost(t) ? 'Perdida - ' : ''}${t.held ? `${tokFmt(t.heldAmount)} ${esc(t.symbol)}` : 'marcada por você'}</small>`;
       const val = `<div class="r-val"><b class="num">${p?.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p?.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</div>`;
       side = !isLost(t) && t.score != null ? `<div style="display:flex;align-items:center;gap:10px">${val}${scoreBadge(t.score, true)}</div>` : val;
+      // Morta: igual às encerradas, quanto foi aplicado e quanto sobrou em cima; embaixo só a porcentagem
+      if (isDead(t) && p?.known) {
+        const inv = (p.costOpenUsd || p.spentUsd || 0), now0 = p.valueUsd || 0, pc = inv ? ((now0 - inv) / inv) * 100 : p.openPnlPct;
+        side = `<b class="num" title="Quanto você colocou e quanto vale agora">${money(inv)}<i class="r-arrow">→</i>${money(now0)}</b><small class="num sold-line ${cls(pc)}"><i class="r-tri">${pc >= 0 ? '▲' : '▼'}</i>${Math.abs(pc).toFixed(1)}%</small>`;
+      }
       }
     } else if (ui.tab === 'aprovada') {
       const ch = Number(t.changePct) || 0;
