@@ -427,6 +427,12 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         const te = trendEntry(t.candles, { ...ctx, safety: securityOk(t) && (t.checks || []).every((k) => k.ok !== false) ? 'ok' : 'warn', notaTendencia: SG.tendencia?.notaMinima ?? 70 });
         if (te) sig = { tipo: 'entrada', ...te };
       }
+      // Rompimento de base (aula: rompimento com volume explodindo): mesmas travas da subida saudável
+      if (!sig.boa && SG.rompimentoBase?.ligado !== false && securityOk(t) && (t.checks || []).every((k) => k.ok !== false)
+        && (t.score || 0) >= (SG.rompimentoBase?.notaMinima ?? 70) && !['morta', 'reta'].includes(t.shape?.tipo)) {
+        const bb = baseBreakout(t.candles, { ...ctx, safety: 'ok' });
+        if (bb) sig = { tipo: 'entrada', ...bb };
+      }
       // Rompimento (só simulação): guarda à parte, não mexe no sinal principal nem na compra real
       const br = breakoutSignal(t.candles, ctx);
       if (br) { if (!t.romp || t.romp.key !== br.key) { t.romp = { ...br, at: now }; log(`ROMPIMENTO (simulação): ${t.symbol}`); } }

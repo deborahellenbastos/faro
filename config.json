@@ -115,6 +115,7 @@
   },
   "sinais": {
     "tendencia": { "ligado": true, "notaMinima": 70 },
+    "rompimentoBase": { "ligado": true, "notaMinima": 70 },
     "notaMinima": 60,
     "naoRepetirSeNaoSubiuPct": 10,
     "repeticaoJanelaHoras": 24

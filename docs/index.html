@@ -1981,7 +1981,7 @@
           || [t.watchSell, t.autoSell, t.takeProfit].some((x) => x?.ok && x.at > recent);
         if (sold || !(t.heldAmount > 0)) continue;
       }
-      const hit = g.tipo === 'entrada' ? g.fase === 'entrada' && !mine && levelOf(t) !== 'danger' && buyableStatus(t, g) && !(isSold(t) && !g.reentrada)
+      const hit = g.tipo === 'entrada' ? (g.fase === 'entrada' || g.boa) && !mine && levelOf(t) !== 'danger' && buyableStatus(t, g) && !(isSold(t) && !g.reentrada)
         : mine && ['realizar', 'sair', 'proteger', 'exaustao'].includes(g.fase);
       if (!hit) continue;
       const k = `${t.mint}:${g.tipo}:${g.fase}:${g.key}`;
@@ -2741,6 +2741,10 @@ function trendEntry(c, ctx = {}) {
         const secOk = !(t.safety?.alerts || []).some((a) => a.level === 'danger' || (SEC.has(a.id) && a.level === 'warn')) && (t.checks || []).every((k) => k.ok !== false);
         const te = trendEntry(c, { ...ctx, safety: secOk ? 'ok' : 'warn', notaTendencia: SG.tendencia?.notaMinima ?? 70 });
         if (te) return { tipo: 'entrada', reentrada: reent, ...te };
+        if (secOk && SG.rompimentoBase?.ligado !== false && (t.score || 0) >= (SG.rompimentoBase?.notaMinima ?? 70) && !['morta', 'reta'].includes(t.shape?.tipo)) {
+          const bb = baseBreakout(c, { ...ctx, safety: 'ok' });
+          if (bb) return { tipo: 'entrada', reentrada: reent, ...bb };
+        }
       }
       return { tipo: 'entrada', reentrada: reent, ...z };
     }
