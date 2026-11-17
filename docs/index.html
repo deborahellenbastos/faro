@@ -1923,10 +1923,25 @@
   function closedResult(t) {
     const p = t.position; if (!p?.known) return null;
     const key = t.history?.[0]?.sig || '';
-    const spent = p.spentUsd || 0, received = p.receivedUsd || 0;
+    const spent0 = p.spentUsd || 0, received = p.receivedUsd || 0;
+    // Aplicado = o máximo que esteve na moeda ao mesmo tempo (não a soma de todas as compras): quem compra, vende e
+    // recompra várias vezes usou o mesmo dinheiro de novo (17/11: JALU somava US$ 35, mas no máximo eram ~US$ 15)
+    const spent = (() => {
+      const h = [...(t.history || [])].filter((o) => o.tokens).sort((a, b) => a.at - b.at);
+      const buySol = h.filter((o) => o.tokens > 0).reduce((a, o) => a - (o.sol || 0), 0);
+      if (!(buySol > 0) || h.filter((o) => o.tokens > 0).length < 2) return spent0;
+      let held = 0, cost = 0, peak = 0;
+      for (const o of h) {
+        if (o.tokens > 0) { held += o.tokens; cost += -(o.sol || 0); }
+        else if (held > 0) { const f = Math.min(1, -o.tokens / held); cost *= 1 - f; held += o.tokens; if (held <= 0) { held = 0; cost = 0; } }
+        peak = Math.max(peak, cost);
+      }
+      return peak > 0 ? spent0 * (peak / buySol) : spent0;
+    })();
+    const pnl0 = received - spent0;
     // Congelado, mas refaz se o valor recebido mudou de verdade (ex.: dinheiro da venda que chegou depois, noutra transação)
-    const c = CLOSED[t.mint]; if (c && c.key === key && Math.abs(received - c.received) <= Math.max(0.05, c.received * 0.05)) return c;
-    const r = { key, spent, received, pnl: received - spent, pct: spent ? ((received - spent) / spent) * 100 : 0, buys: p.buys, sells: p.sells, entry: p.avgPriceUsd };
+    const c = CLOSED[t.mint]; if (c && c.v === 2 && c.key === key && Math.abs(received - spent0 - c.pnl) <= Math.max(0.05, Math.abs(c.pnl) * 0.05)) return c;
+    const r = { key, spent, received: spent + pnl0, pnl: pnl0, pct: spent ? (pnl0 / spent) * 100 : 0, buys: p.buys, sells: p.sells, entry: p.avgPriceUsd, v: 2 };
     CLOSED[t.mint] = r; store.set('faro-closed', CLOSED);
     return r;
   }
