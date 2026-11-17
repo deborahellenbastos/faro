@@ -329,6 +329,10 @@
   .nt.danger .nt-ico { background: rgba(255,91,91,.14); color: var(--red); }
   .nt.warn .nt-ico { background: rgba(245,177,76,.14); color: #f5b14c; }
   .nt.good .nt-ico { background: rgba(16,210,127,.14); color: var(--green); }
+  .nt .nt-ico.k-entrada { background: rgba(76,201,240,.14); color: #4cc9f0; }
+  .nt .nt-ico.k-saida { background: rgba(245,177,76,.14); color: #f5b14c; }
+  .nt .nt-ico.k-lucro { background: rgba(245,197,66,.16); color: #f5c542; }
+  .nt.lucro b { color: #f5c542; }
   .nt-txt { display: grid; gap: 2px; min-width: 0; } .nt-txt b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .nt-txt small { color: var(--muted); font-size: 12px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .nt-at { color: var(--faint); font-size: 11px; text-align: right; white-space: nowrap; }
@@ -880,6 +884,11 @@
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
     warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
     swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>',
+    entrada: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg>',
+    saida: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>',
+    coins: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>',
+    bot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg>',
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg>',
     radar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg>',
   };
 
@@ -930,6 +939,9 @@
     } else if (kind === 'venda') {
       // venda: "moedinha" brilhante, duas notas agudas rápidas com um brilho em cima (diferente das 3 notas de moeda nova)
       [[1318.51, 0], [1975.53, .08]].forEach(([f, at]) => { tone(c, f, t0 + at, .5, 'sine', .2); tone(c, f * 1.5, t0 + at, .22, 'triangle', .05); });
+    } else if (kind === 'lucro') {
+      // venda com lucro: moedinhas caindo (o "plim-plim" de moeda de videogame), três vezes e cada vez um pouco mais agudo
+      [0, .13, .26].forEach((at, i) => { const k = 1 + i * .06; tone(c, 987.77 * k, t0 + at, .07, 'square', .07); tone(c, 1318.51 * k, t0 + at + .06, .28, 'square', .07); });
     } else if (kind === 'entrada') {
       // boa entrada: dois toques agudos e curtos, diferentes do som de moeda nova
       [[987.77, 0], [1318.51, .12], [987.77, .3], [1318.51, .42]].forEach(([f, at]) => tone(c, f, t0 + at, .16, 'triangle', .2));
@@ -956,9 +968,20 @@
     INBOX.page = Math.min(INBOX.page, pages);
     $('inbox-pager').innerHTML = pages > 1 ? `<button data-ntpage="-1" ${INBOX.page <= 1 ? 'disabled' : ''} aria-label="Anterior">&larr;</button><span>${INBOX.page} de ${pages}</span><button data-ntpage="1" ${INBOX.page >= pages ? 'disabled' : ''} aria-label="Próxima">&rarr;</button>` : '';
     const ico = { danger: ICON.warn, warn: ICON.warn, good: ICON.radar, info: ICON.swap };
+    // Ícone pelo tipo do aviso: radar (moeda nova), entrada, venda com lucro (moedas), saída, robô...
+    const icoOf = (x) => {
+      const k = ntType(x);
+      if (k === 'nova') return ['k-nova', ICON.radar];
+      if (k === 'entrada') return ['k-entrada', ICON.entrada];
+      if (k === 'venda' && (x.lucro || x.res?.pnl > 0)) return ['k-lucro', ICON.coins];
+      if (k === 'saida') return ['k-saida', ICON.saida];
+      if (k === 'robo') return ['', ICON.bot];
+      if (k === 'recupera') return ['k-lucro', ICON.up];
+      return ['', ico[x.level] || ICON.swap];
+    };
     el.innerHTML = INBOX.list.length ? INBOX.list.slice((INBOX.page - 1) * per, INBOX.page * per).map((x, i) => `
-      <button class="nt ${x.level} ${x.read ? '' : 'unread'}" data-nt="${(INBOX.page - 1) * per + i}">
-        <i class="nt-ico">${ico[x.level] || ICON.swap}</i>
+      <button class="nt ${x.level} ${x.lucro || (ntType(x) === 'venda' && x.res?.pnl > 0) ? 'lucro' : ''} ${x.read ? '' : 'unread'}" data-nt="${(INBOX.page - 1) * per + i}">
+        <i class="nt-ico ${icoOf(x)[0]}">${icoOf(x)[1]}</i>
         <span class="nt-txt"><b>${esc(x.title)}</b><small>${esc(x.body || '')}</small></span>
         <span class="nt-at">${ago(x.at)}<br>${hhmm(x.at)}</span>
       </button>`).join('')
@@ -981,6 +1004,11 @@
     const t = data?.tokens?.[mint]; if (!t) return null;
     const p = t.position;
     return { px: t.priceUsd, score: t.score, mc: t.mcapUsd, liq: t.liquidityUsd, held: !!t.held, value: p?.known ? p.valueUsd : null, pnlUsd: p?.known ? p.pnlUsd : null, pnlPct: p?.known ? p.openPnlPct : null, spent: p?.known ? p.spentUsd : null };
+  }
+  // Lucro de uma venda pelo preço de venda (US$) contra o preço médio de compra
+  function saleProfitPct(t, sellPxUsd) {
+    const avg = t?.position?.avgPriceUsd;
+    return avg > 0 && sellPxUsd > 0 ? (sellPxUsd / avg - 1) * 100 : null;
   }
   function ntType(x) {
     if (x.kind) return x.kind;
@@ -3065,6 +3093,7 @@
       if (r.solPost != null && (!WAL.sol || WAL.sol.at <= r.at)) WAL.sol = { v: r.solPost, at: r.at };
       WAL.ops.push(...r.ops);
       applyLive();
+      let anyProfit = false;
       for (const o of r.ops) {
         const t = data.tokens[o.mint];
         if (!quiet) toast(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''}`);
@@ -3076,11 +3105,14 @@
         const sold = o.tokens < 0;
         const r0 = sold && t ? (isSold(t) ? closedResult(t) : null) : null;
         const g0 = sold && t ? (() => { try { return liveSig(t); } catch { return null; } })() : null;
-        addInbox(`${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${t?.symbol || o.mint.slice(0, 6)}`, `${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''} por ${solFmt(Math.abs(o.sol), 4)}${sold ? ' - toque para ver o motivo' : ''}`, o.mint, 'info', 'tx-' + o.sig,
-          { sig: o.sig, kind: sold ? 'venda' : 'compra', solPost: WAL.sol?.v ?? null, tokens: o.tokens, sol: o.sol, solUsd: LIVE.solUsd || null, sym: t?.symbol, txAt: o.at, res: r0 ? { pnl: r0.pnl, pct: r0.pct, spent: r0.spent } : null, sinal: g0 ? `${g0.tipo === 'saida' ? 'Sinal de saída' : 'Sinal de entrada'}: ${g0.titulo}` : null });
+        const lp = sold ? (r0 ? r0.pct : saleProfitPct(t, Math.abs(o.sol) * (o.solUsd || LIVE.solUsd || 0) / Math.abs(o.tokens || 1))) : null;
+        const lucro = lp != null && lp > 0.5;
+        if (lucro) anyProfit = true;
+        addInbox(lucro ? `Venda com lucro: ${t?.symbol || o.mint.slice(0, 6)} (${pct(lp)})` : `${o.tokens > 0 ? 'Compra' : 'Venda'} confirmada: ${t?.symbol || o.mint.slice(0, 6)}`, `${tokFmt(Math.abs(o.tokens))} ${t?.symbol || ''} por ${solFmt(Math.abs(o.sol), 4)}${sold ? ' - toque para ver o motivo' : ''}`, o.mint, lucro ? 'good' : 'info', 'tx-' + o.sig,
+          { sig: o.sig, kind: sold ? 'venda' : 'compra', lucro, solPost: WAL.sol?.v ?? null, tokens: o.tokens, sol: o.sol, solUsd: LIVE.solUsd || null, sym: t?.symbol, txAt: o.at, res: r0 ? { pnl: r0.pnl, pct: r0.pct, spent: r0.spent } : null, sinal: g0 ? `${g0.tipo === 'saida' ? 'Sinal de saída' : 'Sinal de entrada'}: ${g0.titulo}` : null });
         if (t && CH.mint === o.mint && chartSrc === 'faro') decorate(t);
       }
-      if (r.ops.length && !quiet && !SND.has(sig)) { SND.add(sig); play(r.ops.some((o) => o.tokens < 0) ? 'venda' : 'boa'); }
+      if (r.ops.length && !quiet && !SND.has(sig)) { SND.add(sig); play(anyProfit ? 'lucro' : r.ops.some((o) => o.tokens < 0) ? 'venda' : 'boa'); }
       liveRender();
       if (r.ops.length) pollLive();
       return { ops: r.ops };
@@ -3721,7 +3753,7 @@
           else if (res === 'timeout') st.msg = { err: true, html: `Ainda sem confirmação depois de 1 minuto. Confira antes de tentar de novo: ${link}` };
           else {
             // Som e aviso na hora da confirmação (o detalhe da troca chega logo depois)
-            play(buy ? 'boa' : 'venda'); toast(`${buy ? 'Compra' : 'Venda'} de ${t.symbol} confirmada`); SND.add(sig);
+            play(buy ? 'boa' : (saleProfitPct(t, t.priceUsd) || 0) > 0.5 ? 'lucro' : 'venda'); toast(`${buy ? 'Compra' : 'Venda'} de ${t.symbol} confirmada`); SND.add(sig);
             const done = await handleSig(sig, true);
             pollWallet();
             let o = done?.ops?.[0];
