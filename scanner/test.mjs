@@ -582,3 +582,16 @@ console.log('Teste da segurança na reentrada: ok');
   assert.equal(trendEntry(mk(false), { safety: 'ok', score: 75, rrMin: 2 }), null, 'sem correção até a média (perseguindo): não');
 }
 console.log('Teste da subida saudável: ok');
+
+// 17/11: saiu e entrou de novo: preço médio e custo só da operação aberta (JALU)
+{
+  const { positionFrom } = await import('./analyze.mjs');
+  const ops = [
+    { at: 1, tokens: 100, sol: -1 }, { at: 2, tokens: -100, sol: 1.2 }, // 1ª operação, fechada
+    { at: 3, tokens: 100, sol: -2 },                                      // operação aberta, a 0,02 SOL cada
+  ];
+  const p = positionFrom(ops, 100, 0.03, 0.03 * 100);
+  assert.ok(Math.abs(p.avgPriceSol - 0.02) < 1e-9, 'entrada = só a compra aberta');
+  assert.ok(Math.abs(p.openPnlPct - 50) < 1e-6, 'lucro aberto sobre a entrada atual (+50%)');
+}
+console.log('Teste da entrada por operação: ok');

@@ -405,29 +405,34 @@ export function positionFrom(ops, heldAmount, priceNative, priceUsd) {
   const receivedSol = sells.reduce((a, o) => a + o.sol, 0);
   const prices = buys.map((o) => -o.sol / o.tokens);
   const avg = spentSol / bought;
+    // Posição aberta depois de sair e entrar de novo: o preço médio e o custo são só da operação aberta agora
+    // (antes misturava com a operação anterior e o lucro/prejuízo, o stop e a escada ficavam errados)
+    const runBuys = (() => { if (!(heldAmount > 0)) return buys; let net = 0, run = []; for (const o of [...(ops || [])].filter((x) => x.tokens).sort((a, b) => a.at - b.at)) { if (net <= heldAmount * 0.01) { net = 0; run = []; } net += o.tokens; if (o.tokens > 0 && o.sol < 0) run.push(o); } return run.length ? run : buys; })();
   const pnlSol = valueSol + receivedSol - spentSol;
   const usd = (v) => (solUsd ? v * solUsd : null);
   // Em dólar, cada compra/venda vale pelo preço do SOL da hora em que aconteceu (quando conhecido)
   const atUsd = (o) => Math.abs(o.sol) * (o.solUsd || solUsd || 0);
   const spentUsdHist = buys.reduce((a, o) => a + atUsd(o), 0);
   const receivedUsdHist = sells.reduce((a, o) => a + atUsd(o), 0);
-  const avgUsd = spentUsdHist / (buys.reduce((a, o) => a + o.tokens, 0) || 1);
+  const avgUsdAll = spentUsdHist / (buys.reduce((a, o) => a + o.tokens, 0) || 1);
+  const avgUsd = runBuys.reduce((a, o) => a + atUsd(o), 0) / (runBuys.reduce((a, o) => a + o.tokens, 0) || 1);
   // Realizado: o que já foi vendido, comparado com o preço médio de compra
   const soldTokens = sells.reduce((a, o) => a - o.tokens, 0);
   const realizedSol = receivedSol - soldTokens * avg;
   // Em aberto: o que você ainda tem, comparado com o preço médio
-  const costOpenSol = heldAmount * avg;
+  const avgRun = runBuys.reduce((a, o) => a - o.sol, 0) / (runBuys.reduce((a, o) => a + o.tokens, 0) || 1);
+  const costOpenSol = heldAmount * avgRun;
   const openPnlSol = valueSol - costOpenSol;
   return {
     ...base, known: true,
-    realizedSol, realizedUsd: receivedUsdHist - soldTokensFor(sells) * avgUsd,
+    realizedSol, realizedUsd: receivedUsdHist - soldTokensFor(sells) * avgUsdAll,
     receivedUsd: receivedUsdHist,
     costOpenSol, costOpenUsd: heldAmount * avgUsd,
     openPnlSol,
     openPnlUsd: solUsd ? valueSol * solUsd - heldAmount * avgUsd : null,
     openPnlPct: heldAmount * avgUsd > 0 && solUsd ? ((valueSol * solUsd - heldAmount * avgUsd) / (heldAmount * avgUsd)) * 100 : 0,
     spentSol, spentUsd: spentUsdHist, receivedSol,
-    avgPriceSol: avg, avgPriceUsd: avgUsd,
+    avgPriceSol: avgRun, avgPriceUsd: avgUsd, runBuys: runBuys.length,
     minPriceUsd: usd(Math.min(...prices)), maxPriceUsd: usd(Math.max(...prices)),
     pnlSol, pnlUsd: solUsd ? valueSol * solUsd + receivedUsdHist - spentUsdHist : null,
     pnlPct: spentUsdHist ? ((valueSol * (solUsd || 0) + receivedUsdHist - spentUsdHist) / spentUsdHist) * 100 : 0,

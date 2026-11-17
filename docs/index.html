@@ -3774,7 +3774,7 @@ function trendEntry(c, ctx = {}) {
       const allBuys = H.filter((o) => o.tokens > 0), from = t.held ? posStart(t) : 0;
       const runBuys = allBuys.filter((o) => o.at >= from);
       const avgSol = (L) => { const tok = L.reduce((a, o) => a + o.tokens, 0), sol = L.reduce((a, o) => a - (o.sol || 0), 0); return tok > 0 ? sol / tok : 0; };
-      const entryPx = t.held && runBuys.length && runBuys.length < allBuys.length && avgSol(allBuys) > 0 ? t.position.avgPriceUsd * (avgSol(runBuys) / avgSol(allBuys)) : t.position.avgPriceUsd;
+      const entryPx = t.position.avgPriceUsd; // já é só da operação aberta (preço médio calculado por operação)
       add(entryPx, '#a78bfa', runBuys.length > 1 || (!t.held && allBuys.length > 1) ? 'entrada (média)' : 'entrada', 2, 2);
       // Meta: +100% (ou o alvo configurado) sobre a entrada. Em posição pequena é onde o robô vende sozinho
       const tp = metaOf(t);
@@ -4394,19 +4394,24 @@ function trendEntry(c, ctx = {}) {
     const receivedSol = sells.reduce((a, o) => a + o.sol, 0);
     const prices = buys.map((o) => -o.sol / o.tokens);
     const avg = spentSol / bought;
+    // Posição aberta depois de sair e entrar de novo: o preço médio e o custo são só da operação aberta agora
+    // (antes misturava com a operação anterior e o lucro/prejuízo, o stop e a escada ficavam errados)
+    const runBuys = (() => { if (!(heldAmount > 0)) return buys; let net = 0, run = []; for (const o of [...(ops || [])].filter((x) => x.tokens).sort((a, b) => a.at - b.at)) { if (net <= heldAmount * 0.01) { net = 0; run = []; } net += o.tokens; if (o.tokens > 0 && o.sol < 0) run.push(o); } return run.length ? run : buys; })();
     const atUsd = (o) => Math.abs(o.sol) * (o.solUsd || solUsd || 0);
     const spentUsd = buys.reduce((a, o) => a + atUsd(o), 0);
     const receivedUsd = sells.reduce((a, o) => a + atUsd(o), 0);
-    const avgUsd = spentUsd / (bought || 1);
+    const avgUsdAll = spentUsd / (bought || 1);
+    const avgUsd = runBuys.reduce((x, o) => x + atUsd(o), 0) / (runBuys.reduce((x, o) => x + o.tokens, 0) || 1);
+    const avgRun = runBuys.reduce((x, o) => x - o.sol, 0) / (runBuys.reduce((x, o) => x + o.tokens, 0) || 1);
     const soldTokens = sells.reduce((a, o) => a - o.tokens, 0);
     const usd = (v) => (solUsd ? v * solUsd : null);
     const valueUsd = valueSol * (solUsd || 0);
     return { ...base, known: true,
-      realizedSol: receivedSol - soldTokens * avg, realizedUsd: receivedUsd - soldTokens * avgUsd, receivedUsd,
-      costOpenSol: heldAmount * avg, costOpenUsd: heldAmount * avgUsd,
-      openPnlSol: valueSol - heldAmount * avg, openPnlUsd: solUsd ? valueUsd - heldAmount * avgUsd : null,
+      realizedSol: receivedSol - soldTokens * avg, realizedUsd: receivedUsd - soldTokens * avgUsdAll, receivedUsd,
+      costOpenSol: heldAmount * avgRun, costOpenUsd: heldAmount * avgUsd,
+      openPnlSol: valueSol - heldAmount * avgRun, openPnlUsd: solUsd ? valueUsd - heldAmount * avgUsd : null,
       openPnlPct: heldAmount * avgUsd > 0 && solUsd ? ((valueUsd - heldAmount * avgUsd) / (heldAmount * avgUsd)) * 100 : 0,
-      spentSol, spentUsd, receivedSol, avgPriceSol: avg, avgPriceUsd: avgUsd,
+      spentSol, spentUsd, receivedSol, avgPriceSol: avgRun, avgPriceUsd: avgUsd, runBuys: runBuys.length,
       minPriceUsd: usd(Math.min(...prices)), maxPriceUsd: usd(Math.max(...prices)),
       pnlSol: valueSol + receivedSol - spentSol, pnlUsd: solUsd ? valueUsd + receivedUsd - spentUsd : null,
       pnlPct: spentUsd ? ((valueUsd + receivedUsd - spentUsd) / spentUsd) * 100 : 0,
