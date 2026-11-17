@@ -1377,6 +1377,18 @@
   body.side-mini .nav-item { width: 48px; height: 48px; padding: 0 !important; justify-content: center; }
   body.side-mini .nav-item.on::before { left: -12px; }
   body.side-mini .side-foot { align-items: center; }
+  /* Mosaico: barra de ferramentas */
+  .mo-top .mo-ivals { position: static !important; }
+  .mo-tile { cursor: default !important; }
+  .mo-open { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; border: 0; background: none; color: inherit; text-align: left; padding: 0; cursor: pointer; }
+  .mo-body { flex: 1; min-height: 0; display: flex; }
+  .mo-tools { display: flex; flex-direction: column; gap: 4px; padding: 6px; border-right: 1px solid #171a1f; }
+  .mo-tools i { height: 1px; background: #22262d; margin: 4px 2px; }
+  .mo-tools button { width: 28px; height: 28px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); display: grid; place-items: center; font-weight: 700; cursor: pointer; }
+  .mo-tools button svg { width: 15px; height: 15px; }
+  .mo-tools button:hover { background: rgba(255,255,255,.06); color: var(--text); }
+  .mo-tools button.on { background: rgba(255,255,255,.1); color: var(--text); }
+  .mo-chart { flex: 1; min-width: 0; }
 </style>
 </head>
 <body>
@@ -3003,10 +3015,10 @@ function trendEntry(c, ctx = {}) {
       <div class="chart-tools">
         <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
         <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
-        ${(Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x)).length > 1) ? `<button class="btn btn-sm cmax-only" data-mosaic title="Ver todas as compradas lado a lado">${ICON.grid || '&#9638;'}<span class="lbl">Mosaico</span></button>` : ''}
         ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
         <span style="flex:1"></span>
         ${dexOn() ? '' : `<a class="btn btn-sm" href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}Abrir na Dex</a>`}
+        ${(Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x)).length > 1) ? `<button class="btn btn-sm" data-mosaic title="Ver todas as compradas lado a lado">${ICON.grid}<span class="lbl">Mosaico</span></button>` : ''}
         <button class="btn btn-sm cmin-only" data-chart="${esc(t.mint)}" aria-label="Expandir" title="Expandir">${ICON.expand}<span class="lbl">Expandir</span></button>
       </div>
       <div class="lw-slot" data-lwslot="${esc(t.mint)}"><div class="dexwrap" data-dexslot></div><div class="farowrap" data-faroslot>
@@ -3511,59 +3523,82 @@ function trendEntry(c, ctx = {}) {
   const rulerText = (p1, p2, sec) => { const c = (p2 / p1 - 1) * 100; return `${c >= 0 ? '+' : ''}${c.toFixed(c > -10 && c < 10 ? 2 : 1).replace('.', ',')}% em ${fmtSpan(sec)}`; };
   const ivalSec = () => (IVALS.find((x) => x[0] === CH.interval) || IVALS[1])[3];
 
-  // ---------- Mosaico: todas as moedas compradas lado a lado, cada uma com o seu gráfico de 5 min ----------
-  const MOS = { charts: [], timer: null };
-  function closeMosaic() { const m = $('mosaic'); if (m) m.remove(); MOS.charts.forEach((c) => { try { c.remove(); } catch {} }); MOS.charts = []; clearInterval(MOS.timer); MOS.timer = null; document.body.classList.remove('mosaic-on'); }
+  // ---------- Mosaico: todas as moedas compradas lado a lado, cada uma com o seu gráfico ----------
+  // Barra de ferramentas: intervalo (vale para todos), e em cada quadro: cursor, linha horizontal, tendência, zoom, mover e apagar.
+  // Os traços são os mesmos do gráfico normal da moeda (ficam salvos e aparecem nos dois).
+  const MOS = { tiles: [], timer: null, iv: store.get('faro-mos-iv', '5m') };
+  function closeMosaic() { const m = $('mosaic'); if (m) m.remove(); MOS.tiles.forEach((x) => { try { x.ch.remove(); } catch {} }); MOS.tiles = []; clearInterval(MOS.timer); MOS.timer = null; document.body.classList.remove('mosaic-on'); }
+  const MO_TOOLS = [['cursor', TOOL_ICON?.cursor || '&#8598;', 'Cursor'], ['h', TOOL_ICON?.h || '&#8212;', 'Linha horizontal: clique no preço'], ['t', TOOL_ICON?.t || '&#8599;', 'Tendência: clique no início e no fim']];
+  function moHead(t) { const p = t.position || {}; return `<div class="mo-h"><button class="mo-open" data-mosaicgo="${esc(t.mint)}" title="Abrir a moeda">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b><small>${levelOf(t) === 'ok' ? 'Segura' : levelOf(t) === 'warn' ? 'Atenção' : 'Perigo'}</small></span></button><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div>`; }
+  function moDraw(x) {
+    (x.lines || []).forEach((l) => { try { x.cs.removePriceLine(l); } catch {} }); x.lines = [];
+    (x.segs || []).forEach((sr) => { try { x.ch.removeSeries(sr); } catch {} }); x.segs = [];
+    const t = data?.tokens?.[x.mint] || x.t, d = getDraw(x.mint);
+    const pl = (price, color, title, style = 2) => x.lines.push(x.cs.createPriceLine({ price, color, lineWidth: 1, lineStyle: style, axisLabelVisible: true, title }));
+    if (t.position?.avgPriceUsd > 0) pl(t.position.avgPriceUsd, '#a78bfa', 'entrada');
+    if (t.trail?.ativo && t.trail.stop > 0) pl(t.trail.stop, '#f5b14c', 'stop');
+    d.h.forEach((p) => pl(p, '#c9ced6', '', 0));
+    d.t.forEach(([t1, p1, t2, p2]) => { const sr = x.ch.addLineSeries({ color: '#60a5fa', lineWidth: 2, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false }); sr.setData([{ time: t1 + TZ, value: p1 }, { time: t2 + TZ, value: p2 }]); x.segs.push(sr); });
+  }
+  async function moFill(x) {
+    const bars = await fetchCandles(x.t, MOS.iv).catch(() => null); if (!bars?.length || !$('mosaic')) return;
+    x.cs.setData(bars.map((b) => ({ time: b.time + TZ, open: b.open, high: b.high, low: b.low, close: b.close })));
+    x.vs.setData(bars.map((b) => ({ time: b.time + TZ, value: b.value || 0, color: b.close >= b.open ? 'rgba(16,210,127,.28)' : 'rgba(255,91,91,.28)' })));
+    if (!x.drawn) { x.drawn = true; moDraw(x); x.ch.timeScale().scrollToRealTime(); }
+  }
   async function openMosaic() {
     closeMosaic();
     const list = Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x)).sort((a, b) => (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
     const el = document.createElement('div'); el.id = 'mosaic'; document.body.appendChild(el); document.body.classList.add('mosaic-on');
-    const head = (t) => { const p = t.position || {}; return `<div class="mo-h">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b><small>${levelOf(t) === 'ok' ? 'Segura' : levelOf(t) === 'warn' ? 'Atenção' : 'Perigo'}</small></span><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div>`; };
-    el.innerHTML = `<div class="mo-top"><button class="back" data-mosaicclose>${ICON.back}Voltar</button><b>Compradas<small>${list.length}</small></b><span style="flex:1"></span><small class="mo-hint">velas de 5 min - toque numa para abrir</small></div>
-      <div class="mo-grid ${list.length <= 2 ? 'two' : ''}">${list.map((t) => `<div class="mo-tile" data-mosaicgo="${esc(t.mint)}">${head(t)}<div class="mo-chart" data-mochart="${esc(t.mint)}"></div></div>`).join('')}</div>`;
+    el.innerHTML = `<div class="mo-top"><button class="back" data-mosaicclose>${ICON.back}Voltar</button><b>Compradas<small>${list.length}</small></b><span style="flex:1"></span>
+        <div class="ov-ivals mo-ivals">${IVALS.map(([k]) => `<button data-moiv="${k}" class="${k === MOS.iv ? 'on' : ''}">${k}</button>`).join('')}</div></div>
+      <div class="mo-grid ${list.length <= 2 ? 'two' : ''}">${list.map((t) => `<div class="mo-tile" data-motile="${esc(t.mint)}">${moHead(t)}
+        <div class="mo-body"><div class="mo-tools">${MO_TOOLS.map(([k, ic, tt]) => `<button data-motool="${k}" data-momint="${esc(t.mint)}" class="${k === 'cursor' ? 'on' : ''}" title="${tt}">${ic}</button>`).join('')}<i></i>
+          <button data-monav="out" data-momint="${esc(t.mint)}" title="Ver mais tempo">&minus;</button><button data-monav="in" data-momint="${esc(t.mint)}" title="Velas mais largas">+</button>
+          <button data-monav="reset" data-momint="${esc(t.mint)}" title="Voltar ao normal">${TOOL_ICON?.reset || '&#8635;'}</button><button data-motrash="${esc(t.mint)}" title="Apagar os traços desta moeda">${TOOL_ICON?.trash || '&#10005;'}</button></div>
+        <div class="mo-chart" data-mochart="${esc(t.mint)}"></div></div></div>`).join('')}</div>`;
     const LW = await loadLW().catch(() => null); if (!LW) return;
     for (const t of list) {
       const host = el.querySelector(`[data-mochart="${CSS.escape(t.mint)}"]`); if (!host) continue;
       const ch = LW.createChart(host, { autoSize: true, layout: { background: { type: 'solid', color: '#0c0e11' }, textColor: '#8c939f', fontFamily: 'Plus Jakarta Sans, system-ui', fontSize: 10 },
         grid: { vertLines: { color: '#15181d' }, horzLines: { color: '#15181d' } }, rightPriceScale: { borderColor: '#22262d', scaleMargins: { top: 0.1, bottom: 0.22 } },
         timeScale: { borderColor: '#22262d', timeVisible: true, secondsVisible: false, rightOffset: 3 }, localization: { locale: 'pt-BR', priceFormatter: pxFmt },
-        handleScroll: false, handleScale: false, crosshair: { mode: 0 } });
+        handleScroll: true, handleScale: true, crosshair: { mode: 0, vertLine: { color: '#5d6470', labelBackgroundColor: '#1c2026' }, horzLine: { color: '#5d6470', labelBackgroundColor: '#1c2026' } } });
       const cs = ch.addCandlestickSeries({ upColor: '#10d27f', downColor: '#ff5b5b', borderVisible: false, wickUpColor: '#10d27f', wickDownColor: '#ff5b5b', priceFormat: { type: 'custom', formatter: pxFmt, minMove: 1e-12 } });
       const vs = ch.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
       ch.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
-      MOS.charts.push(ch);
-      const fill = async () => {
-        const bars = await fetchCandles(t, '5m').catch(() => null); if (!bars?.length || !$('mosaic')) return;
-        cs.setData(bars.map((b) => ({ time: b.time + TZ, open: b.open, high: b.high, low: b.low, close: b.close })));
-        vs.setData(bars.map((b) => ({ time: b.time + TZ, value: b.value || 0, color: b.close >= b.open ? 'rgba(16,210,127,.28)' : 'rgba(255,91,91,.28)' })));
-        if (!fill.lines && t.position?.avgPriceUsd > 0) {
-          fill.lines = true;
-          cs.createPriceLine({ price: t.position.avgPriceUsd, color: '#a78bfa', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'entrada' });
-          if (t.trail?.ativo && t.trail.stop > 0) cs.createPriceLine({ price: t.trail.stop, color: '#f5b14c', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'stop' });
-        }
-        ch.timeScale().scrollToRealTime();
-      };
-      fill();
-      MOS.fills = [...(MOS.fills || []), fill];
+      const x = { mint: t.mint, t, ch, cs, vs, tool: 'cursor', pending: null };
+      ch.subscribeClick((param) => {
+        if (x.tool === 'cursor' || !param.point) return;
+        const price = cs.coordinateToPrice(param.point.y); if (!(price > 0)) return;
+        const d = getDraw(x.mint);
+        if (x.tool === 'h') { d.h.push(price); saveDraw(x.mint, d); toast('Linha marcada'); moSetTool(x, 'cursor'); moDraw(x); return; }
+        let time = param.time ?? ch.timeScale().coordinateToTime(param.point.x); if (time == null) return; time = Number(time) - TZ;
+        if (!x.pending) { x.pending = [time, price]; toast('Agora clique no ponto final'); return; }
+        const [t1, p1] = x.pending; x.pending = null;
+        d.t.push(t1 <= time ? [t1, p1, time, price] : [time, price, t1, p1]); saveDraw(x.mint, d); toast('Tendência marcada'); moSetTool(x, 'cursor'); moDraw(x);
+      });
+      MOS.tiles.push(x); moFill(x);
     }
     MOS.timer = setInterval(() => {
       if (!$('mosaic')) return closeMosaic();
-      (MOS.fills || []).forEach((f) => f());
-      list.forEach((t) => { const h = $('mosaic')?.querySelector(`[data-mosaicgo="${CSS.escape(t.mint)}"] .mo-h`); const nt = data?.tokens?.[t.mint]; if (h && nt) h.outerHTML = head(nt); });
+      MOS.tiles.forEach((x) => { moFill(x); const h = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); const nt = data?.tokens?.[x.mint]; if (h && nt) h.outerHTML = moHead(nt); });
     }, 30000);
   }
+  function moSetTool(x, k) { x.tool = k; x.pending = null; $('mosaic')?.querySelectorAll(`[data-motool][data-momint="${CSS.escape(x.mint)}"]`).forEach((b) => b.classList.toggle('on', b.dataset.motool === k)); }
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-mosaic]')) { e.preventDefault(); openMosaic(); return; }
     if (e.target.closest('[data-mosaicclose]')) { closeMosaic(); return; }
-    const go = e.target.closest('[data-mosaicgo]'); if (go) { const m = go.dataset.mosaicgo; closeMosaic(); goTo(m); }
+    const go = e.target.closest('[data-mosaicgo]'); if (go) { const m = go.dataset.mosaicgo; closeMosaic(); goTo(m); return; }
+    const iv = e.target.closest('[data-moiv]'); if (iv) { MOS.iv = iv.dataset.moiv; store.set('faro-mos-iv', MOS.iv); $('mosaic').querySelectorAll('[data-moiv]').forEach((b) => b.classList.toggle('on', b.dataset.moiv === MOS.iv)); MOS.tiles.forEach((x) => { x.drawn = false; moFill(x); }); return; }
+    const tl = e.target.closest('[data-motool]'); if (tl) { const x = MOS.tiles.find((y) => y.mint === tl.dataset.momint); if (x) moSetTool(x, tl.dataset.motool); return; }
+    const nv = e.target.closest('[data-monav]'); if (nv) { const x = MOS.tiles.find((y) => y.mint === nv.dataset.momint); if (!x) return; const ts = x.ch.timeScale();
+      if (nv.dataset.monav === 'reset') { ts.applyOptions({ barSpacing: 6 }); ts.scrollToRealTime(); x.ch.priceScale('right').applyOptions({ autoScale: true }); }
+      else { const bs = ts.options().barSpacing || 6; ts.applyOptions({ barSpacing: Math.max(2, Math.min(40, nv.dataset.monav === 'in' ? bs * 1.3 : bs / 1.3)) }); }
+      return; }
+    const tr = e.target.closest('[data-motrash]'); if (tr) { const m = tr.dataset.motrash; saveDraw(m, { h: [], t: [], r: [] }); const x = MOS.tiles.find((y) => y.mint === m); if (x) moDraw(x); toast('Traços apagados'); return; }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('mosaic')) closeMosaic(); });
-  // Menu lateral (computador) recolhível: só os ícones, mais espaço para a lista e o gráfico
-  { const apply = (on) => { document.body.classList.toggle('side-mini', on); const b = document.querySelector('[data-sidetoggle]'); if (b) { b.title = b.ariaLabel = on ? 'Abrir o menu' : 'Recolher o menu'; } document.querySelectorAll('.sidebar .nav-item').forEach((n) => { if (!n.title) n.title = n.querySelector('span')?.textContent || ''; }); setTimeout(() => window.dispatchEvent(new Event('resize')), 260); };
-    apply(!!store.get('faro-side-mini', false));
-    document.addEventListener('click', (e) => { if (e.target.closest('[data-sidetoggle]')) { const on = !document.body.classList.contains('side-mini'); store.set('faro-side-mini', on); apply(on); } }); }
-  document.addEventListener('change', (e) => { if (e.target.id === 'an-date') { ui.anDate = e.target.value || ''; ui.page = 1; render(); } });
-
   async function buildChart() {
     const LW = await loadLW();
     CH.host = document.createElement('div'); CH.host.className = 'lw-host';
