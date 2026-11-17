@@ -2149,8 +2149,12 @@
   function avatar(t) {
     const letter = esc((t.symbol || '?').slice(0, 2).toUpperCase());
     const src = t.icon || `https://dd.dexscreener.com/ds-data/tokens/solana/${encodeURIComponent(t.mint)}.png`;
-    return `<div class="avatar"><img src="${esc(src)}" alt="" loading="lazy" onerror="this.parentNode.textContent='${letter}'"></div>`;
+    // Foto que já falhou uma vez: vai direto para as letras (não tenta de novo a cada atualização, sem piscar)
+    if (AVA_FAIL.has(src)) return `<div class="avatar">${letter}</div>`;
+    return `<div class="avatar"><img src="${esc(src)}" alt="" loading="lazy" onerror="window.__avaFail&&window.__avaFail(this.getAttribute('src'));this.parentNode.textContent='${letter}'"></div>`;
   }
+  const AVA_FAIL = new Set(JSON.parse((() => { try { return sessionStorage.getItem('faro-ava-fail') || '[]'; } catch { return '[]'; } })()));
+  window.__avaFail = (src) => { AVA_FAIL.add(src); try { sessionStorage.setItem('faro-ava-fail', JSON.stringify([...AVA_FAIL].slice(-800))); } catch {} };
   const DEX_NAMES = { pumpswap: 'PumpSwap', pumpfun: 'Pump.fun', raydium: 'Raydium', meteora: 'Meteora', orca: 'Orca', launchlab: 'LaunchLab', fluxbeam: 'FluxBeam' };
   const launchpad = (mint) => (/pump$/i.test(mint) ? 'Pump.fun' : /bonk$/i.test(mint) ? 'LetsBonk' : /bags$/i.test(mint) ? 'Bags' : null);
   const SHAPE = { morta: ['Morta', 'danger'], reta: ['Subida reta', 'danger'], organica: ['Orgânica', 'ok'], lateral: ['Sem tendência', 'muted'], nova: ['Gráfico novo', 'muted'] };
