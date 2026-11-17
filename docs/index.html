@@ -1396,6 +1396,14 @@
   .fav-sync svg { width: 16px; height: 16px; color: #f472b6; grid-row: 1 / span 2; }
   .fav-sync b { font-size: 13px; } .fav-sync small { grid-column: 2; color: var(--faint); font-size: 12px; }
   .fav-sync .btn { flex: none; }
+  /* Gráfico expandido: segurança, nota e compras x vendas na barra de cima */
+  .cmax-info { display: none; align-items: center; gap: 12px; margin-left: 6px; }
+  .chart-box.max .cmax-info { display: inline-flex; }
+  .cmax-info .ci-score .score { transform: scale(.85); }
+  .ci-tx { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; } .ci-tx small { color: var(--faint); font-size: 12px; }
+  .ci-bar { display: inline-block; width: 70px; height: 6px; border-radius: 3px; background: rgba(255,91,91,.55); overflow: hidden; }
+  .ci-bar > i { display: block; height: 100%; background: var(--green); }
+  @media (max-width: 700px) { .ci-tx small, .ci-bar { display: none; } }
 </style>
 </head>
 <body>
@@ -3048,6 +3056,7 @@ function trendEntry(c, ctx = {}) {
       <div class="chart-tools">
         <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
         <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
+        <span class="cmax-only cmax-info" data-cmaxinfo="${esc(t.mint)}"></span>
         ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
         <span style="flex:1"></span>
         ${dexOn() ? '' : `<a class="btn btn-sm" href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}Abrir na Dex</a>`}
@@ -4679,6 +4688,16 @@ function trendEntry(c, ctx = {}) {
       a.classList.remove('flash'); void a.offsetWidth; a.classList.add('flash');
     }), 120);
   }
+  // Gráfico expandido: na barra de cima, selo de segurança, nota e compras x vendas da última hora (atualiza ao vivo)
+  function updCmaxInfo(t) {
+    const el = document.querySelector(`[data-cmaxinfo="${CSS.escape(t.mint)}"]`); if (!el) return;
+    const l = levelOf(t), P = t.periods?.h1 || {}, b = Number(P.buys ?? t.buysH1) || 0, v = Number(P.sells ?? t.sellsH1) || 0, tot = b + v;
+    const pctB = tot ? Math.round((b / tot) * 100) : null;
+    const html = `<span class="pill ${l === 'ok' ? '' : l}">${{ ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[l]}</span>
+      ${t.score != null ? `<span class="ci-score" title="Nota">${scoreBadge(t.score, true)}</span>` : ''}
+      ${tot ? `<span class="ci-tx" title="Transações na última hora"><b class="pos num">${int(b)}</b><small>compras</small><i class="ci-bar"><i style="width:${pctB}%"></i></i><b class="neg num">${int(v)}</b><small>vendas</small></span>` : ''}`;
+    if (el.__html !== html) { el.innerHTML = html; el.__html = html; }
+  }
   function mountDetail(t) {
     updateEmergDock(t);
     const el = $('detail');
@@ -4910,6 +4929,7 @@ function trendEntry(c, ctx = {}) {
     // Detalhe
     const t = sel && data.tokens[sel];
     const fresh = mountDetail(t);
+    if (t) updCmaxInfo(t);
     // a moeda aberta no detalhe conta como vista depois de 2 segundos na tela
     if (t && isUnseen(t) && !document.hidden) { clearTimeout(ui._seenT); ui._seenT = setTimeout(() => { if (ui.sel[ui.tab] === t.mint) { markSeen(t.mint); render(); } }, 2000); }
     mountCharts(t, fresh);
