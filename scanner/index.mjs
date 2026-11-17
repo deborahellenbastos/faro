@@ -35,6 +35,26 @@ if (password) {
 }
 if (!state.tokens) { try { state = JSON.parse(await readFile(plainPath, 'utf8')); } catch { /* primeira rodada */ } }
 
+// 17/11: a releitura do histórico (v4) apagou as compras/vendas antigas (o RPC só devolve as ~100 últimas transações).
+// Recupera as operações da última versão salva com o formato anterior (v3), guardada no histórico do git, e junta.
+if (password && state.wallet?.v === 4 && !state.wallet.v3merged) {
+  try {
+    const { execSync } = await import('node:child_process');
+    const commits = execSync('git log --format=%H -n 80 -- docs/data.enc.json', { cwd: root }).toString().trim().split('\n').filter(Boolean);
+    for (const c of commits) {
+      let old;
+      try { old = decrypt(JSON.parse(execSync(`git show ${c}:docs/data.enc.json`, { cwd: root, maxBuffer: 64 * 1024 * 1024 }).toString()), password); } catch { continue; }
+      if (old?.wallet?.v !== 3 || !Array.isArray(old.wallet.ops) || old.wallet.address !== state.wallet.address) continue;
+      const have = new Set(state.wallet.ops.map((o) => o.sig + o.mint));
+      const add = old.wallet.ops.filter((o) => !have.has(o.sig + o.mint));
+      state.wallet.ops = [...add, ...state.wallet.ops].sort((a, b) => a.at - b.at).slice(-1500);
+      state.wallet.v3merged = true;
+      console.log(`Carteira: recuperei ${add.length} compras/vendas antigas da versão salva ${c.slice(0, 7)}`);
+      break;
+    }
+  } catch (e) { console.error(`Não consegui recuperar o histórico antigo: ${e.message}`); }
+}
+
 const trader = await createTrader(cfg, (m, e) => (e ? console.error : console.log)(m));
 state = await runOnce({ api, cfg, state, trader });
 // O painel mostra os limites usados; o endereço da carteira não vai junto
