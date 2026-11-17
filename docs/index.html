@@ -718,7 +718,9 @@
   .m-robot, .m-search-slot, .m-badges { display: none; }
   .m-badges { gap: 6px; flex-wrap: wrap; margin-top: calc(var(--sp-2) * -1); }
   .m-badges .live { height: 26px; font-size: 11px; padding: 0 9px; font-family: inherit; cursor: pointer; }
-  .m-badges button.live.on i { animation: none; }
+  .m-badges .live.auto svg { width: 10px; height: 10px; }
+  .m-live { display: none; height: 24px; font-size: 11px; padding: 0 9px; margin-left: 4px; }
+  .m-brand { align-items: center; }
   .m-hero .mh-label small { margin-left: 6px; color: var(--faint); font-weight: 700; font-size: 12px; }
   .m-hero .mh-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .m-hero .mh-top .mh-day { margin-top: 4px; }
@@ -726,6 +728,7 @@
     .summary, .wallet-strip, .page-h { display: none !important; }
     .m-robot { display: inline-grid; }
     .m-badges { display: flex; }
+    .m-live { display: inline-flex; }
     body.show-detail .m-badges { display: none; }
     .tabbar { grid-template-columns: repeat(4, 1fr) !important; }
     .tabbar .tb-robot { display: none !important; }
@@ -793,7 +796,7 @@
   <!-- ===================== Área principal ===================== -->
   <div class="main">
     <header class="topbar">
-      <div class="brand m-brand"><div class="brand-mark"><svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><defs><linearGradient id="LG2" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop stop-color="#5BF7B8"/><stop offset=".48" stop-color="#10D27F"/><stop offset="1" stop-color="#067A49"/></linearGradient><linearGradient id="LS2" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient><linearGradient id="LW2" x1="21" y1="9" x2="10" y2="16" gradientUnits="userSpaceOnUse"><stop stop-color="#04150C" stop-opacity=".75"/><stop offset="1" stop-color="#04150C" stop-opacity="0"/></linearGradient></defs><rect width="40" height="40" rx="10" fill="url(#LG2)"/><rect x=".5" y=".5" width="39" height="39" rx="9.5" stroke="url(#LS2)"/><circle cx="20" cy="20" r="12" stroke="#04150C" stroke-width="2.2"/><circle cx="20" cy="20" r="6.5" stroke="#04150C" stroke-opacity=".28" stroke-width="1.6"/><path d="M8 20h24M20 8v24" stroke="#04150C" stroke-opacity=".16" stroke-width="1.4"/><path d="M20 20V8a12 12 0 0 0-11.3 8Z" fill="url(#LW2)"/><path d="M20 20V8.6" stroke="#04150C" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="20" r="2.2" fill="#04150C"/><circle cx="27" cy="14.5" r="2.1" fill="#fff"/><circle cx="27" cy="14.5" r="3.6" stroke="#fff" stroke-opacity=".45" stroke-width="1"/></svg></div><b>Faro</b></div>
+      <div class="brand m-brand"><div class="brand-mark"><svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><defs><linearGradient id="LG2" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop stop-color="#5BF7B8"/><stop offset=".48" stop-color="#10D27F"/><stop offset="1" stop-color="#067A49"/></linearGradient><linearGradient id="LS2" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient><linearGradient id="LW2" x1="21" y1="9" x2="10" y2="16" gradientUnits="userSpaceOnUse"><stop stop-color="#04150C" stop-opacity=".75"/><stop offset="1" stop-color="#04150C" stop-opacity="0"/></linearGradient></defs><rect width="40" height="40" rx="10" fill="url(#LG2)"/><rect x=".5" y=".5" width="39" height="39" rx="9.5" stroke="url(#LS2)"/><circle cx="20" cy="20" r="12" stroke="#04150C" stroke-width="2.2"/><circle cx="20" cy="20" r="6.5" stroke="#04150C" stroke-opacity=".28" stroke-width="1.6"/><path d="M8 20h24M20 8v24" stroke="#04150C" stroke-opacity=".16" stroke-width="1.4"/><path d="M20 20V8a12 12 0 0 0-11.3 8Z" fill="url(#LW2)"/><path d="M20 20V8.6" stroke="#04150C" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="20" r="2.2" fill="#04150C"/><circle cx="27" cy="14.5" r="2.1" fill="#fff"/><circle cx="27" cy="14.5" r="3.6" stroke="#fff" stroke-opacity=".45" stroke-width="1"/></svg></div><b>Faro</b><span class="live m-live" id="m-live"><i></i><span>Conectando...</span></span></div>
       <div class="page-h"><div class="title-row"><h1 id="page-title">Carteira</h1>
           <span class="solbal" id="solbal" hidden title="Saldo de SOL na sua carteira, lido direto da blockchain"></span>
           <span class="live" id="live" title="Preços atualizados a cada 10 segundos"><i></i><span>Conectando...</span></span>
@@ -3025,9 +3028,10 @@
     if (!data || isDemo()) { el.innerHTML = ''; return; }
     const A = autoState(), sell = !!data.lastRun?.autoSell;
     const buy = A.pend ? null : !!(A.on && A.canBuy);
-    el.innerHTML = `<span class="live ${fresh ? 'on' : ''}"><i></i><span>${fresh ? 'Ao vivo' : 'Conectando...'}</span></span>
-      <button class="live ${buy ? 'on' : ''}" data-open-robot title="Compra automática nos sinais"><i></i><span>Compra auto ${A.pend ? (A.pend.on ? 'ligando...' : 'desligando...') : buy ? 'ligada' : 'desligada'}</span></button>
-      <button class="live ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática"><i></i><span>Venda auto ${sell ? 'ligada' : 'desligada'}</span></button>`;
+    const ml = $('m-live'); if (ml) { ml.className = 'live m-live ' + (fresh ? 'on' : ''); ml.querySelector('span').textContent = fresh ? 'Ao vivo' : 'Conectando...'; }
+    const ico = (on) => on ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2h2v8H3zM7 2h2v8H7z" fill="currentColor"/></svg>';
+    el.innerHTML = `<button class="live auto ${buy ? 'on' : ''}" data-open-robot title="Compra automática nos sinais">${ico(buy)}<span>Compra auto ${A.pend ? (A.pend.on ? 'ligando...' : 'desligando...') : buy ? 'ligada' : 'desligada'}</span></button>
+      <button class="live auto ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática">${ico(sell)}<span>Venda auto ${sell ? 'ligada' : 'desligada'}</span></button>`;
   }
   function updateLivePill() {
     updateSolBal(); updateAutoPill();
