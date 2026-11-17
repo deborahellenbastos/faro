@@ -66,7 +66,8 @@ const realizeOn = RZ.ligado === true && process.env.LUCRO_AUTO !== 'false';
 // Uma venda feita antes de uma nova compra da mesma moeda não conta mais
 // (também vale o que ficou registrado nas rodadas anteriores, para não repetir o mesmo aviso)
 // "Não vendida por valer pouco" não tira a moeda da vigia para sempre: depois de 10 min ela volta a ser vigiada (pode ter subido)
-const done = (t) => [mem.sold[t.mint], t.watchSell].some((x) => x && x.at > (t.position?.lastBuyAt || 0) && (!x.skipped || Date.now() - x.at < (x.dust ? 6 * 3600000 : 600000)));
+// Venda antiga não conta se a moeda foi comprada de novo depois (inclusive à mão, antes do robô ler a compra nova)
+const done = (t) => [mem.sold[t.mint], t.watchSell].some((x) => x && x.at > Math.max(t.position?.lastBuyAt || 0, t.heldSince || 0, t.reboughtAt || 0) && (!x.skipped || Date.now() - x.at < (x.dust ? 6 * 3600000 : 600000)));
 let held = Object.values(state.tokens || {}).filter((t) => t.held && t.heldAmount > 0 && !done(t));
 const L = cfg.venda?.lucro || {};
 const lucroOn = L.ligado === true && process.env.LUCRO_AUTO !== 'false';
@@ -98,7 +99,7 @@ async function refreshHoldings() {
     for (const h of list) {
       if (held.some((t) => t.mint === h.mint)) continue;
       const old = state.tokens?.[h.mint] || { mint: h.mint, symbol: h.mint.slice(0, 6) };
-      const t = { ...old, held: true, heldAmount: h.amount, position: old.position, isNew: !old.held };
+      const t = { ...old, held: true, heldAmount: h.amount, position: old.position, isNew: !old.held, reboughtAt: old.held ? 0 : Date.now() };
       if (!done(t)) { held.push(t); log(`nova na carteira: ${t.symbol}`); }
     }
   } catch (e) { log(`não consegui ler a carteira: ${e.message}`, true); }
