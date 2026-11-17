@@ -193,6 +193,17 @@
       "regra": "Teste: conferir na análise diária se o sinal 'subida saudável' (ou o rompimento de base) do robô teria dado entrada nesse mesmo trecho. Padrão a ensinar ao robô se ele não pegou: segurança 7/7 + pelo menos 3 toques no mesmo suporte em 1h sem fechar abaixo (pavio pode) + fundo mais alto depois do último toque + compras >= 60% na última hora.",
       "status": "em teste",
       "tipo": "entrada"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Compras falsas: quase só compra na contagem e o preço caindo mesmo assim",
+      "moedas": [
+        "JALU (BSsmLA6UN8fzJ8qUkV4KwC5LxR7ab3TaUtcwvAyJpump)"
+      ],
+      "aconteceu": "Às ~20:30 a JALU (Jason & Lucia) mostrava 10.400 compras x 1.387 vendas na última hora (88% compras, cerca de US$ 22 por transação) e mesmo assim o preço caía. Mais cedo eram ~60% compras. Segundos depois veio o golpe. A Kerah percebeu o padrão olhando o gráfico.",
+      "regra": "Contagem de compras não é força: robôs fazem milhares de compras pequenas para parecer alta enquanto poucas vendas grandes derrubam o preço. Se 80% ou mais das transações são compras (mín. 40 em 5 min ou 200 em 1h) e o preço caiu 10% ou mais na mesma janela, a moeda vira Perigo no painel e o robô não compra.",
+      "status": "em teste",
+      "tipo": "golpe"
     }
   ]
 }

@@ -595,3 +595,12 @@ console.log('Teste da subida saudável: ok');
   assert.ok(Math.abs(p.openPnlPct - 50) < 1e-6, 'lucro aberto sobre a entrada atual (+50%)');
 }
 console.log('Teste da entrada por operação: ok');
+
+// Compras falsas (caso Lucia): quase só compra na contagem e o preço caindo
+{
+  const { fakeBuys } = await import('./signals.mjs');
+  assert.ok(fakeBuys({ h1: { buys: 10400, sells: 1387, chg: -18 } }), 'Lucia: 88% compras e -18% na hora');
+  assert.equal(fakeBuys({ h1: { buys: 10400, sells: 1387, chg: 25 } }), null, 'compras dominando com o preço subindo é saudável');
+  assert.equal(fakeBuys({ m5: { buys: 20, sells: 2, chg: -15 } }), null, 'poucas transações não contam');
+  console.log('Teste das compras falsas: ok');
+}

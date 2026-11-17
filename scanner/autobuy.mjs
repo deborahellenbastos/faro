@@ -2,6 +2,7 @@
 // e o interruptor que liga/desliga a compra real, mandado pelo painel como um memo assinado pela carteira.
 
 export const SWITCH_RE = /faro:compra=(on|off)/;
+import { fakeBuys } from './signals.mjs';
 export const PROFILE_RE = /faro:perfil=(agressivo|conservador)/;
 
 // Configuração de um perfil: a base + os ajustes do perfil (cópia, não mexe na base)
@@ -104,6 +105,7 @@ function filterCandidates(list, cfg, now, scoreOk, byApproval) {
     // reentrada: segurança limpa (alertas de contrato/holders/liquidez sumindo) e sem queda maior que 80% do pico (cara de rug)
     .filter((t) => !isReentry(t, cfg, now) || (securityOk(t) && peakDropPct(t, now) < 80))
     .filter((t) => !t.held && t.safety?.level !== 'danger' && scoreOk(t))
+    .filter((t) => !fakeBuys(t.periods)) // compras falsas de robô com o preço caindo (caso Lucia)
     .filter((t) => !byApproval || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
     .filter((t) => t.dexId !== 'pumpfun') // compra de verdade nunca na curva da pump.fun (modo curva é só simulação)
     // Tempo mínimo no Radar (16/11: os 3 rugs comprados entraram 2 a 9 min depois da aprovação). Reentrada já passou por isso

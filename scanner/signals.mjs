@@ -289,3 +289,15 @@ export function trendEntry(c, ctx = {}) {
   if (rr < (ctx.rrMin || 1.5)) return null;
   return { fase: 'entrada', titulo: 'Boa entrada (subida saudável)', boa: true, tendencia: true, msg: 'Subida saudável: topos e fundos subindo, preço acima das médias de 9 e 21 e mais volume nas altas. Corrigiu até a média com pouco volume e retomou com compra. Stop abaixo do último fundo, alvo na continuação da alta.', stop, alvo, rr, key: `tend-${c[n - 8][0]}` };
 }
+
+// Compras falsas (caso Lucia, 17/11): muitas compras pequenas (robôs) e o preço caindo mesmo assim.
+// Enquanto a contagem mostra quase só compra, poucas vendas grandes (dev ou insiders) estão derrubando o preço. O golpe veio segundos depois.
+// per: { h1: { buys, sells, chg }, m5: { buys, sells, chg } }
+export function fakeBuys(per = {}) {
+  for (const [k, minTx, nome] of [['m5', 40, '5 min'], ['h1', 200, '1 hora']]) {
+    const P = per[k] || {}, b = Number(P.buys) || 0, s = Number(P.sells) || 0, chg = Number(P.chg);
+    if (b + s >= minTx && b / (b + s) >= 0.8 && chg <= -10)
+      return { janela: k, msg: `${Math.round((b / (b + s)) * 100)}% das transações são compras e mesmo assim o preço caiu ${Math.abs(chg).toFixed(0)}% em ${nome}: cara de compras falsas de robô com venda grande por trás (padrão de golpe)` };
+  }
+  return null;
+}

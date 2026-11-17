@@ -2795,6 +2795,18 @@ function trendEntry(c, ctx = {}) {
   return { fase: 'entrada', titulo: 'Boa entrada (subida saudável)', boa: true, tendencia: true, msg: 'Subida saudável: topos e fundos subindo, preço acima das médias de 9 e 21 e mais volume nas altas. Corrigiu até a média com pouco volume e retomou com compra. Stop abaixo do último fundo, alvo na continuação da alta.', stop, alvo, rr, key: `tend-${c[n - 8][0]}` };
 }
 
+// Compras falsas (caso Lucia, 17/11): muitas compras pequenas (robôs) e o preço caindo mesmo assim.
+// Enquanto a contagem mostra quase só compra, poucas vendas grandes (dev ou insiders) estão derrubando o preço. O golpe veio segundos depois.
+// per: { h1: { buys, sells, chg }, m5: { buys, sells, chg } }
+function fakeBuys(per = {}) {
+  for (const [k, minTx, nome] of [['m5', 40, '5 min'], ['h1', 200, '1 hora']]) {
+    const P = per[k] || {}, b = Number(P.buys) || 0, s = Number(P.sells) || 0, chg = Number(P.chg);
+    if (b + s >= minTx && b / (b + s) >= 0.8 && chg <= -10)
+      return { janela: k, msg: `${Math.round((b / (b + s)) * 100)}% das transações são compras e mesmo assim o preço caiu ${Math.abs(chg).toFixed(0)}% em ${nome}: cara de compras falsas de robô com venda grande por trás (padrão de golpe)` };
+  }
+  return null;
+}
+
   // </fim-sinais>
 
   // Ícone de informação: toca para abrir/fechar a explicação (funciona no celular, sem depender de passar o mouse)
@@ -3028,6 +3040,7 @@ function trendEntry(c, ctx = {}) {
     let msg = null;
     if (pnl != null && pnl <= -60) msg = `Preço despencou ${Math.abs(pnl).toFixed(0)}% desde a sua compra`;
     else if (m5 <= -60 || h1 <= -70) msg = `Preço desabou ${Math.abs(Math.min(m5 || 0, h1 || 0)).toFixed(0)}% em ${m5 <= -60 ? '5 minutos' : '1 hora'} (cara de rug: liquidez puxada ou dev vendendo)`;
+    else { const f = fakeBuys(t.periods); if (f) msg = f.msg.charAt(0).toUpperCase() + f.msg.slice(1); }
     return msg ? { id: 'crash', level: 'danger', msg, at: Date.now() } : null;
   }
   const levelOf = (t) => (crashAlert(t) ? 'danger' : t.safety?.level || 'ok');
