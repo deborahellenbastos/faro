@@ -605,6 +605,13 @@
   #dex-vault iframe { width: 100%; height: 100%; border: 0; }
   .list-sub { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .list-sub small { color: var(--faint); font-weight: 700; }
+  .loading-note { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 18px 0 12px; color: var(--muted); font-size: 14px; font-weight: 600; }
+  .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.12); border-top-color: var(--brand); animation: spin .8s linear infinite; }
+  .sk-row { display: grid; grid-template-columns: 46px 1fr; gap: 14px; align-items: center; padding: 14px 16px; margin-bottom: 10px; border-radius: 20px; background: linear-gradient(180deg, #121519, #0d0f12); }
+  .sk-row i, .sk-row b, .sk-row em { display: block; border-radius: 8px; background: linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.09), rgba(255,255,255,.04)); background-size: 200% 100%; animation: shimmer 1.3s ease-in-out infinite; }
+  .sk-row i { width: 46px; height: 46px; border-radius: 50%; }
+  .sk-row b { height: 14px; width: 45%; } .sk-row em { height: 11px; width: 70%; margin-top: 8px; }
+  @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
   .ph-open { display: flex; align-items: center; justify-content: center; margin-top: 12px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #ab9ff2, #7c6cf0); color: #fff !important; font-weight: 800; text-decoration: none; }
   .ph-open + small { display: block; margin-top: 8px; color: var(--muted); font-size: 12.5px; }
   .checks summary.sc-sum { justify-content: flex-start; gap: 14px; }
@@ -1835,6 +1842,7 @@
   async function decryptWith(raw, file) {
     const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
     const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(file.iv) }, key, b64(file.data));
+    if (file.z === 'gzip') return JSON.parse(await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
     return JSON.parse(new TextDecoder().decode(pt));
   }
   let unlockWaiter = null;
@@ -1884,12 +1892,23 @@
     location.reload();
   });
 
+  // Carregando: esqueleto no lugar da lista (em vez de parecer que não há moedas)
+  function setLoading(on) {
+    const L = $('list'); if (!L) return;
+    if (on) L.innerHTML = `<div class="loading-note"><span class="spinner"></span>Carregando os dados do robô...</div>` + '<div class="sk-row"><i></i><span><b></b><em></em></span></div>'.repeat(5);
+  }
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-retry]')) load(true); });
   async function load(manual) {
     $('refresh').classList.add('spin');
     try {
       let vault = null;
       if (!window.__DEMO_DATA) {
-        try { const v = await fetch(`data.enc.json?t=${Date.now()}`, { cache: 'no-store' }); if (v.ok) vault = await v.json(); } catch {}
+        if (!data) setLoading(true);
+        for (let i = 0; i < 3 && !vault; i++) {
+          try { const v = await fetch(`data.enc.json?t=${Date.now()}`, { cache: 'no-store' }); if (v.ok) vault = await v.json(); } catch {}
+          if (!vault && i < 2) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+        }
+        if (!vault && data) throw Object.assign(new Error('rede'), { keep: true });
       }
       if (vault) {
         vaultUsed = true;
@@ -1909,10 +1928,13 @@
       render();
       if (manual) toast('Atualizado');
     } catch (e) {
-      $('updated').textContent = 'Esperando a primeira rodada';
+      if (data) { if (manual) toast('Sem conexão agora. Mostrando os últimos dados.'); return; }
+      $('updated').textContent = 'Sem conexão';
       $('dot').className = 'dot off';
-      $('list').innerHTML = `<div class="empty">${ICON.radar}<b>Esperando a primeira rodada</b>Assim que o robô rodar no GitHub, as moedas aparecem aqui.</div>`;
+      $('list').innerHTML = `<div class="empty">${ICON.radar}<b>Não consegui carregar os dados</b>Confira a internet. O Faro tenta de novo sozinho em alguns segundos.<br><button class="btn" style="margin-top:14px" data-retry>Tentar agora</button></div>`;
+      setTimeout(() => { if (!data) load(); }, 8000);
     } finally {
+      setLoading(false);
       $('refresh').classList.remove('spin');
     }
   }

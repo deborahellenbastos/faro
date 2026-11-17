@@ -2,6 +2,7 @@
 // AES-256-GCM com chave derivada da senha por PBKDF2-SHA256. O painel descriptografa no navegador
 // com a mesma senha (WebCrypto). Sem a senha, o arquivo publicado é ilegível.
 import { pbkdf2Sync, randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
+import { gzipSync, gunzipSync } from 'node:zlib';
 
 export const ITERATIONS = 310000;
 
@@ -14,13 +15,15 @@ export function encrypt(obj, password, saltB64 = randomBytes(16).toString('base6
   const key = deriveKey(password, saltB64);
   const iv = randomBytes(12);
   const c = createCipheriv('aes-256-gcm', key, iv);
-  const body = Buffer.concat([c.update(JSON.stringify(obj), 'utf8'), c.final()]);
+  // Compacta antes de cifrar (gzip): o arquivo cai para uma fração do tamanho e o painel abre mais rápido no celular
+  const body = Buffer.concat([c.update(gzipSync(Buffer.from(JSON.stringify(obj), 'utf8'), { level: 9 })), c.final()]);
   const tag = c.getAuthTag();
   return {
     faro: 1,
     alg: 'AES-256-GCM',
     kdf: 'PBKDF2-SHA256',
     iterations: ITERATIONS,
+    z: 'gzip',
     salt: saltB64,
     iv: iv.toString('base64'),
     // Formato do WebCrypto: texto cifrado seguido da etiqueta de autenticação
@@ -34,5 +37,5 @@ export function decrypt(file, password) {
   const d = createDecipheriv('aes-256-gcm', key, Buffer.from(file.iv, 'base64'));
   d.setAuthTag(all.subarray(all.length - 16));
   const out = Buffer.concat([d.update(all.subarray(0, all.length - 16)), d.final()]);
-  return JSON.parse(out.toString('utf8'));
+  return JSON.parse((file.z === 'gzip' ? gunzipSync(out) : out).toString('utf8'));
 }
