@@ -4,7 +4,11 @@
     {
       "data": "2026-11-16",
       "titulo": "Alarme falso de liquidez destravada",
-      "moedas": ["GIFT", "GOAT", "DOUG"],
+      "moedas": [
+        "GIFT",
+        "GOAT",
+        "DOUG"
+      ],
       "aconteceu": "O RugCheck marcou 'LP destravada' em várias moedas ao mesmo tempo, e o robô vendeu todas como golpe. A liquidez no mercado não tinha caído.",
       "regra": "LP destravada só vale como golpe se a liquidez no mercado cair 15% ou mais e não acontecer em várias moedas na mesma rodada. Venda por alarme falso não deixa a moeda marcada como perigo.",
       "status": "aplicada",
@@ -13,7 +17,9 @@
     {
       "data": "2026-11-16",
       "titulo": "Posição pequena não era vigiada direito",
-      "moedas": ["NMA"],
+      "moedas": [
+        "NMA"
+      ],
       "aconteceu": "A regra de 'não vender abaixo de US$ 1' olhava o valor investido, não o atual. E uma venda pulada tirava a moeda da vigia para sempre.",
       "regra": "Usa o valor atual da posição. Venda pulada volta a ser vigiada depois de 10 minutos.",
       "status": "aplicada",
@@ -22,7 +28,10 @@
     {
       "data": "2026-11-16",
       "titulo": "Bundle escondido nos holders",
-      "moedas": ["GTAHUB", "ROCCO"],
+      "moedas": [
+        "GTAHUB",
+        "ROCCO"
+      ],
       "aconteceu": "Passou em todos os filtros e caiu 100%: 16 carteiras (incluindo a do criador) tinham fatias quase iguais e venderam juntas.",
       "regra": "Reprova quando 7 ou mais carteiras com fatias quase iguais somam 10% ou mais. Ajustado com a ROCCO para não reprovar casos limítrofes.",
       "status": "aplicada",
@@ -31,7 +40,9 @@
     {
       "data": "2026-11-16",
       "titulo": "Stop móvel vendia na correção normal",
-      "moedas": ["VI"],
+      "moedas": [
+        "VI"
+      ],
       "aconteceu": "Um pavio bateu o stop móvel cedo e a moeda continuou subindo depois.",
       "regra": "Até +60% o stop fica na entrada +5%. Acima disso segue o topo (até 25% abaixo). Pavio sozinho não vende.",
       "status": "aplicada",
@@ -40,7 +51,10 @@
     {
       "data": "2026-11-16",
       "titulo": "Sem stop de perda, o rug levou tudo",
-      "moedas": ["SENT", "VI"],
+      "moedas": [
+        "SENT",
+        "VI"
+      ],
       "aconteceu": "Não existia stop de perda, e a VI levou rug durante os 60 segundos de confirmação.",
       "regra": "Stop de perda de -25% desde a entrada, com 30 s de confirmação, e venda na hora se o preço estiver 10% ou mais abaixo do stop.",
       "status": "aplicada",
@@ -49,7 +63,10 @@
     {
       "data": "2026-11-16",
       "titulo": "Comprar logo depois da aprovação",
-      "moedas": ["SENT", "VI"],
+      "moedas": [
+        "SENT",
+        "VI"
+      ],
       "aconteceu": "Os 3 rugs comprados entraram de 2 a 9 minutos depois de a moeda chegar ao Radar.",
       "regra": "A compra automática só acontece depois de 15 minutos no Radar.",
       "status": "aplicada",
@@ -58,7 +75,10 @@
     {
       "data": "2026-11-16",
       "titulo": "Sinal repetido que não anda",
-      "moedas": ["GOAT", "ANGSTIPAN"],
+      "moedas": [
+        "GOAT",
+        "ANGSTIPAN"
+      ],
       "aconteceu": "Foram 11 sinais de boa entrada no dia e nenhum funcionou. A GOAT deu 4 e a ANGSTIPAN 3, sem passar de +11%.",
       "regra": "Não repete o sinal numa moeda por 24h se o último não subiu 10%. Boa entrada só com nota 60 ou mais.",
       "status": "aplicada",
@@ -67,7 +87,10 @@
     {
       "data": "2026-11-16",
       "titulo": "A correção derruba a nota",
-      "moedas": ["GOAT", "GTA"],
+      "moedas": [
+        "GOAT",
+        "GTA"
+      ],
       "aconteceu": "O sinal aparece justamente na correção, e a correção derruba a parte de 'momento' da nota (força de compra e volume da última hora).",
       "regra": "Teste: vale a nota da aprovação (70+) quando a parte sólida (holders, liquidez, segurança, distribuição) segue de pé.",
       "status": "em teste",
@@ -76,7 +99,9 @@
     {
       "data": "2026-11-16",
       "titulo": "Despejo continuava no Radar",
-      "moedas": ["goldie"],
+      "moedas": [
+        "goldie"
+      ],
       "aconteceu": "Caiu 70% em 2 minutos e apareceram insiders, mas continuou no Radar e ainda gerou aviso de entrada.",
       "regra": "Sai do Radar quem cai 60% ou mais em menos de 20 min, ou perde a estrutura (abaixo de 78,6%) com insiders ou concentração novos.",
       "status": "aplicada",
@@ -85,7 +110,11 @@
     {
       "data": "2026-11-16",
       "titulo": "Moeda boa descoberta tarde",
-      "moedas": ["goldie", "FLOOR", "MEOWL"],
+      "moedas": [
+        "goldie",
+        "FLOOR",
+        "MEOWL"
+      ],
       "aconteceu": "O Faro só achou essas moedas depois de boa parte da alta.",
       "regra": "Busca também nas moedas em alta do GeckoTerminal e nas recém-migradas para a PumpSwap, com espera de 5 min depois da migração.",
       "status": "aplicada",
@@ -94,7 +123,9 @@
     {
       "data": "2026-11-16",
       "titulo": "Base longa e rompimento",
-      "moedas": ["GTA"],
+      "moedas": [
+        "GTA"
+      ],
       "aconteceu": "Ficou 4 horas presa numa faixa, rompeu o teto e subiu 45%. Nenhum sinal reconhecia esse padrão.",
       "regra": "Sinal de rompimento de base (1h ou mais numa faixa, fecha acima do teto com volume e compra). Vale no perfil Agressivo e na simulação.",
       "status": "em teste",
@@ -103,7 +134,9 @@
     {
       "data": "2026-11-16",
       "titulo": "Tendência forte não chega na zona",
-      "moedas": ["LEOSTAR"],
+      "moedas": [
+        "LEOSTAR"
+      ],
       "aconteceu": "Corrigiu só até perto da 38,2% e voltou a subir. A zona de entrada (50% a 61,8%) nunca foi tocada.",
       "regra": "Entrada rasa na 38,2% quando a tendência é forte (gráfico orgânico, compra 55%+ na hora) e reage com compra. Vale no perfil Agressivo e na simulação.",
       "status": "em teste",
@@ -112,11 +145,34 @@
     {
       "data": "2026-11-16",
       "titulo": "O plano travava a compra manual",
-      "moedas": ["RESPECT"],
+      "moedas": [
+        "RESPECT"
+      ],
       "aconteceu": "O plano da operação impediu uma compra de US$ 5 por causa do risco/retorno, e a moeda subiu 47% logo depois.",
       "regra": "O plano é preenchido pelo sinal e só orienta: não bloqueia a compra manual.",
       "status": "aplicada",
       "tipo": "painel"
+    },
+    {
+      "data": "2026-11-16",
+      "titulo": "Maré vermelha do mercado",
+      "moedas": [],
+      "aconteceu": "Ideia tirada de um post no X: quando a maioria das moedas está caindo no dia, comprar é o que precisa de justificativa.",
+      "regra": "Teste: quando 70% ou mais das moedas do Radar (mínimo 5) estão caindo no dia, marca a maré como vermelha. A simulação mede o resultado das entradas feitas com maré vermelha, para saber se valeria pausar ou ficar mais exigente.",
+      "status": "em teste",
+      "tipo": "compra"
+    },
+    {
+      "data": "2026-11-16",
+      "titulo": "Cético: pausa depois de 2 stops",
+      "moedas": [
+        "SENT",
+        "VI"
+      ],
+      "aconteceu": "Ideia tirada de um post no X. Em 16/11 os stops vieram em sequência no mesmo período ruim.",
+      "regra": "Teste: depois de 2 stops seguidos, pausa de 45 minutos sem novas entradas. A simulação mede o resultado das entradas que essa pausa teria evitado.",
+      "status": "em teste",
+      "tipo": "compra"
     }
   ]
 }

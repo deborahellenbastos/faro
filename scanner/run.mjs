@@ -1,5 +1,5 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
-import { simStep, simCrazy } from './sim.mjs';
+import { simStep, simCrazy, marketTide } from './sim.mjs';
 import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg } from './autobuy.mjs';
 import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
@@ -542,6 +542,9 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // rompimentos frescos (até 10 min) em moedas do radar, com as mesmas travas de segurança da lista de compra
   const rompList = Object.values(tokens).filter((t) => t.romp && now - t.romp.at <= 10 * 60000 && !t.held && t.status === 'aprovada' && t.safety?.level !== 'danger' && t.dexId !== 'pumpfun' && !buyList.includes(t));
   try { simStep({ state, tokens, candidates: [...buyList, ...curveList.filter((t) => !buyList.includes(t)), ...notaList], rompidas: rompList, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
+  // Maré do mercado (regra em teste): a maioria das moedas do Radar caindo no dia
+  { const prevM = state.mare?.vermelha; state.mare = marketTide(tokens, now, cfg.regrasEmTeste?.mare);
+    if (state.mare.vermelha !== !!prevM) log(`Maré do mercado: ${state.mare.vermelha ? 'VERMELHA' : 'normal'} (${state.mare.red} de ${state.mare.n} moedas do Radar caindo no dia)`); }
   // Perfil Crazy (só simulação): primeira correção depois do Radar, US$ 3, giro rápido
   try {
     const solUsdNow = Object.values(tokens).map((t) => (t.priceNative > 0 ? t.priceUsd / t.priceNative : 0)).find((v) => v > 0) || 0;

@@ -8,6 +8,21 @@ import { trailStop } from './signals.mjs';
 
 const pct = (a, b) => (b ? (a / b - 1) * 100 : 0);
 
+// ---------- Regras em teste (só marcam as entradas; medem o que teriam evitado) ----------
+// Maré vermelha: a maioria das moedas do Radar caindo no dia. Cético: 2 stops seguidos há menos de 45 min.
+export function marketTide(tokens, now, o = {}) {
+  const list = Object.values(tokens || {}).filter((t) => (t.status === 'aprovada' || t.held) && now - (t.approvedAt || t.firstSeen || 0) <= 24 * 3600000 && Number.isFinite(t.priceChangeH24 ?? t.periods?.h24?.chg));
+  const red = list.filter((t) => (t.priceChangeH24 ?? t.periods?.h24?.chg) < 0).length;
+  const share = list.length ? red / list.length : 0;
+  return { n: list.length, red, share, vermelha: list.length >= (o.minMoedas ?? 5) && share >= (o.pctVermelho ?? 70) / 100, at: now };
+}
+export function skepticOn(closed, now, o = {}) {
+  const last = (closed || []).slice(0, o.stopsSeguidos ?? 2);
+  return last.length >= (o.stopsSeguidos ?? 2) && last.every((x) => /stop/.test(x.why || '') && !/móvel/.test(x.why || '')) && now - last[0].exitAt < (o.pausaMin ?? 45) * 60000;
+}
+const ruleTags = (state, sim, now) => ({ ...(state.mare?.vermelha ? { mare: true } : {}), ...(skepticOn(sim.closed, now) ? { cetico: true } : {}) });
+const ruleStats = (c) => { const f = (k) => { const x = c.filter((o) => o[k]); return { ops: x.length, pnlSol: x.reduce((a, o) => a + o.pnlSol, 0), wins: x.filter((o) => o.pnlPct > 0).length }; }; return { mare: f('mare'), cetico: f('cetico') }; };
+
 // Stop no fundo recente (entre -8% e -40%) ou -25%; alvo no topo anterior (se 30%+ acima) ou +100%
 export function planFor(t, cfg) {
   const S = cfg.simulacao || {};
@@ -84,7 +99,7 @@ export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, can
     const g = t.sinal, E = t.priceUsd;
     if (!(E > 0) || !(g.stop > 0 && g.stop < E)) continue;
     const tp = E * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);
-    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}), ...(t._romp ? { romp: true } : {}), ...(t._notaAprov ? { notaAprov: true, approvalScore: t.approvalScore } : {}), ...(t._agrTipo ? { tipo: t._agrTipo } : {}) });
+    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}), ...(t._romp ? { romp: true } : {}), ...(t._notaAprov ? { notaAprov: true, approvalScore: t.approvalScore } : {}), ...(t._agrTipo ? { tipo: t._agrTipo } : {}), ...ruleTags(state, sim, now) });
     logS(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de ${t._romp ? 'rompimento' : 'boa entrada'}${t._notaAprov ? ` (pela nota da aprovação ${t.approvalScore}, agora ${t.score})` : ''} a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
   }
 
@@ -98,7 +113,7 @@ export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, can
     pnlSol: c.reduce((a, x) => a + x.pnlSol, 0),
     avgWin: wins.length ? wins.reduce((a, x) => a + x.pnlPct, 0) / wins.length : 0,
     avgLoss: losses.length ? losses.reduce((a, x) => a + x.pnlPct, 0) / losses.length : 0,
-    base,
+    base, regras: ruleStats(c),
   };
   const cv = c.filter((x) => x.curva);
   const rp = c.filter((x) => x.romp);
@@ -177,7 +192,7 @@ export function simCrazy({ state, tokens, cfg, now, log, solUsd }) {
       const g = crazyEntry(t, now, L);
       if (!g) continue;
       sim.done[t.mint] = now;
-      sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: g.px, sol, usd, score: t.score, recuo: g.recuo, stop: g.px * (1 - (L.stopPct ?? 20) / 100), tp: g.px * (1 + (L.alvoPct ?? 50) / 100), rr: (L.alvoPct ?? 50) / (L.stopPct ?? 20), sinal: `Primeira correção (-${g.recuo.toFixed(0)}% do topo) com reação` });
+      sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: g.px, sol, usd, score: t.score, recuo: g.recuo, stop: g.px * (1 - (L.stopPct ?? 20) / 100), tp: g.px * (1 + (L.alvoPct ?? 50) / 100), rr: (L.alvoPct ?? 50) / (L.stopPct ?? 20), sinal: `Primeira correção (-${g.recuo.toFixed(0)}% do topo) com reação`, ...ruleTags(state, sim, now) });
       log(`SIMULAÇÃO CRAZY: entrou em ${t.symbol} na primeira correção (-${g.recuo.toFixed(0)}% do topo), US$ ${usd}`);
     }
   }
@@ -186,5 +201,5 @@ export function simCrazy({ state, tokens, cfg, now, log, solUsd }) {
   const c = sim.closed, wins = c.filter((x) => x.pnlPct > 0), losses = c.filter((x) => x.pnlPct <= 0);
   sim.stats = { ops: c.length, open: sim.open.length, winRate: c.length ? (wins.length / c.length) * 100 : 0, pnlSol: c.reduce((a, x) => a + x.pnlSol, 0),
     avgWin: wins.length ? wins.reduce((a, x) => a + x.pnlPct, 0) / wins.length : 0, avgLoss: losses.length ? losses.reduce((a, x) => a + x.pnlPct, 0) / losses.length : 0,
-    avgMin: c.length ? c.reduce((a, x) => a + (x.exitAt - x.at), 0) / c.length / 60000 : 0, base: sol };
+    avgMin: c.length ? c.reduce((a, x) => a + (x.exitAt - x.at), 0) / c.length / 60000 : 0, base: sol, regras: ruleStats(c) };
 }

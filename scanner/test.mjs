@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce, dumpReason, lpFalseAlarm } from './run.mjs';
 import { buyScoreOk, entryCandidates as ecTest, profileCfg, readProfile } from './autobuy.mjs';
 import { shallowEntry, baseBreakout } from './signals.mjs';
-import { crazyEntry, simCrazy } from './sim.mjs';
+import { crazyEntry, simCrazy, marketTide, skepticOn } from './sim.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
 import { entrySignal, exitSignal, trailStop, weakSignals, realizeCheck, breakoutSignal } from './signals.mjs';
@@ -511,6 +511,18 @@ console.log(JSON.stringify(state.lastRun.counts));
   // não entra de novo na mesma moeda (só a primeira correção)
   simCrazy({ state: st, tokens: { Z: tok }, cfg: cfgT, now: t0 + 15e5, log: () => {}, solUsd: 140 });
   assert.equal(st.simLouco.open.length, 0);
+}
+
+// Regras em teste: maré vermelha e cético (2 stops seguidos = pausa de 45 min)
+{
+  const now = Date.now();
+  const mk = (n, red) => Object.fromEntries(Array.from({ length: n }, (_, i) => [`m${i}`, { status: 'aprovada', approvedAt: now - 3600e3, priceChangeH24: i < red ? -20 : 15 }]));
+  assert.equal(marketTide(mk(10, 8), now).vermelha, true);
+  assert.equal(marketTide(mk(10, 5), now).vermelha, false);
+  assert.equal(marketTide(mk(3, 3), now).vermelha, false); // poucas moedas: não decide
+  assert.equal(skepticOn([{ why: 'stop', exitAt: now - 10 * 60000 }, { why: 'stop', exitAt: now - 20 * 60000 }], now), true);
+  assert.equal(skepticOn([{ why: 'stop', exitAt: now - 60 * 60000 }, { why: 'stop', exitAt: now - 70 * 60000 }], now), false);
+  assert.equal(skepticOn([{ why: 'alvo +50%', exitAt: now - 10 * 60000 }, { why: 'stop', exitAt: now - 20 * 60000 }], now), false);
 }
 if (process.argv.includes('--demo')) {
   state.config = cfg;

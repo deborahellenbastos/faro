@@ -334,3 +334,8 @@ Limitação: o robô roda a cada 5 min. Altas muito rápidas, como a da goldie (
 - `licoes.json` na raiz: cada erro ou oportunidade perdida vira uma lição (data, moedas, o que aconteceu, a regra que nasceu, status aplicada / em teste / sugerida).
 - O robô leva o caderno para o painel junto com os dados (criptografado). Aba **Lições** na gaveta do Robô, com filtro por status.
 - A análise diária das 21:40 acrescenta as lições novas do dia (status "sugerida") e atualiza as "em teste" com o resultado da simulação. Só a Kerah decide aplicar.
+
+### Regras em teste: maré vermelha e cético (16/11)
+- `config.json > regrasEmTeste`. Não bloqueiam nada: só marcam as entradas das três simulações (`mare`, `cetico`) e medem o resultado delas (`stats.regras`).
+- Maré vermelha: 70%+ das moedas do Radar das últimas 24h (mínimo 5) caindo no dia (`state.mare`). Cético: 2 stops seguidos há menos de 45 min.
+- Na aba Simulação aparece quantas entradas cada regra teria evitado e se isso teria ajudado ou atrapalhado.

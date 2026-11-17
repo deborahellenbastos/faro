@@ -167,5 +167,16 @@
       "maxComprasPorDia": 15,
       "perdaMaxDiaVezes": 5
     }
+  },
+  "regrasEmTeste": {
+    "_comentario": "Só marcam as entradas da simulação e medem o que teriam evitado. Não bloqueiam nada ainda.",
+    "mare": {
+      "pctVermelho": 70,
+      "minMoedas": 5
+    },
+    "cetico": {
+      "stopsSeguidos": 2,
+      "pausaMin": 45
+    }
   }
 }
