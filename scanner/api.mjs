@@ -143,7 +143,7 @@ export async function getMemos(owner) {
   return (sigs || []).filter((x) => x.memo).map((x) => ({ sig: x.signature, memo: x.memo, at: (x.blockTime || 0) * 1000, err: x.err }));
 }
 export async function txSigner(sig) {
-  const tx = await rpc('getTransaction', [sig, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0, commitment: 'confirmed' }]);
+  const tx = await getTx(sig);
   const keys = tx?.transaction?.message?.accountKeys || [];
   return keys.find((k) => k.signer)?.pubkey || null;
 }
@@ -171,18 +171,28 @@ export async function getSolBalance(owner) {
 
 // Compras e vendas da carteira, lidas das transações (só leitura).
 // Processa das mais antigas para as mais novas, no máximo maxTx por rodada, continuando de onde parou.
+export async function getWalletIncoming(owner, limit = 60) {
+  const sigs = await rpc('getSignaturesForAddress', [owner, { limit }]);
+  const ins = [];
+  for (const x of (sigs || []).filter((y) => !y.err)) {
+    const tx = await getTx(x.signature);
+    if (tx && !tx.meta?.err) { const r = parseIncoming(tx, owner, x.signature); if (r) ins.push(r); }
+    await sleep(150);
+  }
+  return ins;
+}
 export async function getWalletOps(owner, lastSig, maxTx = 40) {
   const sigs = await rpc('getSignaturesForAddress', [owner, { limit: 100, ...(lastSig ? { until: lastSig } : {}) }]);
   const fresh = (sigs || []).filter((x) => !x.err);
   const batch = fresh.slice(-maxTx).reverse(); // as mais antigas das novas, em ordem cronológica
-  const ops = [];
+  const ops = [], ins = [];
   for (const x of batch) {
     const tx = await getTx(x.signature);
-    if (tx && !tx.meta?.err) ops.push(...parseOps(tx, owner, x.signature));
+    if (tx && !tx.meta?.err) { ops.push(...parseOps(tx, owner, x.signature)); const r = parseIncoming(tx, owner, x.signature); if (r) ins.push(r); }
     await sleep(150);
   }
   const newest = batch.length ? batch[batch.length - 1].signature : (sigs?.[0]?.signature || lastSig || null);
-  return { ops, lastSig: newest, pending: Math.max(0, fresh.length - batch.length) };
+  return { ops, ins, lastSig: newest, pending: Math.max(0, fresh.length - batch.length) };
 }
 
 // Transações novas da Solana podem vir em versões mais recentes; pedimos a maior que o RPC aceitar
@@ -257,6 +267,38 @@ export function parseOps(tx, owner, sig) {
   const op = { sig, at: (tx.blockTime || 0) * 1000, mint, tokens: deltas[0][1], sol };
   if (Math.abs(stable) > 0.005) op.stable = stable; // vira SOL equivalente quando soubermos o preço do SOL daquele minuto
   return [op];
+}
+
+// SOL que entrou sem troca de moeda, numa transação assinada por OUTRA carteira. Acontece quando a Phantom vende por
+// outra rota (ex.: OKX/CASH): a venda sai com ~0 SOL e o dinheiro chega minutos depois, noutra transação (17/11: Minnie).
+export function parseIncoming(tx, owner, sig) {
+  const meta = tx.meta || {};
+  const keys = (tx.transaction?.message?.accountKeys || []).map((k) => (typeof k === 'string' ? k : k.pubkey));
+  const i = keys.indexOf(owner); if (i < 0) return null;
+  const moved = [...(meta.preTokenBalances || []), ...(meta.postTokenBalances || [])].some((b) => {
+    if (b.owner !== owner) return false;
+    const pre = (meta.preTokenBalances || []).find((x) => x.accountIndex === b.accountIndex), post = (meta.postTokenBalances || []).find((x) => x.accountIndex === b.accountIndex);
+    return Math.abs(Number(post?.uiTokenAmount?.uiAmount || 0) - Number(pre?.uiTokenAmount?.uiAmount || 0)) > 1e-9;
+  });
+  if (moved) return null;
+  const sol = (Number(meta.postBalances?.[i] || 0) - Number(meta.preBalances?.[i] || 0)) / 1e9;
+  if (Math.abs(sol) < 0.001) return null;
+  return { sig, at: (tx.blockTime || 0) * 1000, sol, by: keys[0] || '' , self: keys[0] === owner };
+}
+
+// Liga a venda que saiu com ~0 SOL ao dinheiro que chegou depois (até 15 min), de outra carteira.
+// Entradas e saídas da mesma carteira no mesmo minuto que se anulam (empréstimo de taxa) não contam.
+export function linkDelayedProceeds(ops, ins) {
+  const real = (ins || []).filter((r) => !r.self && r.sol > 0 && !(ins || []).some((x) => x !== r && x.by === r.by && Math.abs(x.at - r.at) < 90000 && Math.abs(x.sol + r.sol) < 0.004));
+  const used = new Set((ops || []).filter((o) => o.linkSig).map((o) => o.linkSig));
+  let n = 0;
+  for (const o of [...(ops || [])].sort((a, b) => a.at - b.at)) {
+    if (!(o.tokens < 0) || o.linkSig || Math.abs(o.sol) > 0.0005) continue;
+    const r = real.filter((x) => !used.has(x.sig) && x.at >= o.at && x.at - o.at <= 15 * 60000).sort((a, b) => a.at - b.at)[0];
+    if (!r) continue;
+    o.sol = r.sol; o.linkSig = r.sig; used.add(r.sig); n++;
+  }
+  return n;
 }
 
 // Preço em dólar de um par num minuto exato do passado (GeckoTerminal). Para o SOL, use SOL_POOL.

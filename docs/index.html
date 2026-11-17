@@ -1817,8 +1817,9 @@
   function closedResult(t) {
     const p = t.position; if (!p?.known) return null;
     const key = t.history?.[0]?.sig || '';
-    const c = CLOSED[t.mint]; if (c && c.key === key) return c;
     const spent = p.spentUsd || 0, received = p.receivedUsd || 0;
+    // Congelado, mas refaz se o valor recebido mudou de verdade (ex.: dinheiro da venda que chegou depois, noutra transação)
+    const c = CLOSED[t.mint]; if (c && c.key === key && Math.abs(received - c.received) <= Math.max(0.05, c.received * 0.05)) return c;
     const r = { key, spent, received, pnl: received - spent, pct: spent ? ((received - spent) / spent) * 100 : 0, buys: p.buys, sells: p.sells, entry: p.avgPriceUsd };
     CLOSED[t.mint] = r; store.set('faro-closed', CLOSED);
     return r;

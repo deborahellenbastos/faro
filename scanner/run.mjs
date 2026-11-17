@@ -75,6 +75,11 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
           for (const o of r.ops) if (solUsdNow && !o.solUsd && now - o.at < 6 * 3600000) o.solUsd = solUsdNow;
           const seenSig = new Set(state.wallet.ops.map((o) => o.sig + o.mint));
           state.wallet.ops = [...state.wallet.ops, ...r.ops.filter((o) => !seenSig.has(o.sig + o.mint))].slice(-1500);
+          // Dinheiro de venda que chegou depois, noutra transação (venda pela Phantom por outra rota)
+          if (!state.wallet.insScan && api.getWalletIncoming) { try { r.ins = [...(r.ins || []), ...(await api.getWalletIncoming(wallet, 60))]; state.wallet.insScan = true; } catch {} }
+          const seenIn = new Set((state.wallet.ins || []).map((x) => x.sig));
+          state.wallet.ins = [...(state.wallet.ins || []), ...(r.ins || []).filter((x) => !seenIn.has(x.sig) && (seenIn.add(x.sig), true))].filter((x) => now - x.at < 7 * 86400000).slice(-300);
+          if (api.linkDelayedProceeds) { const n = api.linkDelayedProceeds(state.wallet.ops, state.wallet.ins); if (n) log(`Carteira: ${n} venda(s) com o dinheiro chegando depois, ligadas`); }
           state.wallet.lastSig = r.lastSig;
           state.wallet.updatedAt = now;
           if (r.ops.length) log(`Carteira: ${r.ops.length} compras/vendas novas lidas${r.pending ? ` (${r.pending} na fila)` : ''}`);

@@ -539,3 +539,19 @@ if (process.argv.includes('--demo')) {
   await writeFile(new URL('../docs/demo.json', import.meta.url), JSON.stringify(state));
   console.log('docs/demo.json gerado');
 }
+
+// 17/11: venda pela Phantom (rota OKX/CASH) sai com ~0 SOL e o dinheiro chega minutos depois, de outra carteira
+{
+  const { linkDelayedProceeds } = await import('./api.mjs');
+  const t0 = 1_000_000;
+  const ops = [{ sig: 'buy', at: t0 - 60000, mint: 'M', tokens: 100, sol: -0.05 }, { sig: 'sell', at: t0, mint: 'M', tokens: -100, sol: -0.00008 }];
+  const ins = [
+    { sig: 'loanIn', at: t0, sol: 0.05, by: 'FEE', self: false }, { sig: 'loanOut', at: t0, sol: -0.0485, by: 'FEE', self: false }, // empréstimo de taxa: não conta
+    { sig: 'pay', at: t0 + 200000, sol: 0.0375, by: 'PAYER', self: false },
+  ];
+  assert.equal(linkDelayedProceeds(ops, ins), 1);
+  assert.equal(ops[1].sol, 0.0375);
+  assert.equal(ops[1].linkSig, 'pay');
+  assert.equal(linkDelayedProceeds(ops, ins), 0); // não liga duas vezes
+}
+console.log('Teste do dinheiro de venda que chega depois: ok');
