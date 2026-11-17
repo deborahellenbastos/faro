@@ -1211,6 +1211,15 @@
   .radar-chips button.on { animation: none !important; }
   .radar-chips button { transition: background .25s ease, color .25s ease !important; }
   .radar-chips button:active { transform: none !important; }
+
+  /* Folha das notificações: mesmo topo da folha da moeda (alça dentro, 24px) e menos espaço embaixo */
+  @media (max-width: 1099px) {
+    #inbox .drawer-panel { padding: 0 16px max(10px, calc(env(safe-area-inset-bottom) - 14px)) !important; overflow: hidden; }
+    #inbox .inbox-grip { position: relative !important; height: 24px !important; margin: 0 -16px !important; display: grid !important; place-items: center; }
+    #inbox .drawer-head { padding-top: 0 !important; }
+    #inbox .drawer-foot { padding-top: 10px !important; margin-top: 8px !important; }
+    body.in-phantom #inbox .drawer-panel { padding-bottom: 92px !important; }
+  }
 </style>
 </head>
 <body>
