@@ -1189,6 +1189,10 @@
     .tabbar button svg { transition: transform .3s cubic-bezier(.3,1.4,.5,1); }
     .tabbar button.on svg { transform: scale(1.08); }
   }
+
+  /* Cabeçalho da moeda: coração embaixo da nota/status, sem invadir o nome */
+  .d-head .d-actions { flex-direction: column !important; align-items: flex-end !important; gap: 10px !important; }
+  .d-head .d-actions .fav-btn { order: 2; }
 </style>
 </head>
 <body>
