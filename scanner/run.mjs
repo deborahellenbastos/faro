@@ -242,8 +242,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         if (liqDrop < 15 || lpFlips > 1) { log(`${t.symbol}: RugCheck diz liquidez destravada, mas a liquidez no mercado não caiu (${liqDrop.toFixed(0)}%)${lpFlips > 1 ? ' e aconteceu com várias moedas juntas' : ''}. Ignorado.`); scam = scam.filter((x) => !isLpSignal(x)); }
       }
       // Só vale vender se sobrar pelo menos o valor mínimo (senão as taxas comem tudo)
-      const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
-      // Posição que vale menos de US$ 1: não vende sozinho (a taxa não compensa e ela pode ter um bump)
+      const minUsd = cfg.venda?.valorMinimoProtecaoUsd ?? 0.25; // golpe é proteção: vende a partir de US$ 0,25
+      // Posição que vale menos que isso: não vende sozinho (a taxa não compensa e ela pode ter um bump)
       const worth = (t.heldAmount || 0) * (m.priceUsd || 0);
       if (scam.length && trader?.canSell && !(t.autoSell?.ok) && worth < minUsd) {
         if (!t.autoSell?.skipped) log(`GOLPE em ${t.symbol}, mas a operação é de só US$ ${worth.toFixed(2)} (mínimo US$ ${minUsd}). Não vendi.`);
@@ -264,7 +264,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (t.autoSell) {
         const a = t.autoSell;
         const alert = a.skipped
-          ? { id: 'auto-venda', level: 'info', at: a.at, msg: `Golpe no contrato (${a.why}), mas a operação é menor que US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender` }
+          ? { id: 'auto-venda', level: 'info', at: a.at, msg: `Golpe no contrato (${a.why}), mas a operação é menor que US$ ${cfg.venda?.valorMinimoProtecaoUsd ?? 0.25}: não compensa vender` }
           : a.ok
           ? { id: 'auto-venda', level: 'danger', at: a.at, msg: `Robô vendeu 100% automaticamente${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`, sig: a.sig }
           : { id: 'auto-venda', level: 'danger', at: a.at, msg: `Tentei vender 100% (${a.why}) e falhou: ${a.erro}. Venda manualmente!` };
@@ -484,7 +484,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   for (const t of Object.values(tokens)) {
     const a = t.watchSell; if (!a || !t.safety || a.dust) continue; // resto sem valor: sem aviso
     const msg = a.nada ? `A vigia ia vender (${a.why}), mas a moeda já tinha saído da carteira (venda feita antes, fora do robô)`
-      : a.skipped ? `${a.kind === 'golpe' ? 'Golpe' : 'Sinal de venda'} (${a.why}), mas a operação é menor que US$ ${cfg.venda?.valorMinimoUsd ?? 1}: não compensa vender`
+      : a.skipped ? `${a.kind === 'golpe' ? 'Golpe' : 'Sinal de venda'} (${a.why}), mas a operação é menor que US$ ${cfg.venda?.valorMinimoProtecaoUsd ?? 0.25}: não compensa vender`
       : a.ok ? `Robô vendeu 100%${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`
       : `Vigia rápida tentou vender (${a.why}) e falhou: ${a.erro}. Venda manualmente!`;
     // Golpe no contrato = perigo; queda de liquidez = atenção; queda de preço ou lucro = só aviso (a moeda pode seguir viva)

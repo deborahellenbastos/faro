@@ -58,6 +58,7 @@
     "automatica": true,
     "slippageMaxPct": 30,
     "valorMinimoUsd": 1,
+    "valorMinimoProtecaoUsd": 0.25,
     "restoSemValorUsd": 0.05,
     "fecharContasVazias": true,
     "contasPorRodada": 10,

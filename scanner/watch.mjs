@@ -47,6 +47,10 @@ const confSells = V.confirmaVendasPct ?? 60;
 const liqPct = V.quedaLiquidezPct ?? 30;
 const liqWin = (V.janelaLiquidezMin ?? 5) * 60000;
 const minUsd = cfg.venda?.valorMinimoUsd ?? 1;
+// Proteções (stop de perda, stop móvel, golpe, queda forte): vendem a partir de US$ 0,25. A taxa da venda é ~US$ 0,01,
+// então vale sair. O mínimo de US$ 1 fica só para realizar lucro (17/11: JVOLT caiu -30% valendo US$ 0,84 e o robô não vendeu)
+const minProtect = cfg.venda?.valorMinimoProtecaoUsd ?? 0.25;
+const PROTECT = new Set(['stop-perda', 'stop-movel', 'golpe', 'vigia']);
 const dustUsd = cfg.venda?.restoSemValorUsd ?? 0.05;
 const SM = cfg.venda?.stopMovel || {};
 const trailOn = SM.ligado === true;
@@ -157,7 +161,7 @@ async function sell(t, why, kind, px) {
   const worth = (t.heldAmount || 0) * px, cost = t.position?.known ? t.position.costOpenUsd || 0 : 0;
   // Resto sem valor (menos de US$ 0,05, ex.: AI e ANGSTIPAN em 16/11): nem avisa, só volta a olhar daqui a 6h
   if (worth < dustUsd) { mem.sold[t.mint] = { skipped: true, dust: true, at: Date.now(), why, worth, kind }; return; }
-  if (worth < minUsd) { mem.sold[t.mint] = { skipped: true, at: Date.now(), why, worth, kind }; log(`${t.symbol}: ${why}, mas a operação é pequena (investido US$ ${cost.toFixed(2)}, vale US$ ${worth.toFixed(2)}). Não vendi.`); return; }
+  if (worth < (PROTECT.has(kind) ? minProtect : minUsd)) { mem.sold[t.mint] = { skipped: true, at: Date.now(), why, worth, kind }; log(`${t.symbol}: ${why}, mas a operação é pequena (investido US$ ${cost.toFixed(2)}, vale US$ ${worth.toFixed(2)}). Não vendi.`); return; }
   log(`${t.symbol}: ${why}. Vendendo 100%...`);
   try {
     const s = await trader.sellAll(t.mint);
