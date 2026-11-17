@@ -1147,7 +1147,6 @@
   @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
   @keyframes pulse { 0%,100% { transform: scale(1); } 45% { transform: scale(1.14); } }
   .pop[data-tab="aguardando"] svg { animation: blink .45s ease; }
-  .pop[data-tab="reprovada"] svg { animation: wiggle .55s ease; }
   .pop[data-open-robot] svg, .pop.m-robot svg { animation: wave .6s ease; }
   #bell.pop svg, #bell.ring svg { transform-origin: 50% 10%; animation: ring .8s ease; }
   .tabbar button.on svg, .nav-item.on svg { filter: drop-shadow(0 0 8px rgba(16,210,127,.45)); }
@@ -1229,13 +1228,18 @@
     .nt { padding: 12px !important; }
   }
   /* Ícones da barra ao tocar: radar com o ponteiro varrendo; carteira abrindo e fechando de leve */
-  [data-tab="aprovada"] svg path, [data-tab="minhas"] svg path:first-child { transform-box: view-box; }
+  [data-tab="aprovada"] svg path { transform-box: view-box; }
   [data-tab="aprovada"] svg path { transform-origin: 12px 12px; }
   .pop[data-tab="aprovada"] svg path { animation: sweep .75s cubic-bezier(.35,.1,.25,1); }
   @keyframes sweep { to { transform: rotate(360deg); } }
-  [data-tab="minhas"] svg path:first-child { transform-origin: 4px 7px; }
-  .pop[data-tab="minhas"] svg path:first-child { animation: walletOpen .6s ease-in-out; }
-  @keyframes walletOpen { 0%,100% { transform: none; } 40%,55% { transform: translateY(-1.5px) rotate(-12deg); } }
+  /* Carteira: inclina e volta, inteira (sem separar as linhas) */
+  [data-tab="minhas"] svg { transform-origin: 50% 80%; }
+  .pop[data-tab="minhas"] svg { animation: walletTilt .5s ease-in-out; }
+  @keyframes walletTilt { 0%,100% { transform: none; } 35% { transform: rotate(-10deg) translateY(-1px); } 70% { transform: rotate(4deg); } }
+  /* Reprovadas: escudo parado; os traços do X se desenham e se cruzam */
+  .pop[data-tab="reprovada"] svg .x1, .pop[data-tab="reprovada"] svg .x2 { stroke-dasharray: 8; stroke-dashoffset: 8; animation: xDraw .28s ease-out forwards; }
+  .pop[data-tab="reprovada"] svg .x2 { animation-delay: .16s; }
+  @keyframes xDraw { to { stroke-dashoffset: 0; } }
 </style>
 </head>
 <body>
@@ -1252,7 +1256,7 @@
       <button class="nav-item" data-tab="minhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><path d="M16 14h.01"/></svg><span>Carteira</span><i class="nav-dot" data-dot hidden></i><em data-count="minhas"></em></button>
       <button class="nav-item" data-tab="aprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg><span>Radar</span><em data-count="aprovada"></em></button>
       <button class="nav-item" data-tab="aguardando"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Observando</span><em data-count="aguardando"></em></button>
-      <button class="nav-item" data-tab="reprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9.5 9.5 5 5m0-5-5 5"/></svg><span>Reprovadas</span><em data-count="reprovada"></em></button>
+      <button class="nav-item" data-tab="reprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path class="x1" d="m9.5 9.5 5 5"/><path class="x2" d="m14.5 9.5-5 5"/></svg><span>Reprovadas</span><em data-count="reprovada"></em></button>
       <div class="nav-label">Sistema</div>
       <button class="nav-item" data-open-robot><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg><span>Robô e filtros</span></button>
     </nav>
@@ -1318,7 +1322,7 @@
     <button data-tab="minhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><path d="M16 14h.01"/></svg>Carteira<i class="nav-dot" data-dot hidden></i></button>
     <button data-tab="aprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg>Radar</button>
     <button data-tab="aguardando"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Observando</button>
-    <button data-tab="reprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9.5 9.5 5 5m0-5-5 5"/></svg>Reprovadas</button>
+    <button data-tab="reprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path class="x1" d="m9.5 9.5 5 5"/><path class="x2" d="m14.5 9.5-5 5"/></svg>Reprovadas</button>
     <button class="tb-robot" data-open-robot><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg>Robô</button>
   </nav>
 </div>
