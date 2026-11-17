@@ -563,6 +563,26 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       const limits = buyLimits(state, tokens, realCfg, now);
       const trades = await trader.maybeBuy(realList, state, realCfg, log, limits);
       state.trades.push(...trades);
+      // Compra feita agora: já entra na carteira desta rodada, com entrada e posição (antes só aparecia na rodada seguinte, 5 min depois)
+      const okBuys = trades.filter((x) => x.ok && x.sig);
+      if (okBuys.length && wallet && state.wallet && api.getRecentOps) {
+        try {
+          if (api.sleep) await api.sleep(2500);
+          const recent = await api.getRecentOps(wallet, 8);
+          let solUsdNow = null; try { solUsdNow = api.getSolUsd ? await api.getSolUsd() : null; } catch {}
+          for (const b of okBuys) {
+            const op = recent.find((o) => o.sig === b.sig && o.mint === b.mint); const t = tokens[b.mint];
+            if (!op || !t) continue;
+            if (solUsdNow && !op.solUsd) op.solUsd = solUsdNow;
+            if (!state.wallet.ops.some((o) => o.sig === op.sig && o.mint === op.mint)) state.wallet.ops.push(op);
+            if (!t.held) t.heldSince = now;
+            t.held = true; t.closedOp = false; t.heldAmount = (t.heldAmount || 0) + op.tokens; t.status = t.status === 'nova' ? 'carteira' : t.status;
+            const myOps = state.wallet.ops.filter((o) => o.mint === t.mint);
+            t.position = positionFrom(myOps, t.heldAmount, t.priceNative, t.priceUsd);
+            t.history = myOps.slice(-50).reverse().map((o) => ({ sig: o.sig, at: o.at, tokens: o.tokens, sol: o.sol }));
+          }
+        } catch (e) { log(`Não consegui registrar a compra na hora: ${e.message}`, true); }
+      }
     } catch (e) { log(`Módulo de compra falhou: ${e.message}`, true); }
   }
 
