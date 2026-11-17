@@ -144,7 +144,8 @@
   .row.on { background: var(--panel-3); box-shadow: inset 0 0 0 1px var(--line-2); }
   .row .avatar { width: 40px; height: 40px; }
   .r-main { min-width: 0; }
-  .r-main b { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; }
+  .r-main b { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; }
+  .r-main b .mini-tag { flex: none; white-space: nowrap; }
   .r-main small { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .r-side { text-align: right; display: grid; justify-items: end; gap: 2px; }
   .r-side b { font-size: 14px; font-weight: 700; }
@@ -611,7 +612,7 @@
   .radar-chips button.on { background: var(--text); color: var(--bg); border-color: var(--text); } .radar-chips button.on small { color: var(--bg); opacity: .6; }
   .r-radar { display: flex; align-items: center; gap: 10px; }
   .spark { flex: none; display: block; }
-  @media (max-width: 420px) { .spark { width: 48px; } }
+  @media (max-width: 700px) { .spark { width: 44px; height: 22px; } .r-radar { gap: 8px; } .r-main b .mini-tag + .mini-tag { display: none; } }
   .av-wrap { position: relative; width: 40px; height: 40px; flex: none; }
   .av-wrap .avatar { width: 40px; height: 40px; }
   .medal { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; color: #1a1306; box-shadow: 0 0 0 2px var(--panel); }
