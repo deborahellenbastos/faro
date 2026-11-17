@@ -1361,6 +1361,22 @@
   /* Foto da moeda alinhada ao topo do cabeçalho (computador e celular) */
   .d-head { align-items: flex-start !important; }
   .d-head .avatar, .d-head .av-wrap { align-self: start !important; margin-top: 2px; }
+  /* Menu lateral recolhível (computador) */
+  .side-toggle { margin-left: auto; width: 32px; height: 32px; flex: none; border: 0; border-radius: 10px; background: transparent; color: var(--faint); display: grid; place-items: center; cursor: pointer; transition: background .2s, color .2s; }
+  .side-toggle:hover { background: rgba(255,255,255,.06); color: var(--text); }
+  .side-toggle svg { width: 18px; height: 18px; transition: transform .25s; }
+  .sidebar .brand { display: flex; align-items: center; gap: 12px; }
+  .app { transition: grid-template-columns .25s ease; }
+  body.side-mini { --side-w: 76px; }
+  body.side-mini .sidebar { padding-left: 12px !important; padding-right: 12px !important; align-items: center; overflow: visible; }
+  body.side-mini .sidebar .brand { flex-direction: column; gap: 10px; }
+  body.side-mini .sidebar .brand > div:not(.brand-mark), body.side-mini .nav-label, body.side-mini .nav-item span, body.side-mini .nav-item em,
+  body.side-mini .side-foot .sw-row, body.side-mini .side-foot .side-sep, body.side-mini .side-foot .lock-btn, body.side-mini .bot-status > div { display: none !important; }
+  body.side-mini .side-toggle { margin-left: 0; } body.side-mini .side-toggle svg { transform: scaleX(-1); }
+  body.side-mini .nav { align-items: center; }
+  body.side-mini .nav-item { width: 48px; height: 48px; padding: 0 !important; justify-content: center; }
+  body.side-mini .nav-item.on::before { left: -12px; }
+  body.side-mini .side-foot { align-items: center; }
 </style>
 </head>
 <body>
@@ -1370,6 +1386,7 @@
     <div class="brand">
       <div class="brand-mark"><svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><defs><linearGradient id="LG" x1="4" y1="2" x2="36" y2="38" gradientUnits="userSpaceOnUse"><stop stop-color="#5BF7B8"/><stop offset=".48" stop-color="#10D27F"/><stop offset="1" stop-color="#067A49"/></linearGradient><linearGradient id="LS" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient><linearGradient id="LW" x1="21" y1="9" x2="10" y2="16" gradientUnits="userSpaceOnUse"><stop stop-color="#04150C" stop-opacity=".75"/><stop offset="1" stop-color="#04150C" stop-opacity="0"/></linearGradient></defs><rect width="40" height="40" rx="10" fill="url(#LG)"/><rect x=".5" y=".5" width="39" height="39" rx="9.5" stroke="url(#LS)"/><circle cx="20" cy="20" r="12" stroke="#04150C" stroke-width="2.2"/><circle cx="20" cy="20" r="6.5" stroke="#04150C" stroke-opacity=".28" stroke-width="1.6"/><path d="M8 20h24M20 8v24" stroke="#04150C" stroke-opacity=".16" stroke-width="1.4"/><path d="M20 20V8a12 12 0 0 0-11.3 8Z" fill="url(#LW)"/><path d="M20 20V8.6" stroke="#04150C" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="20" r="2.2" fill="#04150C"/><circle cx="27" cy="14.5" r="2.1" fill="#fff"/><circle cx="27" cy="14.5" r="3.6" stroke="#fff" stroke-opacity=".45" stroke-width="1"/></svg></div>
       <div><b>Faro</b><span>radar de memecoins</span></div>
+      <button class="side-toggle" data-sidetoggle aria-label="Recolher o menu" title="Recolher o menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/><path d="m15 10-2 2 2 2"/></svg></button>
     </div>
 
     <nav class="nav" id="nav">
@@ -3541,6 +3558,10 @@ function trendEntry(c, ctx = {}) {
     const go = e.target.closest('[data-mosaicgo]'); if (go) { const m = go.dataset.mosaicgo; closeMosaic(); goTo(m); }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('mosaic')) closeMosaic(); });
+  // Menu lateral (computador) recolhível: só os ícones, mais espaço para a lista e o gráfico
+  { const apply = (on) => { document.body.classList.toggle('side-mini', on); const b = document.querySelector('[data-sidetoggle]'); if (b) { b.title = b.ariaLabel = on ? 'Abrir o menu' : 'Recolher o menu'; } document.querySelectorAll('.sidebar .nav-item').forEach((n) => { if (!n.title) n.title = n.querySelector('span')?.textContent || ''; }); setTimeout(() => window.dispatchEvent(new Event('resize')), 260); };
+    apply(!!store.get('faro-side-mini', false));
+    document.addEventListener('click', (e) => { if (e.target.closest('[data-sidetoggle]')) { const on = !document.body.classList.contains('side-mini'); store.set('faro-side-mini', on); apply(on); } }); }
   document.addEventListener('change', (e) => { if (e.target.id === 'an-date') { ui.anDate = e.target.value || ''; ui.page = 1; render(); } });
 
   async function buildChart() {
