@@ -1404,6 +1404,9 @@
   .ci-bar { display: inline-block; width: 70px; height: 6px; border-radius: 3px; background: rgba(255,91,91,.55); overflow: hidden; }
   .ci-bar > i { display: block; height: 100%; background: var(--green); }
   @media (max-width: 700px) { .ci-tx small, .ci-bar { display: none; } }
+  .mo-info { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 0 12px 8px; }
+  .mo-info .ci-score .score { transform: scale(.85); transform-origin: left center; }
+  .mo-info .ci-tx small, .mo-info .ci-bar { display: inline-block; } .mo-info .ci-bar { width: 50px; }
   /* Favoritas: botão de coração ao lado do sino */
   .favbtn[hidden] { display: none !important; }
   .favbtn { position: relative; }
@@ -3580,7 +3583,7 @@ function trendEntry(c, ctx = {}) {
   const MOS = { tiles: [], timer: null, iv: store.get('faro-mos-iv', '5m') };
   function closeMosaic() { const m = $('mosaic'); if (m) m.remove(); MOS.tiles.forEach((x) => { try { x.ch.remove(); } catch {} }); MOS.tiles = []; clearInterval(MOS.timer); MOS.timer = null; document.body.classList.remove('mosaic-on'); }
   const MO_TOOLS = [['cursor', TOOL_ICON?.cursor || '&#8598;', 'Cursor'], ['h', TOOL_ICON?.h || '&#8212;', 'Linha horizontal: clique no preço'], ['t', TOOL_ICON?.t || '&#8599;', 'Tendência: clique no início e no fim']];
-  function moHead(t) { const p = t.position || {}; return `<div class="mo-h"><button class="mo-open" data-mosaicgo="${esc(t.mint)}" title="Abrir a moeda">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b><small>${levelOf(t) === 'ok' ? 'Segura' : levelOf(t) === 'warn' ? 'Atenção' : 'Perigo'}</small></span></button><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div>`; }
+  function moHead(t) { const p = t.position || {}; return `<div class="mo-h"><button class="mo-open" data-mosaicgo="${esc(t.mint)}" title="Abrir a moeda">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b></span></button><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div><div class="mo-info">${infoHtml(t)}</div>`; }
   // Usa o mesmo desenho do gráfico principal (entrada, meta, stop de perda/móvel, metas do robô, fib, ordens, traços,
   // marcas de compra/venda e sinais), apontando o desenho para o gráfico deste quadro
   function moDraw(x) {
@@ -3633,7 +3636,7 @@ function trendEntry(c, ctx = {}) {
     }
     MOS.timer = setInterval(() => {
       if (!$('mosaic')) return closeMosaic();
-      MOS.tiles.forEach((x) => { moFill(x); const h = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); const nt = data?.tokens?.[x.mint]; if (h && nt) h.outerHTML = moHead(nt); });
+      MOS.tiles.forEach((x) => { moFill(x); const h = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); const nt = data?.tokens?.[x.mint]; if (h && nt) { const html = moHead(nt); if (h.__html !== html) { h.nextElementSibling?.classList.contains('mo-info') && h.nextElementSibling.remove(); h.outerHTML = html; const nh = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); if (nh) nh.__html = html; } } });
     }, 30000);
   }
   function moSetTool(x, k) { x.tool = k; x.pending = null; $('mosaic')?.querySelectorAll(`[data-motool][data-momint="${CSS.escape(x.mint)}"]`).forEach((b) => b.classList.toggle('on', b.dataset.motool === k)); }
@@ -4713,12 +4716,16 @@ function trendEntry(c, ctx = {}) {
   // Gráfico expandido: na barra de cima, selo de segurança, nota e compras x vendas da última hora (atualiza ao vivo)
   function updCmaxInfo(t) {
     const el = document.querySelector(`[data-cmaxinfo="${CSS.escape(t.mint)}"]`); if (!el) return;
+    const html = infoHtml(t);
+    if (el.__html !== html) { el.innerHTML = html; el.__html = html; }
+  }
+  // Selo de segurança, nota e compras x vendas da última hora (gráfico expandido e mosaico)
+  function infoHtml(t) {
     const l = levelOf(t), P = t.periods?.h1 || {}, b = Number(P.buys ?? t.buysH1) || 0, v = Number(P.sells ?? t.sellsH1) || 0, tot = b + v;
     const pctB = tot ? Math.round((b / tot) * 100) : null;
-    const html = `<span class="pill ${l === 'ok' ? '' : l}">${{ ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[l]}</span>
+    return `<span class="pill ${l === 'ok' ? '' : l}">${{ ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[l]}</span>
       ${t.score != null ? `<span class="ci-score" title="Nota">${scoreBadge(t.score, true)}</span>` : ''}
       ${tot ? `<span class="ci-tx" title="Transações na última hora"><b class="pos num">${int(b)}</b><small>compras</small><i class="ci-bar"><i style="width:${pctB}%"></i></i><b class="neg num">${int(v)}</b><small>vendas</small></span>` : ''}`;
-    if (el.__html !== html) { el.innerHTML = html; el.__html = html; }
   }
   function mountDetail(t) {
     updateEmergDock(t);
