@@ -4315,7 +4315,7 @@ function baseBreakout(c, ctx = {}) {
         <div class="mh-top"><div class="mh-big num">${W.total != null ? money(W.total) : '-'}</div>
         <div class="mh-day num" title="Resultado das operações de hoje">${D.n ? `<span class="${cls(D.pnl)}">${signedMoney(D.pnl)}</span>${D.spent ? `<em class="${cls(D.pnl)}">${pct((D.pnl / D.spent) * 100)}</em>` : ''}` : '<small>sem operações hoje</small>'}</div></div>
         <div class="mh-chips">
-          <div><small>Em aberto${mine.length ? ` (${mine.length})` : ''}</small><b class="num">${money(value)}</b></div>
+          <div><small>Em aberto</small><b class="num">${money(value)}</b></div>
           <div><small>Disponível${W.solUsd != null ? ` (${money(W.solUsd)})` : ''}</small><b class="num">${W.sol != null ? solFmt(W.sol, 4) : '-'}</b></div>
           <div><small>Resultado</small><b class="num ${cls(pnl)}">${signedMoney(pnl)}</b></div>
         </div>`;
