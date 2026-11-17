@@ -5013,7 +5013,10 @@ function baseBreakout(c, ctx = {}) {
   });
 
   // ---------- Atualização automática (também em segundo plano, para os sons tocarem) ----------
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { unread = 0; load(); } });
+  // Voltou para o app (iPhone pausa tudo em segundo plano): recarrega os dados E lê na hora as compras/vendas feitas fora do Faro
+  const onResume = () => { unread = 0; load(); try { pollWallet(); } catch {} };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) onResume(); });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) onResume(); });
   setInterval(() => {
     const typing = document.activeElement?.matches?.('[data-tamt],[data-tslipin],#search');
     const pending = Object.values(ui.trade).some((x) => x.quote || x.busy);
