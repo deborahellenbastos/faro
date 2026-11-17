@@ -108,7 +108,7 @@ export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, can
   sim.stats.curva = { ops: cv.length, winRate: cv.length ? (cv.filter((x) => x.pnlPct > 0).length / cv.length) * 100 : 0, pnlSol: cv.reduce((a, x) => a + x.pnlSol, 0) };
 }
 
-// ---------- Perfil Enlouquecido (só simulação) ----------
+// ---------- Perfil Crazy (só simulação) ----------
 // Giro rápido: moeda entrou no Radar, espera a PRIMEIRA correção (recuo desde a máxima depois da aprovação) e entra
 // na primeira vela de reação com compra, com valor fixo (US$ 3). Vende em +50%; se a alta estiver muito forte,
 // segura com um stop colado no topo e vende de vez em +80%. Stop -20% e no máximo 2 h por operação.
@@ -163,7 +163,7 @@ export function simCrazy({ state, tokens, cfg, now, log, solUsd }) {
     const net = (exit / o.entry) * (1 - cost) / (1 + cost) - 1;
     sim.open = sim.open.filter((x) => x !== o);
     sim.closed.unshift({ ...o, exitAt: now, exit, why, pnlPct: net * 100, pnlSol: o.sol * net });
-    log(`SIMULAÇÃO ENLOUQUECIDO: fechou ${o.symbol} por ${why} (${net >= 0 ? '+' : ''}${(net * 100).toFixed(1)}%)`);
+    log(`SIMULAÇÃO CRAZY: fechou ${o.symbol} por ${why} (${net >= 0 ? '+' : ''}${(net * 100).toFixed(1)}%)`);
   }
   sim.closed = sim.closed.slice(0, 300);
   // 2. Entradas (uma vez por moeda: "a primeira correção")
@@ -178,7 +178,7 @@ export function simCrazy({ state, tokens, cfg, now, log, solUsd }) {
       if (!g) continue;
       sim.done[t.mint] = now;
       sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: g.px, sol, usd, score: t.score, recuo: g.recuo, stop: g.px * (1 - (L.stopPct ?? 20) / 100), tp: g.px * (1 + (L.alvoPct ?? 50) / 100), rr: (L.alvoPct ?? 50) / (L.stopPct ?? 20), sinal: `Primeira correção (-${g.recuo.toFixed(0)}% do topo) com reação` });
-      log(`SIMULAÇÃO ENLOUQUECIDO: entrou em ${t.symbol} na primeira correção (-${g.recuo.toFixed(0)}% do topo), US$ ${usd}`);
+      log(`SIMULAÇÃO CRAZY: entrou em ${t.symbol} na primeira correção (-${g.recuo.toFixed(0)}% do topo), US$ ${usd}`);
     }
   }
   for (const k of Object.keys(sim.done)) if (now - sim.done[k] > 2 * 86400000) delete sim.done[k];

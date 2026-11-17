@@ -324,7 +324,7 @@ Limitação: o robô roda a cada 5 min. Altas muito rápidas, como a da goldie (
 - Travas de golpe, curva da pump.fun, stops e vigia são iguais nos dois perfis.
 - A simulação roda os dois perfis sempre (`state.sim` e `state.simAgr`), com comparação lado a lado na aba Simulação.
 
-### Perfil Enlouquecido (só simulação, 16/11)
+### Perfil Crazy (só simulação, 16/11; chave enlouquecido)
 - `state.simLouco`, `simCrazy` em `scanner/sim.mjs`, configuração em `config.json > perfis.enlouquecido`.
 - Entra uma vez por moeda: depois da aprovação, espera a primeira correção (15% a 45% abaixo da máxima) e a primeira vela de reação com compra. Nota 50+, sem perigo, nunca na curva da pump.fun.
 - Valor fixo de US$ 3. Vende em +50%; se a alta estiver muito forte (compra 60%+ na hora e gráfico orgânico), segura com stop colado no topo (12% abaixo) e vende de vez em +80%. Stop -20%, no máximo 2h, até 4 abertas e 15 por dia.

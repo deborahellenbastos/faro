@@ -542,7 +542,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // rompimentos frescos (até 10 min) em moedas do radar, com as mesmas travas de segurança da lista de compra
   const rompList = Object.values(tokens).filter((t) => t.romp && now - t.romp.at <= 10 * 60000 && !t.held && t.status === 'aprovada' && t.safety?.level !== 'danger' && t.dexId !== 'pumpfun' && !buyList.includes(t));
   try { simStep({ state, tokens, candidates: [...buyList, ...curveList.filter((t) => !buyList.includes(t)), ...notaList], rompidas: rompList, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
-  // Perfil Enlouquecido (só simulação): primeira correção depois do Radar, US$ 3, giro rápido
+  // Perfil Crazy (só simulação): primeira correção depois do Radar, US$ 3, giro rápido
   try {
     const solUsdNow = Object.values(tokens).map((t) => (t.priceNative > 0 ? t.priceUsd / t.priceNative : 0)).find((v) => v > 0) || 0;
     simCrazy({ state, tokens, cfg, now, log, solUsd: solUsdNow });

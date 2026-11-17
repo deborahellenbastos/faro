@@ -489,7 +489,7 @@ console.log(JSON.stringify(state.lastRun.counts));
   assert.equal(ecTest({ Y: { ...tok, safety: { level: 'danger', alerts: [] } } }, A, now, { agr: true }).length, 0);
 }
 
-// Perfil Enlouquecido (só simulação): primeira correção depois do Radar, US$ 3, +50%
+// Perfil Crazy (só simulação): primeira correção depois do Radar, US$ 3, +50%
 {
   const cfgT = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
   const L = cfgT.perfis.enlouquecido;
