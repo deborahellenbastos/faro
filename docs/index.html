@@ -3438,7 +3438,9 @@
       aprovada: ['Radar limpo por enquanto', 'Os filtros estão rígidos de propósito. Melhor nenhuma do que uma ruim.'],
     }[ui.tab] || ['Nada por aqui', ''];
     const sub = (label, n) => `<div class="list-sub">${label}<small>${n}</small></div>`;
-    const rows = slice.map((t, i) => {
+    // "Em aberto" sempre no topo da Carteira (com 0 quando não há nenhuma), para o layout não pular
+    const openHdr = ui.tab === 'minhas' && !q && ui.page === 1 && !mine.length ? sub('Em aberto', 0) : '';
+    const rows = openHdr + slice.map((t, i) => {
       if (t.__deadHdr) return `<button class="list-sub fold ${prefs.mortasOpen ? 'open' : ''}" data-mortas aria-expanded="${!!prefs.mortasOpen}">Mortas - valem menos de US$ 1<small>${dead.length}</small>${ICON.chev}</button>`;
       let head = '';
       if (ui.tab === 'minhas' && !q) {
@@ -3448,7 +3450,7 @@
       }
       return head + rowHtml(t, t.mint === sel);
     }).join('');
-    $('list').innerHTML = slice.length ? rows
+    $('list').innerHTML = slice.length || openHdr ? rows
       : `<div class="empty">${ICON.radar}<b>${q ? 'Nada encontrado' : empty[0]}</b>${q ? 'Tente outro nome ou endereço.' : empty[1]}</div>`;
     $('pager').hidden = items.length <= PAGE_SIZE;
     $('page').textContent = `${ui.page} de ${pages}`;
