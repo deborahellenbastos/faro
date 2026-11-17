@@ -1270,6 +1270,19 @@
   .trade-fold[open] .tf-chev { transform: rotate(180deg); }
   .trade-fold-body { padding: 0 18px 18px; }
   .trade-fold-body > .panel, .trade-fold-body > section { margin: 0; border: 0; background: none; box-shadow: none; padding-left: 0; padding-right: 0; }
+  /* Venda de emergência fixa (moeda da carteira em perigo) */
+  #emerg-dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 14px); width: min(440px, calc(100vw - 24px)); z-index: 60; }
+  #emerg-dock[hidden] { display: none; }
+  #emerg-dock .emerg { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 18px; border: 0; border-radius: 20px; background: linear-gradient(180deg, #ff5b5b, #d93d3d); color: #fff; box-shadow: 0 10px 30px rgba(255,91,91,.35), inset 0 1px 0 rgba(255,255,255,.25); text-align: left; cursor: pointer; }
+  #emerg-dock .emerg svg { width: 22px; height: 22px; flex: none; }
+  #emerg-dock .emerg span { display: grid; gap: 1px; } #emerg-dock .emerg b { font-size: 15px; } #emerg-dock .emerg small { font-size: 12.5px; opacity: .85; }
+  #emerg-dock .emerg:disabled { opacity: .6; }
+  @media (max-width: 1099px) {
+    body:not(.show-detail) #emerg-dock { display: none; }
+    body.has-emerg .detail { padding-bottom: calc(env(safe-area-inset-bottom) + 96px) !important; }
+  }
+  @keyframes alertFlash { 0% { box-shadow: 0 0 0 0 rgba(255,91,91,.55); } 100% { box-shadow: 0 0 0 14px rgba(255,91,91,0); } }
+  .alerts.flash { animation: alertFlash 1.1s ease-out 2; }
 </style>
 </head>
 <body>
@@ -2090,7 +2103,7 @@
     const t = data?.tokens?.[mint]; if (!t) return;
     ui.tab = isMine(t) ? 'minhas' : t.status; ui.sel[ui.tab] = mint; ui.page = 1;
     if (isNarrow()) openSheet();
-    render();
+    render(); focusDanger(mint);
   }
 
   // ---------- Cofre: dados criptografados com a sua senha ----------
@@ -3003,7 +3016,7 @@ function baseBreakout(c, ctx = {}) {
     const al = t.safety?.alerts || [];
     if (!al.length) return '';
     const lvl = levelOf(t);
-    const head = lvl === 'danger' ? 'Perigo: algo piorou desde a compra' : lvl === 'warn' ? 'Atenção: vale ficar de olho' : 'Avisos do robô';
+    const head = lvl === 'danger' ? 'Perigo: o que mudou desde a compra' : lvl === 'warn' ? 'Atenção: vale ficar de olho' : 'Avisos do robô';
     return `<ul class="alerts ${lvl === 'ok' ? 'info' : lvl}"><h3>${ICON.warn}${head}</h3>
       ${al.map((a) => `<li class="${a.level}"><span>${esc(a.msg)}${a.sig ? ` <a href="https://solscan.io/tx/${esc(a.sig)}" target="_blank" rel="noopener">Ver no Solscan</a>` : ''}</span><small>${ago(a.at)}</small></li>`).join('')}</ul>`;
   }
@@ -4286,7 +4299,29 @@ function baseBreakout(c, ctx = {}) {
   }
 
   // Troca o conteúdo do detalhe preservando a caixa do gráfico (senão o gráfico recarregaria a cada segundo)
+  // Moeda da carteira que virou perigo: botão de venda de emergência fixo embaixo, um toque só
+  function updateEmergDock(t) {
+    let d = $('emerg-dock');
+    if (!d) { d = document.createElement('div'); d.id = 'emerg-dock'; d.hidden = true; document.body.appendChild(d); }
+    const on = !!(t && t.held && (t.heldAmount || 0) > 0 && levelOf(t) === 'danger' && !isLost(t));
+    d.hidden = !on; document.body.classList.toggle('has-emerg', on);
+    if (!on) return;
+    const st = tradeState(t.mint);
+    const html = `<button class="emerg" data-temerg="${esc(t.mint)}" ${st.busy ? 'disabled' : ''}>${ICON.warn}<span><b>Venda de emergência (100%)</b><small>${esc(dispName(t))} virou perigo</small></span></button>`;
+    if (d.__html !== html) { d.innerHTML = html; d.__html = html; }
+  }
+  // Ao abrir uma moeda em perigo, vai direto para o aviso do que aconteceu
+  function focusDanger(mint) {
+    const t = data?.tokens?.[mint]; if (!t || !t.held || levelOf(t) !== 'danger') return;
+    setTimeout(() => requestAnimationFrame(() => {
+      const a = document.querySelector('#detail .alerts'); if (!a) return;
+      const sc = isNarrow() ? $('detail') : null;
+      if (sc) sc.scrollTo({ top: Math.max(0, a.offsetTop - 70), behavior: 'smooth' }); else a.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      a.classList.remove('flash'); void a.offsetWidth; a.classList.add('flash');
+    }), 120);
+  }
   function mountDetail(t) {
+    updateEmergDock(t);
     const el = $('detail');
     const key = t ? `${t.mint}|${t.pairAddress || ''}` : '';
     const tpl = document.createElement('template'); tpl.innerHTML = t ? detailHtml(t) : '';
@@ -4621,7 +4656,7 @@ function baseBreakout(c, ctx = {}) {
       if (document.body.classList.contains('show-detail')) { document.body.classList.add('no-sheet-anim'); document.body.classList.remove('show-detail'); setTimeout(() => document.body.classList.remove('no-sheet-anim'), 60); }
       window.scrollTo(0, 0); render(); window.scrollTo(0, 0); requestAnimationFrame(() => window.scrollTo(0, 0)); return; }
     const row = e.target.closest('[data-sel]');
-    if (row) { markSeen(row.dataset.sel); ui.sel[ui.tab] = row.dataset.sel; if (isNarrow()) openSheet(); render(); return; }
+    if (row) { markSeen(row.dataset.sel); ui.sel[ui.tab] = row.dataset.sel; if (isNarrow()) openSheet(); render(); focusDanger(row.dataset.sel); return; }
     if (e.target.closest('[data-back], [data-sheetclose]')) { closeSheet(); return; }
     const tf = e.target.closest('[data-tf]');
     if (tf) { ui.tf[tf.dataset.tfmint] = tf.dataset.tf; render(); return; }
@@ -4815,7 +4850,7 @@ function baseBreakout(c, ctx = {}) {
     const t = data.tokens[mint]; const st = tradeState(mint);
     Object.assign(st, { side: 'sell', mode: 'market', amt: String(t.heldAmount || 0), slip: 30, emergency: true, quote: null, msg: null });
     try {
-      if (!isDemo() && !getPhantom()) throw new Error('Phantom não encontrada neste navegador');
+      if (!isDemo() && !getPhantom()) { if (/iPhone|iPad|Android/i.test(navigator.userAgent)) { st.emergency = false; return onTradeGo(mint); } throw new Error('Phantom não encontrada neste navegador'); }
       st.busy = true; render();
       st.quote = await getQuote(t, st);
     } catch (e) { st.busy = false; st.emergency = false; st.msg = { err: true, html: esc(e.message) }; return render(); }
