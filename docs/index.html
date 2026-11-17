@@ -2374,12 +2374,13 @@
   function planHtml(t, st, m) {
     const P = planOf(t, st); if (!P) return '';
     // Já tem a moeda: o plano fica recolhido e neutro (sem cor nem aviso), só para consulta
-    if (t.held && !st.planOpen) return `<button class="plan plan-min" data-planopen="${m}"><span>Plano da operação</span><small>risco/retorno 1:${P.rr.toFixed(1).replace('.', ',')}</small><i>+</i></button>`;
+    // Sempre recolhido e neutro (pedido da Kerah em 17/11): abre só se você tocar
+    if (!st.planOpen) return `<button class="plan plan-min" data-planopen="${m}"><span>Plano da operação</span><small>risco/retorno 1:${P.rr.toFixed(1).replace('.', ',')}</small><i>+</i></button>`;
     const ok = t.held || P.rr >= 2;
     const row = (label, field, val, chips) => `<div class="pl-row"><label>${label}</label><input inputmode="decimal" value="${esc(st[field] || pxFmt(val))}" data-pfield="${field}" data-tmint="${m}"><small>US$</small>
       <div class="pl-chips">${chips.map(([txt, px]) => `<button data-pset="${field}" data-px="${px}" data-tmint="${m}">${txt}</button>`).join('')}</div></div>`;
-    return `<div class="plan ${t.held ? '' : ok ? 'ok' : 'bad'}">
-      <div class="pl-h"><b>Plano da operação</b>${t.held ? `<button class="linkbtn" data-planopen="${m}">recolher</button>` : ''}<span class="rr ${t.held ? '' : ok ? 'ok' : 'bad'}">risco/retorno 1:${P.rr.toFixed(1).replace('.', ',')}${infoBtn('rr', 'rr-plan-' + m)}</span></div>
+    return `<div class="plan">
+      <div class="pl-h"><b>Plano da operação</b><button class="linkbtn" data-planopen="${m}">recolher</button><span class="rr">risco/retorno 1:${P.rr.toFixed(1).replace('.', ',')}${infoBtn('rr', 'rr-plan-' + m)}</span></div>
       ${infoBox('rr', 'rr-plan-' + m)}
       ${row('Stop', 'pStop', P.stop, [['fundo recente', P.sugStop], ['-15%', P.E * 0.85], ['-25%', P.E * 0.75], ['-35%', P.E * 0.65]])}
       ${row('Alvo', 'pTp', P.tp, [['topo anterior', P.sugTp], ['+50%', P.E * 1.5], ['+100%', P.E * 2], ['+200%', P.E * 3]])}
@@ -2392,7 +2393,7 @@
         <input inputmode="decimal" value="${String(P.R.pct).replace('.', ',')}" data-riscopct>%</span>
         ${P.sizeUsd > 0 ? `<button class="linkbtn planlink" data-usesize="${m}" data-usd="${P.sizeUsd.toFixed(2)}">Tamanho sugerido: ${brl(P.sizeUsd)} (usar)</button>` : ''}
       </div>
-      ${ok ? '' : `<p class="pl-warn">Comprando agora, você arrisca ${pctBr(P.riskPct)} para ganhar ${pctBr(P.gainPct)}. O ideal é o ganho ser pelo menos o dobro da perda. ${P.g?.zona && P.g.zona[1] < P.E ? `Isso costuma acontecer perto do topo: o melhor é esperar a correção até ${price(P.g.zona[0])} a ${price(P.g.zona[1])}, e o Faro avisa quando chegar.` : 'Isso costuma acontecer perto do topo: o melhor é esperar uma correção.'}</p>`}
+      
     </div>`;
   }
 
