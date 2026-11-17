@@ -1110,6 +1110,20 @@
   /* Coração e nota alinhados ao topo no cabeçalho da moeda */
   .d-head .d-actions { align-items: flex-start !important; align-self: start !important; }
   @media (max-width: 1099px) { .d-head .d-actions { align-self: start !important; } }
+
+  /* Notificações no celular: folha que sobe de baixo, sem rolagem, com páginas */
+  .inbox-grip { display: none; }
+  @media (max-width: 1099px) {
+    #inbox.drawer { align-items: flex-end; justify-content: stretch; }
+    #inbox .drawer-panel { width: 100%; height: auto; max-height: calc(100dvh - env(safe-area-inset-top) - 14px); height: calc(100dvh - env(safe-area-inset-top) - 14px);
+      border-left: 0; border-radius: 28px 28px 0 0; padding: 0 16px calc(env(safe-area-inset-bottom) + 14px); animation: sheetUp .32s cubic-bezier(.2,.9,.25,1); transition: transform .25s; }
+    @keyframes sheetUp { from { transform: translateY(100%); } }
+    #inbox .inbox-grip { display: grid; position: static; margin: 0 -16px; top: auto; height: 30px; background: none; }
+    #inbox .drawer-head { padding-top: 2px; touch-action: none; }
+    #inbox .drawer-body { overflow: hidden; display: grid; align-content: start; gap: 8px; margin-top: 14px; }
+    #inbox .drawer-foot { margin-top: auto; }
+    body.in-phantom #inbox .drawer-panel { padding-bottom: 96px; }
+  }
 </style>
 </head>
 <body>
@@ -1202,6 +1216,7 @@
   <div class="ntm" id="ntm" hidden></div>
   <div class="drawer" id="inbox" role="dialog" aria-modal="true" aria-label="Central de notificações">
     <div class="drawer-panel">
+      <div class="sheet-grip inbox-grip" aria-hidden="true"></div>
       <div class="drawer-head">
         <b>Notificações</b><span style="flex:1"></span><button class="linkbtn" id="inbox-clear">Limpar tudo</button>
       </div>
@@ -1402,7 +1417,8 @@
     const b = $('bell-n'); if (b) { b.hidden = !unreadN; b.textContent = unreadN > 99 ? '99+' : unreadN; }
     try { if (navigator.setAppBadge) unreadN ? navigator.setAppBadge(unreadN) : navigator.clearAppBadge(); } catch {}
     const el = $('inbox-list'); if (!el || !$('inbox').classList.contains('show')) return;
-    const per = 10, pages = Math.max(1, Math.ceil(INBOX.list.length / per));
+    // No celular: só o que cabe na tela (sem rolagem), o resto vai para as páginas
+    const per = isNarrow() ? (INBOX.per || 6) : 10, pages = Math.max(1, Math.ceil(INBOX.list.length / per));
     INBOX.page = Math.min(INBOX.page, pages);
     $('inbox-pager').innerHTML = pages > 1 ? `<button data-ntpage="-1" ${INBOX.page <= 1 ? 'disabled' : ''} aria-label="Anterior">&larr;</button><span>${INBOX.page} de ${pages}</span><button data-ntpage="1" ${INBOX.page >= pages ? 'disabled' : ''} aria-label="Próxima">&rarr;</button>` : '';
     const ico = { danger: ICON.warn, warn: ICON.warn, good: ICON.radar, info: ICON.swap };
@@ -1426,6 +1442,16 @@
         <span class="nt-at">${ago(x.at)}<br>${hhmm(x.at)}</span>
       </button>`).join('')
       : `<div class="empty">${BELL_ICON}<b>Nada por aqui</b>Quando tocar um som ou aparecer um aviso, ele fica guardado nesta lista.</div>`;
+    if (isNarrow() && !INBOX.fitting) {
+      INBOX.fitting = true;
+      requestAnimationFrame(() => {
+        const L = $('inbox-list'); let changed = false;
+        if (L && L.scrollHeight > L.clientHeight + 2 && per > 2) { INBOX.per = per - 1; changed = true; }
+        else if (L && !INBOX.per) { const h = L.firstElementChild?.offsetHeight || 96; const fitN = Math.max(2, Math.floor(L.clientHeight / (h + 8))); if (fitN !== per) { INBOX.per = fitN; changed = true; } else INBOX.per = per; }
+        INBOX.fitting = false;
+        if (changed) renderInbox();
+      });
+    }
   }
   // ---------- Detalhe da notificação (modal): motivo da venda e o resultado ----------
   const SELL_SRC = store.get('faro-sell-src', {});
@@ -1552,7 +1578,13 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('ntm') && !$('ntm').hidden) { $('ntm').hidden = true; e.stopPropagation(); } }, true);
   const BELL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>';
   const openInbox = () => { $('inbox').classList.add('show'); document.body.style.overflow = 'hidden'; INBOX.page = 1; renderInbox(); setTimeout(() => { INBOX.list.forEach((x) => (x.read = true)); store.set('faro-inbox', INBOX.list); renderInbox(); }, 1500); };
-  const closeInbox = () => { $('inbox').classList.remove('show'); document.body.style.overflow = ''; };
+  const closeInbox = () => { $('inbox').classList.remove('show'); document.body.style.overflow = ''; INBOX.per = 0; };
+  window.addEventListener('resize', () => { INBOX.per = 0; });
+  { let y0 = null, dy = 0; const P = () => $('inbox')?.querySelector('.drawer-panel');
+    document.addEventListener('touchstart', (e) => { if (!$('inbox').classList.contains('show') || !e.target.closest('#inbox .inbox-grip, #inbox .drawer-head')) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+    document.addEventListener('touchmove', (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); const p = P(); if (p) { p.style.transition = 'none'; p.style.transform = `translateY(${dy}px)`; } }, { passive: true });
+    document.addEventListener('touchend', () => { if (y0 == null) return; y0 = null; const p = P(); if (p) { p.style.transition = ''; p.style.transform = ''; } if (dy > 100) closeInbox(); dy = 0; });
+  }
   document.addEventListener('click', (e) => {
     if (e.target.closest('#bell')) return openInbox();
     if (e.target.closest('#inbox-back') || e.target.id === 'inbox') return closeInbox();
@@ -1823,7 +1855,7 @@
   function closeSheet() { document.body.classList.remove('show-detail'); document.body.style.removeProperty('--sheet-drag'); setTimeout(render, 330); }
   function sheetChrome() {
     const d = $('detail'); if (!d || !isNarrow() || d.querySelector('.sheet-grip')) return;
-    d.insertAdjacentHTML('afterbegin', '<div class="sheet-grip" aria-hidden="true"></div><button class="sheet-close" data-sheetclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>');
+    d.insertAdjacentHTML('afterbegin', '<div class="sheet-grip" aria-hidden="true"></div>');
   }
   new MutationObserver(() => sheetChrome()).observe(document.getElementById('detail'), { childList: true });
   { let y0 = null, dy = 0;
