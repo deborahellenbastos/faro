@@ -480,7 +480,8 @@
   .d-side { position: sticky; top: var(--sp-4); display: grid; gap: var(--sp-4); max-height: calc(100vh - 2 * var(--sp-4)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
   .d-split.solo .d-side { display: none; }
   @media (max-width: 1599px) {
-    .d-split { display: flex; flex-direction: column; }
+    .d-split { display: flex; flex-direction: column; align-items: stretch; }
+    .d-main > *, .d-side > * { width: 100%; min-width: 0; }
     .d-main { display: contents; }
     .d-main > * { order: 2; } .d-main > .d-card:first-child { order: 0; }
     .d-side { order: 1; position: static; max-height: none; overflow: visible; }
@@ -604,6 +605,12 @@
   #dex-vault iframe { width: 100%; height: 100%; border: 0; }
   .list-sub { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .list-sub small { color: var(--faint); font-weight: 700; }
+  .checks summary.sc-sum { justify-content: flex-start; gap: 14px; }
+  .sc-sum .score { flex: none; }
+  .sc-txt { flex: 1; min-width: 0; display: grid; gap: 3px; }
+  .sc-txt b { font-size: 16px; font-weight: 800; }
+  .checks summary .sc-txt small { margin-left: 0; font-size: 13px; line-height: 1.35; }
+  .sc-sum .chev { flex: none; }
   .radar-chips { display: flex; gap: 6px; overflow-x: auto; padding: 0 var(--sp-3) var(--sp-3); scrollbar-width: none; }
   .radar-chips::-webkit-scrollbar { display: none; }
   .radar-chips[hidden] { display: none; }
@@ -958,6 +965,8 @@
   }
   @media (max-width: 700px) {
     .topbar { flex-wrap: nowrap !important; gap: 10px; }
+    .d-split { align-items: stretch !important; }
+    .d-split .d-main > *, .d-split .d-side > * { width: 100%; align-self: stretch; }
     .d-head .pair { flex-wrap: nowrap; } .d-head .pair > b { font-size: 21px; overflow: hidden; text-overflow: ellipsis; }
     .d-head .d-actions { gap: 6px; } .d-head .fav-btn { width: 36px; height: 36px; }
     .d-head .route, .d-head .meta { white-space: normal; }
@@ -2613,7 +2622,7 @@ function baseBreakout(c, ctx = {}) {
         <div class="sp-bar"><i class="${f >= 0.7 ? 'g' : f >= 0.4 ? 'm' : 'w'}" style="width:${Math.round(f * 100)}%"></i></div><small>${esc(x.why)}</small></div>`;
     }).join('');
     const weak = [...parts].sort((a, b) => a.pts / a.max - b.pts / b.max).slice(0, 2).map((x) => x.label.toLowerCase());
-    return `<section class="panel d-card"><details class="checks" data-keep="nota:${esc(t.mint)}"${isOpen('nota:' + t.mint, false) ? ' open' : ''}><summary><span>Por que nota ${t.score}<small>${t.score >= 75 ? 'forte' : t.score >= 55 ? 'média' : 'fraca'} - mais fraca em ${weak.join(' e ')}</small></span>${ICON.chev}</summary>
+    return `<section class="panel d-card"><details class="checks" data-keep="nota:${esc(t.mint)}"${isOpen('nota:' + t.mint, false) ? ' open' : ''}><summary class="sc-sum">${scoreBadge(t.score, true)}<span class="sc-txt"><b>Por que nota ${t.score}</b><small>Mais fraca em ${weak.join(' e ')}</small></span>${ICON.chev}</summary>
       <p class="sp-note">A nota mede a <b>força</b> da moeda (compras, volume, holders). Quem decide se ela entra no radar são os <b>filtros de segurança</b> abaixo: uma moeda pode ser segura e ainda ter nota média.</p>
       <div class="sp-list">${rows}</div></details></section>`;
   }
