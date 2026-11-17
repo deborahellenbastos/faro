@@ -1240,6 +1240,8 @@
   .pop[data-tab="reprovada"] svg .x1, .pop[data-tab="reprovada"] svg .x2 { stroke-dasharray: 8; stroke-dashoffset: 8; animation: xDraw .28s ease-out forwards; }
   .pop[data-tab="reprovada"] svg .x2 { animation-delay: .16s; }
   @keyframes xDraw { to { stroke-dashoffset: 0; } }
+  /* Sem o bloco de saldo (Análise e Reprovadas), não sobra espaço extra entre os selos e a busca */
+  .m-hero:empty { display: none !important; }
 </style>
 </head>
 <body>
@@ -1255,7 +1257,7 @@
       <div class="nav-label">Monitor</div>
       <button class="nav-item" data-tab="minhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><path d="M16 14h.01"/></svg><span>Carteira</span><i class="nav-dot" data-dot hidden></i><em data-count="minhas"></em></button>
       <button class="nav-item" data-tab="aprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg><span>Radar</span><em data-count="aprovada"></em></button>
-      <button class="nav-item" data-tab="aguardando"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Observando</span><em data-count="aguardando"></em></button>
+      <button class="nav-item" data-tab="aguardando"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Análise</span><em data-count="aguardando"></em></button>
       <button class="nav-item" data-tab="reprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path class="x1" d="m9.5 9.5 5 5"/><path class="x2" d="m14.5 9.5-5 5"/></svg><span>Reprovadas</span><em data-count="reprovada"></em></button>
       <div class="nav-label">Sistema</div>
       <button class="nav-item" data-open-robot><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg><span>Robô e filtros</span></button>
@@ -1321,7 +1323,7 @@
   <nav class="tabbar" id="tabbar">
     <button data-tab="minhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><path d="M16 14h.01"/></svg>Carteira<i class="nav-dot" data-dot hidden></i></button>
     <button data-tab="aprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg>Radar</button>
-    <button data-tab="aguardando"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Observando</button>
+    <button data-tab="aguardando"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Análise</button>
     <button data-tab="reprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path class="x1" d="m9.5 9.5 5 5"/><path class="x2" d="m14.5 9.5-5 5"/></svg>Reprovadas</button>
     <button class="tb-robot" data-open-robot><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg>Robô</button>
   </nav>
@@ -1405,7 +1407,7 @@
   const TITLES = {
     minhas: ['Carteira', 'Suas moedas, vigiadas a cada 5 minutos'],
     aprovada: ['Radar', 'Passaram em todos os filtros de segurança'],
-    aguardando: ['Observando', 'Podem ser aprovadas nas próximas rodadas'],
+    aguardando: ['Análise', 'Podem ser aprovadas nas próximas rodadas'],
     reprovada: ['Reprovadas', 'Sinais de golpe ou passaram de 24h'],
   };
   const ui = { tab: 'minhas', sort: 'score', page: 1, q: '', sel: {}, trade: {}, hist: {}, tf: {} };
@@ -2496,7 +2498,7 @@ function baseBreakout(c, ctx = {}) {
   // ---------- Perguntar ao Claude (custo zero): abre o Claude com o contexto da moeda e copia a foto do gráfico ----------
   function claudeContext(t) {
     const P = t.periods || {}, L = [];
-    const st = isMine(t) ? 'na minha carteira' : { aprovada: 'no Radar', aguardando: 'em Observando', reprovada: 'reprovada' }[t.status] || t.status;
+    const st = isMine(t) ? 'na minha carteira' : { aprovada: 'no Radar', aguardando: 'em Análise', reprovada: 'reprovada' }[t.status] || t.status;
     L.push(`Estou operando memecoins na Solana com o meu painel (Faro). Me ajude a analisar esta moeda. Os dados abaixo são de agora (${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}). Se eu colar a imagem, é o gráfico de 1 min do meu painel.`);
     L.push('');
     L.push(`Moeda: ${t.symbol || ''} (${t.name || ''}) - contrato ${t.mint}${t.pairUrl ? ` - ${t.pairUrl}` : ''}`);
@@ -3135,7 +3137,7 @@ function baseBreakout(c, ctx = {}) {
       : t.status === 'aprovada' ? `Aprovada às ${hhmm(t.approvedAt)} - lançada há ${age(t.ageMin)}`
       : t.status === 'reprovada' ? `Reprovada ${t.rejectedAt ? ago(t.rejectedAt) : ''}${t.ageMin != null ? ` - lançada há ${age(t.ageMin)}` : ''}`
       : `Vista ${ago(t.firstSeen)}${t.ageMin != null ? ` - lançada há ${age(t.ageMin)}` : ''}`;
-    const right = mine ? statusPill(t) : t.status === 'aprovada' ? scoreBadge(t.score) : `<span class="pill muted">${t.status === 'reprovada' ? 'Reprovada' : 'Observando'}</span>`;
+    const right = mine ? statusPill(t) : t.status === 'aprovada' ? scoreBadge(t.score) : `<span class="pill muted">${t.status === 'reprovada' ? 'Reprovada' : 'Em análise'}</span>`;
     const canMark = !walletOn() && t.status === 'aprovada' && !t.held;
     const head = `<section class="panel d-card">
       <div class="d-back"><button class="back" data-back>${ICON.back}Voltar</button></div>
@@ -4307,7 +4309,7 @@ function baseBreakout(c, ctx = {}) {
 
     // Carteira resumida nas outras abas: quanto tenho para gastar
     { const ws = $('wallet-strip'), W = walletTotals();
-      ws.hidden = ui.tab !== 'aprovada' || W.sol == null; // saldo só na Carteira e no Radar (Observando e Reprovadas não são para comprar)
+      ws.hidden = ui.tab !== 'aprovada' || W.sol == null; // saldo só na Carteira e no Radar (Análise e Reprovadas não são para comprar)
       if (!ws.hidden) ws.innerHTML = `<span><small>Em transações abertas</small><b class="num">${money(W.coins)}</b></span>
         <span><small>Disponível para comprar</small><b class="num">${money(W.solUsd)}</b><em class="num">${solFmt(W.sol, 4)}</em></span>
         <span><small>Total na carteira</small><b class="num">${money(W.total)}</b></span>
@@ -4343,7 +4345,7 @@ function baseBreakout(c, ctx = {}) {
     const realN = items.length;
     const ro = $('radar-ord'); ro.hidden = ui.tab !== 'aprovada';
     ro.querySelectorAll('[data-rord]').forEach((b) => b.classList.toggle('on', b.dataset.rord === radarOrd()));
-    $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em observação', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
+    $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em análise', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
     // Encerradas: abre/fecha pelo título (começa aberta)
     if (ui.tab === 'minhas' && !q && closed.length && prefs.encOpen === false) {
       items = [...items.filter((t) => !isClosed(t)), { __encHdr: true }];
