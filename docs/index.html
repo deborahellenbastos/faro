@@ -1314,6 +1314,29 @@
   .who-sum span { display: grid; gap: 2px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.035); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
   .who-sum .who { margin-left: 0; justify-self: start; }
   .who-sum b { font-size: 16px; font-weight: 800; } .who-sum small { color: var(--faint); font-size: 12px; }
+  /* ===== Tema neutro (17/11): a interface (abas, botões, seleção, foco) fica em branco/cinza; o verde, o vermelho e o
+     amarelo ficam só para o que tem significado (lucro, segura, sinal de entrada, perigo), e aí chamam mais o olhar ===== */
+  :root { --brand: #eef1f5; --brand-2: #c3c9d2; --brand-ink: #0b0d10; --brand-bg: rgba(255,255,255,.08); }
+  ::selection { background: rgba(255,255,255,.22) !important; }
+  button:focus-visible, a:focus-visible { outline-color: rgba(255,255,255,.5) !important; }
+  body::before { background: radial-gradient(900px 520px at 12% -8%, rgba(255,255,255,.035), transparent 60%), radial-gradient(700px 480px at 100% 0%, rgba(167,139,250,.03), transparent 60%) !important; }
+  body { background-image: none !important; }
+  .brand-mark { filter: drop-shadow(0 6px 14px rgba(0,0,0,.35)) !important; }
+  .stat.hero { background: linear-gradient(140deg, rgba(255,255,255,.07), #0f1215 62%) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 1px rgba(255,255,255,.06) !important; border-color: rgba(255,255,255,.08) !important; }
+  .nav-item.on { background: rgba(255,255,255,.07) !important; color: var(--text) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08) !important; }
+  .nav-item.on svg, .nav-item.on em { color: var(--text) !important; }
+  .nav-item.on::before { background: var(--text) !important; box-shadow: none !important; }
+  .tabbar button.on { color: var(--text) !important; }
+  .tabbar .tb-pill { background: rgba(255,255,255,.1) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08) !important; }
+  .tabbar button.on svg, .nav-item.on svg { filter: none !important; }
+  .bot-ico { background: rgba(255,255,255,.06) !important; color: var(--text) !important; }
+  .switch[aria-checked="true"] { background: linear-gradient(135deg, #f3f5f8, #c9ced6) !important; }
+  .search:focus-within { box-shadow: inset 0 0 0 1px rgba(255,255,255,.28), 0 0 0 4px rgba(255,255,255,.05) !important; }
+  .row.on { background: linear-gradient(90deg, rgba(255,255,255,.07), rgba(255,255,255,.03)) !important; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12) !important; }
+  .nt.unread::before { background: linear-gradient(160deg, rgba(255,255,255,.22), rgba(255,255,255,.04) 50%, rgba(255,255,255,.08)) !important; }
+  .lock-go { background: linear-gradient(135deg, #f3f5f8, #c9ced6) !important; color: #0b0d10 !important; }
+  /* Comprar continua verde (é ação com significado) */
+  .tgo.buy { background: linear-gradient(135deg, #2ff0a0, #0aa865) !important; color: #04150c !important; box-shadow: 0 6px 18px rgba(16,210,127,.25) !important; }
 </style>
 </head>
 <body>
