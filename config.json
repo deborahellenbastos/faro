@@ -68,6 +68,15 @@
       "alvoPct": 100,
       "ateUsd": 10
     },
+    "escada": {
+      "ligado": true,
+      "faixas": [
+        { "lucroPct": 30, "vendido": 0.3333 },
+        { "lucroPct": 50, "vendido": 0.6667 },
+        { "lucroPct": 80, "vendido": 1 }
+      ],
+      "minimoDividirUsd": 1.5
+    },
     "realizar": {
       "ligado": true,
       "faixas": [

@@ -37,7 +37,7 @@ if (!trader?.canWatch) { await idle(); process.exit(0); }
 
 let mem = {};
 try { mem = JSON.parse(await readFile(MEM, 'utf8')); } catch {}
-mem.peak = mem.peak || {}; mem.liq = mem.liq || {}; mem.sold = mem.sold || {};
+mem.peak = mem.peak || {}; mem.liq = mem.liq || {}; mem.sold = mem.sold || {}; mem.ladder = mem.ladder || {}; mem.partial = mem.partial || [];
 const save = () => writeFile(MEM, JSON.stringify(mem)).catch(() => {});
 
 const dropPct = V.quedaDoPicoPct ?? 40;
@@ -156,6 +156,38 @@ async function contractCheck(now) {
   return out;
 }
 
+// Realização em escada (17/11, pedido da Kerah): +30% vende 1/3, +50% chega a 2/3, +80% vende o resto.
+// Em cada faixa, se a alta estiver FORTE (sem nenhum sinal de fraqueza e perto do topo), segura e deixa para a próxima,
+// até o +100%. Posição pequena (menos de US$ 1,50) não divide: vende tudo na primeira faixa sem força.
+const ESCADA = cfg.venda?.escada || { ligado: true, faixas: [{ lucroPct: 30, vendido: 1 / 3 }, { lucroPct: 50, vendido: 2 / 3 }, { lucroPct: 80, vendido: 1 }], minimoDividirUsd: 1.5 };
+async function sellPart(t, frac, why, px, target) {
+  const L0 = mem.ladder[t.mint];
+  if ((t.heldAmount || 0) * px * frac < 0.3) return sell(t, why, 'realizar', px); // pedaço pequeno demais: vende tudo
+  log(`${t.symbol}: ${why}. Vendendo ${Math.round(frac * 100)}% do que sobrou...`);
+  try {
+    const s = await trader.sellAll(t.mint, frac);
+    if (s.nada) return;
+    L0.at = Date.now(); L0.sold = target;
+    mem.partial.push({ mint: t.mint, at: Date.now(), sig: s.sig, outSol: s.outSol, why, frac: Math.round(frac * 100) });
+    mem.partial = mem.partial.slice(-60);
+    t.heldAmount = (t.heldAmount || 0) * (1 - frac);
+    log(`VENDEU ${Math.round(frac * 100)}% de ${t.symbol} por ${s.outSol.toFixed(4)} SOL (tx ${s.sig.slice(0, 8)}...)`);
+  } catch (e) { log(`Venda parcial de ${t.symbol} falhou: ${e.message}`, true); }
+}
+function ladderStep(t, px, gainPx, weak, fromPeak) {
+  if (!ESCADA.ligado || gainPx == null) return null;
+  const buyAt = t.position?.lastBuyAt || t.heldSince || 0;
+  let L0 = mem.ladder[t.mint];
+  if (!L0 || L0.buyAt !== buyAt) L0 = mem.ladder[t.mint] = { buyAt, sold: 0 };
+  const faixa = [...ESCADA.faixas].reverse().find((f) => gainPx >= f.lucroPct);
+  if (!faixa || L0.sold >= faixa.vendido - 1e-6) return null;
+  const forte = weak.length === 0 && fromPeak < 8;
+  if (forte) { if (L0.holdLog !== faixa.lucroPct) { L0.holdLog = faixa.lucroPct; log(`${t.symbol}: +${gainPx.toFixed(0)}% e a alta segue forte. Segurando a faixa de +${faixa.lucroPct}% para a próxima.`); } return null; }
+  const worth = (t.heldAmount || 0) * px;
+  if (L0.sold === 0 && worth < (ESCADA.minimoDividirUsd ?? 1.5)) return { frac: 1, faixa, all: true };
+  const frac = faixa.vendido >= 1 ? 1 : (faixa.vendido - L0.sold) / (1 - L0.sold);
+  return { frac, faixa, target: faixa.vendido };
+}
 async function sell(t, why, kind, px) {
   // Posição que vale menos de US$ 1 agora: não vende sozinho (a taxa não compensa e ela pode ter um bump). Se passar a valer US$ 1+, as proteções voltam
   const worth = (t.heldAmount || 0) * px, cost = t.position?.known ? t.position.costOpenUsd || 0 : 0;
@@ -235,6 +267,20 @@ while (Date.now() < until) {
       // Stop de perda: a posição ainda no prejuízo caiu stopPerda% desde a entrada (antes não existia: só o -40% do topo)
       else if (lossOn && gain != null && gain <= -lossPct && gain > -(lossPct + 5) && !confirmBelow(t, now, SP.confirmarSegundos ?? 20, 'stop de perda')) { /* aguardando confirmação */ }
       else if (lossOn && gain != null && gain <= -lossPct) await sell(t, `stop de perda: caiu ${Math.abs(gain).toFixed(0)}% desde a entrada (limite -${lossPct}%)`, 'stop-perda', px);
+      else if ((() => {
+        // Escada de realização: ganho pelo preço de entrada (a venda parcial muda a quantidade, não o preço médio)
+        const avg = t.position?.avgPriceUsd > 0 ? t.position.avgPriceUsd : 0;
+        const gainPx = avg ? (px / avg - 1) * 100 : gain;
+        if (gainPx == null || gainPx >= (L.alvoPct ?? 100)) return false;
+        const weak = weakSignals({ candles: t.candles, entryAt: t.position?.lastBuyAt || t.heldSince || 0, buys5: Number(p?.txns?.m5?.buys) || 0, sells5: Number(p?.txns?.m5?.sells) || 0, vol5: Number(p?.volume?.m5), volH1: Number(p?.volume?.h1), fromPeak });
+        const st = ladderStep(t, px, gainPx, weak, fromPeak); if (!st) return false;
+        t._ladder = { ...st, gainPx, weak };
+        return true;
+      })()) {
+        const st = t._ladder, w = st.weak.length ? ` e a alta perdendo força (${st.weak.map((x) => x.msg).join(', ')})` : ' e recuando do topo';
+        if (st.frac >= 1) await sell(t, `lucro de +${st.gainPx.toFixed(0)}% (faixa de +${st.faixa.lucroPct}%)${w}${st.all ? '; posição pequena, vende tudo' : ''}`, 'realizar', px);
+        else await sellPart(t, st.frac, `lucro de +${st.gainPx.toFixed(0)}% na faixa de +${st.faixa.lucroPct}%${w}`, px, st.target);
+      }
       else if (realizeOn && gain != null && gain >= 50 && gain < (L.alvoPct ?? 100) && (() => {
         const weak = weakSignals({ candles: t.candles, entryAt: t.position?.lastBuyAt || t.heldSince || 0, buys5: Number(p?.txns?.m5?.buys) || 0, sells5: Number(p?.txns?.m5?.sells) || 0, vol5: Number(p?.volume?.m5), volH1: Number(p?.volume?.h1), fromPeak });
         const r = realizeCheck(gain, weak, RZ); t._rz = r.sell ? `lucro de +${gain.toFixed(0)}% e a alta perdendo força: ${weak.map((w) => w.msg).join(', ')}` : null; return r.sell;

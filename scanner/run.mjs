@@ -486,6 +486,13 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     if (a.ok && ['stop-perda', 'stop-movel', 'vigia'].includes(a.kind)) t.reentry = { at: a.at, kind: a.kind, exitPx: t.priceUsd || null };
     if (a.ok) log(`Vigia vendeu 100% de ${t.symbol}: ${a.why}${a.outSol ? ` (${a.outSol.toFixed(4)} SOL)` : ''}`);
   }
+  // Vendas parciais da escada de realização (+30% / +50% / +80%)
+  for (const a of vig?.partial || []) {
+    const t = tokens[a.mint]; if (!t || (t.partials || []).some((x) => x.sig === a.sig)) continue;
+    t.partials = [...(t.partials || []), a].slice(-10);
+    log(`Vigia vendeu ${a.frac}% de ${t.symbol}: ${a.why}${a.outSol ? ` (${a.outSol.toFixed(4)} SOL)` : ''}`);
+    t.safety = mergeSafety(t.safety, [{ id: 'parcial-' + a.sig.slice(0, 8), level: 'info', at: a.at, msg: `Robô realizou lucro: vendeu ${a.frac}% do que sobrou por ${a.outSol?.toFixed(4)} SOL. Motivo: ${a.why}. O resto segue com o stop móvel.`, sig: a.sig }]);
+  }
   for (const t of Object.values(tokens)) {
     const a = t.watchSell; if (!a || !t.safety || a.dust) continue; // resto sem valor: sem aviso
     const msg = a.nada ? `A vigia ia vender (${a.why}), mas a moeda já tinha saído da carteira (venda feita antes, fora do robô)`

@@ -81,13 +81,14 @@ export async function createTrader(cfg, log) {
   }
 
   // Vende TUDO o que a carteira tem dessa moeda, por qualquer preço que a Jupiter conseguir (em golpe, sair é o que importa)
-  async function sellAll(mint) {
+  async function sellAll(mint, frac = 1) {
     let raw = 0n;
     for (const programId of ['TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb']) {
       const r = await conn.getParsedTokenAccountsByOwner(wallet.publicKey, { programId: new (await import('@solana/web3.js')).PublicKey(programId) });
       for (const a of r.value) { const i = a.account.data.parsed.info; if (i.mint === mint) raw += BigInt(i.tokenAmount.amount); }
     }
     if (raw === 0n) return { sig: null, nada: true };
+    if (frac > 0 && frac < 1) raw = (raw * BigInt(Math.round(frac * 10000))) / 10000n; // venda em partes (realização em escada)
     const slip = Math.round((cfg?.venda?.slippageMaxPct ?? 30) * 100);
     const quote = await (await fetch(`${JUP}/quote?inputMint=${mint}&outputMint=${SOL_MINT}&amount=${raw}&slippageBps=${slip}`, { headers })).json();
     if (!quote?.outAmount) throw new Error(`Jupiter sem rota para vender: ${JSON.stringify(quote).slice(0, 160)}`);
