@@ -3418,11 +3418,11 @@
     const q = ui.q.trim().toLowerCase();
     if (q) items = items.filter((t) => [t.symbol, t.name, t.mint].some((v) => String(v || '').toLowerCase().includes(q)));
 
+    const realN = items.length;
     const ro = $('radar-ord'); ro.hidden = ui.tab !== 'aprovada';
     ro.querySelectorAll('[data-rord]').forEach((b) => b.classList.toggle('on', b.dataset.rord === radarOrd()));
     $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em observação', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
     // Mortas ficam recolhidas (só o título com a contagem); um clique abre ou fecha
-    const realN = items.length;
     if (ui.tab === 'minhas' && !q && dead.length) {
       const at = items.findIndex((t) => isDead(t));
       if (!prefs.mortasOpen) items = items.filter((t) => !isDead(t));
