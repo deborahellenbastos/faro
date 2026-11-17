@@ -4156,12 +4156,12 @@ function baseBreakout(c, ctx = {}) {
         stat('Melhor do radar', best ? `<a class="stat-link" data-goto="${esc(best.mint)}">${esc(best.symbol)}</a>` : '-', best ? `máxima ${pct(best.maxChangePct)} - agora ${pct(best.changePct)}` : 'nenhuma no radar agora'),
       ].join('');
       { const W = walletTotals();
-        $('m-hero').innerHTML = W.sol == null ? '' : `<div class="mh-row"><div><small>Disponível${W.solUsd != null ? ` (${money(W.solUsd)})` : ''}</small><b class="num">${solFmt(W.sol, 4)}</b></div><div class="r"><small>Total</small><b class="num">${W.total != null ? money(W.total) : '-'}</b></div></div>`; }
+        $('m-hero').innerHTML = W.sol == null || ui.tab === 'aguardando' || ui.tab === 'reprovada' ? '' : `<div class="mh-row"><div><small>Disponível${W.solUsd != null ? ` (${money(W.solUsd)})` : ''}</small><b class="num">${solFmt(W.sol, 4)}</b></div><div class="r"><small>Total</small><b class="num">${W.total != null ? money(W.total) : '-'}</b></div></div>`; }
     }
 
     // Carteira resumida nas outras abas: quanto tenho para gastar
     { const ws = $('wallet-strip'), W = walletTotals();
-      ws.hidden = ui.tab === 'minhas' || W.sol == null;
+      ws.hidden = ui.tab !== 'aprovada' || W.sol == null; // saldo só na Carteira e no Radar (Observando e Reprovadas não são para comprar)
       if (!ws.hidden) ws.innerHTML = `<span><small>Em transações abertas</small><b class="num">${money(W.coins)}</b></span>
         <span><small>Disponível para comprar</small><b class="num">${money(W.solUsd)}</b><em class="num">${solFmt(W.sol, 4)}</em></span>
         <span><small>Total na carteira</small><b class="num">${money(W.total)}</b></span>
