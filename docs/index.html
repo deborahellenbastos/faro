@@ -1169,6 +1169,16 @@
   .row:active, .btn:active, .radar-chips button:active { transform: scale(.985); }
   .radar-chips button.on { animation: hop .35s ease; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  /* Folhas (moeda e notificações) sobem só 75% da tela: fácil de fechar tocando em cima ou arrastando */
+  @media (max-width: 1099px) {
+    .detail { top: 25dvh !important; }
+    #inbox .drawer-panel { height: 75dvh !important; max-height: 75dvh !important; }
+    #inbox .inbox-grip { display: grid !important; height: 28px; }
+    #inbox .foot-close { display: none; }
+    #inbox .drawer-foot { justify-content: center; }
+    body.in-phantom .detail { top: 18dvh !important; }
+  }
 </style>
 </head>
 <body>
@@ -1626,6 +1636,7 @@
   const openInbox = () => { $('inbox').classList.add('show'); document.body.style.overflow = 'hidden'; INBOX.page = 1; renderInbox(); setTimeout(() => { INBOX.list.forEach((x) => (x.read = true)); store.set('faro-inbox', INBOX.list); renderInbox(); }, 1500); };
   const closeInbox = () => { $('inbox').classList.remove('show'); document.body.style.overflow = ''; INBOX.per = 0; };
   window.addEventListener('resize', () => { INBOX.per = 0; });
+  $('inbox').addEventListener('click', (e) => { if (e.target.id === 'inbox') closeInbox(); });
   { let y0 = null, dy = 0; const P = () => $('inbox')?.querySelector('.drawer-panel');
     document.addEventListener('touchstart', (e) => { if (!$('inbox').classList.contains('show') || !e.target.closest('#inbox .inbox-grip, #inbox .drawer-head')) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
     document.addEventListener('touchmove', (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); const p = P(); if (p) { p.style.transition = 'none'; p.style.transform = `translateY(${dy}px)`; } }, { passive: true });
