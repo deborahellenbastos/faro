@@ -603,6 +603,23 @@
   #dex-vault iframe { width: 100%; height: 100%; border: 0; }
   .list-sub { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .list-sub small { color: var(--faint); font-weight: 700; }
+  .radar-chips { display: flex; gap: 6px; overflow-x: auto; padding: 0 var(--sp-3) var(--sp-3); scrollbar-width: none; }
+  .radar-chips::-webkit-scrollbar { display: none; }
+  .radar-chips[hidden] { display: none; }
+  .radar-chips button { flex: none; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .radar-chips button small { color: var(--faint); font-weight: 700; }
+  .radar-chips button.on { background: var(--text); color: var(--bg); border-color: var(--text); } .radar-chips button.on small { color: var(--bg); opacity: .6; }
+  .r-radar { display: flex; align-items: center; gap: 10px; }
+  .spark { flex: none; display: block; }
+  @media (max-width: 420px) { .spark { width: 48px; } }
+  .av-wrap { position: relative; width: 40px; height: 40px; flex: none; }
+  .av-wrap .avatar { width: 40px; height: 40px; }
+  .medal { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; color: #1a1306; box-shadow: 0 0 0 2px var(--panel); }
+  .medal.m1 { background: linear-gradient(135deg, #ffe48a, #f2b316); } .medal.m2 { background: linear-gradient(135deg, #f1f3f6, #aab2bd); } .medal.m3 { background: linear-gradient(135deg, #ffb48a, #d8622b); }
+  .vs-entry { display: block; margin-top: 4px; font-size: 14px !important; font-weight: 700 !important; }
+  .fav-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-2); display: grid; place-items: center; cursor: pointer; color: var(--muted); flex: none; }
+  .fav-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+  .fav-btn.on { color: #ff6b8a; border-color: rgba(255,107,138,.4); background: rgba(255,107,138,.1); } .fav-btn.on svg { fill: currentColor; }
   .lic-f { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 12px; }
   .lic-f button { height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; }
   .lic-f button.on { background: var(--panel-3); color: var(--text); border-color: var(--line-2); }
@@ -871,6 +888,7 @@
         <div class="list-head"><b id="list-title"></b>
           <div class="seg-sm" id="radar-ord" hidden title="Ordem da lista"><button data-rord="recentes">Recentes</button><button data-rord="nota">Nota</button></div>
         </div>
+        <div class="radar-chips" id="radar-chips" hidden></div>
         <div class="rows" id="list"></div>
         <div class="pager" id="pager" hidden>
           <button id="prev" aria-label="Página anterior">&larr;</button>
@@ -1458,6 +1476,39 @@
   function markSeen(mint) { if (SEEN.has(mint)) return; SEEN.add(mint); store.set('faro-vistas', [...SEEN].slice(-800)); }
   const isUnseen = (t) => t.status === 'aprovada' && !SEEN.has(t.mint) && !isMine(t);
   const radarOrd = () => store.get('faro-radar-ord', 'recentes');
+  // Favoritas (coração) e filtro do Radar
+  const FAVS = new Set(store.get('faro-favs', []));
+  const isFav = (t) => FAVS.has(t.mint);
+  const radarFilt = () => store.get('faro-radar-filt', 'todas');
+  const RADAR_FILTERS = {
+    todas: ['Todas', () => true],
+    zona: ['Na zona', (t) => ['entrada', 'zona', 'perto'].includes(t.sinal?.fase) || !!t.sinalAgr?.boa],
+    novas: ['Novas', (t) => Date.now() - (t.approvedAt || 0) < 3600000],
+    fortes: ['Mais fortes', (t) => (t.score || 0) >= 75 || !!twinInfo(t)?.best],
+    favs: ['♥ Favoritas', (t) => isFav(t)],
+  };
+  document.addEventListener('click', (e) => {
+    const f = e.target.closest('[data-rfilt]'); if (f) { store.set('faro-radar-filt', f.dataset.rfilt); ui.page = 1; render(); return; }
+    const h = e.target.closest('[data-fav]'); if (h) {
+      e.stopPropagation(); const m = h.dataset.fav;
+      FAVS.has(m) ? FAVS.delete(m) : FAVS.add(m); store.set('faro-favs', [...FAVS]);
+      toast(FAVS.has(m) ? 'Adicionada às favoritas' : 'Removida das favoritas');
+      document.querySelectorAll(`[data-fav="${CSS.escape(m)}"]`).forEach((x) => { x.classList.toggle('on', FAVS.has(m)); x.setAttribute('aria-pressed', FAVS.has(m)); });
+      if (ui.tab === 'aprovada' && radarFilt() === 'favs') render();
+    }
+  });
+  // Mini gráfico (últimas horas) a partir do histórico de preço do robô (um ponto a cada 5 min)
+  function sparkSvg(t, w = 64, h = 26) {
+    let pts = (t.hist || []).slice(-36).map((x) => x[1]).filter((v) => v > 0);
+    if (pts.length < 4 && t.candles?.length) pts = t.candles.slice(-36).map((x) => x[4]);
+    if (pts.length < 4) return '';
+    const lo = Math.min(...pts), hi = Math.max(...pts), span = hi - lo || hi || 1;
+    const xy = pts.map((v, i) => [(i / (pts.length - 1)) * (w - 4) + 2, h - 3 - ((v - lo) / span) * (h - 6)]);
+    const up = pts[pts.length - 1] >= pts[0];
+    const c = up ? 'var(--green)' : 'var(--red)';
+    const [lx, ly] = xy[xy.length - 1];
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline fill="none" stroke="${c}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" points="${xy.map((p) => p.map((n) => n.toFixed(1)).join(',')).join(' ')}"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.2" fill="${c}"/></svg>`;
+  }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-rord]'); if (b) { store.set('faro-radar-ord', b.dataset.rord); ui.page = 1; render(); } });
   function goTo(mint) {
     markSeen(mint);
@@ -2527,7 +2578,7 @@ function baseBreakout(c, ctx = {}) {
       const ch = Number(t.changePct) || 0;
       const tw = twinInfo(t);
       main = `<b>${isUnseen(t) ? '<i class="new-dot" title="Nova, você ainda não abriu"></i>' : ''}${esc(t.symbol)}${isUnseen(t) ? ' <i class="mini-tag new">nova</i>' : ''}${tw ? ` <i class="mini-tag ${tw.best ? 'ok' : 'warn'}">${tw.best ? 'mais forte' : 'cópia'}</i>` : ''}${sigTag(t)}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}${t.shape && SHAPE[t.shape.tipo] && t.shape.tipo !== 'nova' ? ` - ${SHAPE[t.shape.tipo][0].toLowerCase()}` : ''}</small>`;
-      side = `<div style="display:flex;align-items:center;gap:10px"><small class="num ${cls(ch)}" style="font-size:13px">${pct(ch)}</small>${scoreBadge(t.score, true)}</div>`;
+      side = `<div class="r-radar">${sparkSvg(t)}<small class="num ${cls(ch)}" style="font-size:13px">${pct(ch)}</small>${scoreBadge(t.score, true)}</div>`;
     } else if (ui.tab === 'aguardando') {
       const left = t.pending ?? (t.reasons || []).length;
       main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>${left ? `${left === 1 ? 'Falta 1 critério' : `Faltam ${left} critérios`} - ${esc((t.reasons || [])[0] || '')}` : esc((t.reasons || [])[0] || 'Na fila de checagem')}</small>`;
@@ -2537,7 +2588,9 @@ function baseBreakout(c, ctx = {}) {
       main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>${esc(why)}</small>`;
       side = t.mcapUsd ? `<b class="num" style="font-size:13px">${usd(t.mcapUsd)}</b><small class="num" style="color:var(--muted)">liq ${usd(t.liquidityUsd)}</small>` : '';
     }
-    return `<button class="row ${on ? 'on' : ''}" data-sel="${esc(t.mint)}">${avatar(t)}<div class="r-main">${main}</div><div class="r-side">${side}</div></button>`;
+    const md = ui.tab === 'aprovada' ? window.__faroMedal?.get(t.mint) : null;
+    const av = md ? `<div class="av-wrap">${avatar(t)}<i class="medal m${md}" title="${md}ª melhor nota do Radar">${md}</i></div>` : avatar(t);
+    return `<button class="row ${on ? 'on' : ''}" data-sel="${esc(t.mint)}">${av}<div class="r-main">${main}</div><div class="r-side">${side}</div></button>`;
   }
 
   // ---------- Detalhe ----------
@@ -2557,10 +2610,10 @@ function baseBreakout(c, ctx = {}) {
       <div class="d-back"><button class="back" data-back>${ICON.back}Voltar</button></div>
       <div class="d-head">
         ${avatar(t)}${coinHead(t, meta)}
-        <div class="d-actions">${right}</div>
+        <div class="d-actions"><button class="fav-btn ${FAVS.has(t.mint) ? 'on' : ''}" data-fav="${esc(t.mint)}" aria-pressed="${FAVS.has(t.mint)}" aria-label="Favorita" title="Favorita"><svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.7 4 4.5 7.3 4.5c2 0 3.6 1.1 4.7 2.7 1.1-1.6 2.7-2.7 4.7-2.7 3.3 0 5.7 3.2 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"/></svg></button>${right}</div>
       </div>
       <div class="d-hero">
-        <div class="d-price"><b class="num">${price(t.priceUsd)}</b><span class="num ${cls(chg)}">${pct(chg)}<em>${{ m5: 'em 5 min', h1: 'na última hora', h6: 'em 6 horas', h24: 'em 24 horas' }[tf]}</em></span></div>
+        <div class="d-price"><b class="num">${price(t.priceUsd)}</b><span class="num ${cls(chg)}">${pct(chg)}<em>${{ m5: 'em 5 min', h1: 'na última hora', h6: 'em 6 horas', h24: 'em 24 horas' }[tf]}</em></span>${(() => { const p = t.position; if (!t.held || !p?.known || !(p.avgPriceUsd > 0) || !(t.priceUsd > 0)) return ''; const d = (t.priceUsd / p.avgPriceUsd - 1) * 100; return `<span class="vs-entry num ${cls(d)}">${d >= 0 ? '+' : ''}${d.toFixed(2).replace('.', ',')}% ${d >= 0 ? 'acima' : 'abaixo'} da sua entrada</span>`; })()}</div>
         <div class="tfs">${tfs}</div>
       </div>
       ${chartBox(t)}
@@ -3740,6 +3793,18 @@ function baseBreakout(c, ctx = {}) {
       items = [...items].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (a.pending ?? 9) - (b.pending ?? 9) || (b.volumeH1 || 0) - (a.volumeH1 || 0));
     }
     else if (ui.tab === 'reprovada') items = [...items].sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));
+    // ---- 4. Medalhas: as 3 melhores notas do Radar (antes do filtro, para a medalha não mudar de dono)
+    const MEDAL = new Map(ui.tab === 'aprovada' ? [...lists.aprovada].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3).filter((t) => (t.score || 0) > 0).map((t, i) => [t.mint, i + 1]) : []);
+    window.__faroMedal = MEDAL;
+    // ---- Filtros em pílulas do Radar
+    const rc = $('radar-chips');
+    rc.hidden = ui.tab !== 'aprovada';
+    if (ui.tab === 'aprovada') {
+      const cur = RADAR_FILTERS[radarFilt()] ? radarFilt() : 'todas';
+      const all = items;
+      rc.innerHTML = Object.entries(RADAR_FILTERS).map(([k, [l, fn]]) => { const n = k === 'todas' ? all.length : all.filter(fn).length; return `<button data-rfilt="${k}" class="${cur === k ? 'on' : ''}">${l}${n ? `<small>${n}</small>` : ''}</button>`; }).join('');
+      items = items.filter(RADAR_FILTERS[cur][1]);
+    }
     const q = ui.q.trim().toLowerCase();
     if (q) items = items.filter((t) => [t.symbol, t.name, t.mint].some((v) => String(v || '').toLowerCase().includes(q)));
 
