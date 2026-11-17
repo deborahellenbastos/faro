@@ -1961,7 +1961,7 @@
   const SEEN = new Set(store.get('faro-vistas', []));
   function markSeen(mint) { if (SEEN.has(mint)) return; SEEN.add(mint); store.set('faro-vistas', [...SEEN].slice(-800)); }
   const isUnseen = (t) => t.status === 'aprovada' && !SEEN.has(t.mint) && !isMine(t);
-  const radarOrd = () => store.get('faro-radar-ord', 'recentes');
+  const radarOrd = () => 'nota'; // ordem fixa: melhor nota primeiro (os filtros em pílula fazem o resto)
   // Favoritas (coração) e filtro do Radar
   const FAVS = new Set(store.get('faro-favs', []));
   const isFav = (t) => FAVS.has(t.mint);
@@ -4371,7 +4371,7 @@ function baseBreakout(c, ctx = {}) {
     if (q) items = items.filter((t) => [t.symbol, t.name, t.mint].some((v) => String(v || '').toLowerCase().includes(q)));
 
     const realN = items.length;
-    const ro = $('radar-ord'); ro.hidden = ui.tab !== 'aprovada';
+    const ro = $('radar-ord'); ro.hidden = true;
     ro.querySelectorAll('[data-rord]').forEach((b) => b.classList.toggle('on', b.dataset.rord === radarOrd()));
     $('list-title').innerHTML = `${{ minhas: 'Carteira', aprovada: 'No radar', aguardando: 'Em análise', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
     // Encerradas: abre/fecha pelo título (começa aberta)
