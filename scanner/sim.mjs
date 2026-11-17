@@ -107,3 +107,84 @@ export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, can
   sim.stats.notaAprov = { ops: na.length, winRate: na.length ? (na.filter((x) => x.pnlPct > 0).length / na.length) * 100 : 0, pnlSol: na.reduce((a, x) => a + x.pnlSol, 0) };
   sim.stats.curva = { ops: cv.length, winRate: cv.length ? (cv.filter((x) => x.pnlPct > 0).length / cv.length) * 100 : 0, pnlSol: cv.reduce((a, x) => a + x.pnlSol, 0) };
 }
+
+// ---------- Perfil Enlouquecido (só simulação) ----------
+// Giro rápido: moeda entrou no Radar, espera a PRIMEIRA correção (recuo desde a máxima depois da aprovação) e entra
+// na primeira vela de reação com compra, com valor fixo (US$ 3). Vende em +50%; se a alta estiver muito forte,
+// segura com um stop colado no topo e vende de vez em +80%. Stop -20% e no máximo 2 h por operação.
+export function crazyEntry(t, now, L = {}) {
+  if (t.status !== 'aprovada' || t.held || t.dexId === 'pumpfun') return null;
+  if (t.safety?.level === 'danger' || (t.shape && ['morta', 'reta'].includes(t.shape.tipo))) return null;
+  if ((t.score || 0) < (L.notaMin ?? 50)) return null;
+  const since = (t.candles || []).filter((x) => x[0] >= (t.approvedAt || 0) - 300000);
+  if (since.length < 3) return null;
+  const n = since.length, last = since[n - 1], prev = since[n - 2];
+  const peak = Math.max(...since.slice(0, -1).map((x) => x[2]));
+  const px = t.priceUsd || last[4];
+  const recuo = (1 - Math.min(last[3], prev[3]) / peak) * 100;
+  if (recuo < (L.correcaoMinPct ?? 15) || recuo > (L.correcaoMaxPct ?? 45)) return null; // corrigiu, mas não desabou
+  const p5 = t.periods?.m5 || {};
+  const buysOk = !(p5.buys + p5.sells > 0) || p5.buys >= p5.sells;
+  if (!(px > last[1] && px > prev[4] && buysOk)) return null; // vela de reação com compra
+  return { px, peak, recuo, key: `${peak}` };
+}
+
+export function simCrazy({ state, tokens, cfg, now, log, solUsd }) {
+  const L = cfg.perfis?.enlouquecido || {};
+  if (L.ligado === false) return;
+  const sim = (state.simLouco = state.simLouco || { open: [], closed: [], done: {}, startedAt: now });
+  const S = cfg.simulacao || {};
+  const cost = ((S.taxaPct ?? 1) + (S.slippagePct ?? 2)) / 100;
+  const usd = L.valorUsd ?? 3;
+  const sol = solUsd > 0 ? usd / solUsd : 0;
+  const day = now - 86400000;
+  // 1. Saídas
+  for (const o of [...sim.open]) {
+    const t = tokens[o.mint];
+    const px = t?.priceUsd;
+    const bars = (t?.candles || []).filter((x) => x[0] >= (o.checkedAt || o.at) - 300000);
+    const hi = Math.max(px || 0, ...bars.map((x) => x[2]));
+    const lo = Math.min(px || Infinity, ...bars.map((x) => x[3]));
+    o.peak = Math.max(o.peak || o.entry, hi);
+    const tp1 = o.entry * (1 + (L.alvoPct ?? 50) / 100), tp2 = o.entry * (1 + (L.alvoMaxPct ?? 80) / 100);
+    const forte = (t?.buyRatioH1 ?? 0) >= (L.forteCompraPct ?? 60) && t?.shape?.tipo === 'organica';
+    let exit = null, why = null;
+    if (lo <= o.entry * (1 - (L.stopPct ?? 20) / 100)) { exit = o.entry * (1 - (L.stopPct ?? 20) / 100) * 0.95; why = 'stop'; }
+    else if (o.trail && lo <= o.trail) { exit = o.trail * 0.97; why = 'segurou e saiu'; }
+    else if (hi >= tp2) { exit = tp2; why = 'alvo +80%'; }
+    else if (hi >= tp1 && !forte && !o.trail) { exit = tp1; why = 'alvo +50%'; }
+    else if (hi >= tp1 && forte) o.trail = Math.max(o.trail || 0, tp1 * 0.97, o.peak * 0.88); // alta muito forte: segura um pouco
+    if (!exit && o.trail) o.trail = Math.max(o.trail, o.peak * 0.88);
+    if (!exit && t?.safety?.level === 'danger' && px) { exit = px * 0.9; why = 'perigo'; }
+    if (!exit && now - o.at > (L.horasMax ?? 2) * 3600000 && px) { exit = px; why = 'tempo (2h)'; }
+    if (!exit && !t) { exit = o.entry * 0.5; why = 'sumiu'; }
+    o.checkedAt = now;
+    if (!exit) continue;
+    const net = (exit / o.entry) * (1 - cost) / (1 + cost) - 1;
+    sim.open = sim.open.filter((x) => x !== o);
+    sim.closed.unshift({ ...o, exitAt: now, exit, why, pnlPct: net * 100, pnlSol: o.sol * net });
+    log(`SIMULAÇÃO ENLOUQUECIDO: fechou ${o.symbol} por ${why} (${net >= 0 ? '+' : ''}${(net * 100).toFixed(1)}%)`);
+  }
+  sim.closed = sim.closed.slice(0, 300);
+  // 2. Entradas (uma vez por moeda: "a primeira correção")
+  const todayClosed = sim.closed.filter((x) => x.exitAt > day);
+  const todayPnl = todayClosed.reduce((a, x) => a + x.pnlSol, 0);
+  const todayOpened = [...sim.open, ...sim.closed].filter((x) => x.at > day).length;
+  if (sol > 0 && todayPnl > -(L.perdaMaxDiaVezes ?? 5) * sol) {
+    for (const t of Object.values(tokens)) {
+      if (sim.open.length >= (L.maxAbertas ?? 4) || todayOpened + sim.open.filter((x) => x.at === now).length >= (L.maxComprasPorDia ?? 15)) break;
+      if (sim.done[t.mint] || sim.open.some((x) => x.mint === t.mint)) continue;
+      const g = crazyEntry(t, now, L);
+      if (!g) continue;
+      sim.done[t.mint] = now;
+      sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: g.px, sol, usd, score: t.score, recuo: g.recuo, stop: g.px * (1 - (L.stopPct ?? 20) / 100), tp: g.px * (1 + (L.alvoPct ?? 50) / 100), rr: (L.alvoPct ?? 50) / (L.stopPct ?? 20), sinal: `Primeira correção (-${g.recuo.toFixed(0)}% do topo) com reação` });
+      log(`SIMULAÇÃO ENLOUQUECIDO: entrou em ${t.symbol} na primeira correção (-${g.recuo.toFixed(0)}% do topo), US$ ${usd}`);
+    }
+  }
+  for (const k of Object.keys(sim.done)) if (now - sim.done[k] > 2 * 86400000) delete sim.done[k];
+  // 3. Resumo
+  const c = sim.closed, wins = c.filter((x) => x.pnlPct > 0), losses = c.filter((x) => x.pnlPct <= 0);
+  sim.stats = { ops: c.length, open: sim.open.length, winRate: c.length ? (wins.length / c.length) * 100 : 0, pnlSol: c.reduce((a, x) => a + x.pnlSol, 0),
+    avgWin: wins.length ? wins.reduce((a, x) => a + x.pnlPct, 0) / wins.length : 0, avgLoss: losses.length ? losses.reduce((a, x) => a + x.pnlPct, 0) / losses.length : 0,
+    avgMin: c.length ? c.reduce((a, x) => a + (x.exitAt - x.at), 0) / c.length / 60000 : 0, base: sol };
+}

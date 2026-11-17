@@ -4,6 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { runOnce, dumpReason, lpFalseAlarm } from './run.mjs';
 import { buyScoreOk, entryCandidates as ecTest, profileCfg, readProfile } from './autobuy.mjs';
 import { shallowEntry, baseBreakout } from './signals.mjs';
+import { crazyEntry, simCrazy } from './sim.mjs';
 import { parseOps } from './api.mjs';
 import { scamSignals } from './analyze.mjs';
 import { entrySignal, exitSignal, trailStop, weakSignals, realizeCheck, breakoutSignal } from './signals.mjs';
@@ -486,6 +487,30 @@ console.log(JSON.stringify(state.lastRun.counts));
   assert.equal(ag.length, 1); assert.equal(ag[0]._agrTipo, '38,2%'); assert.equal(ag[0].sinal.raso, true);
   assert.equal(ecTest({ Y: { ...tok, dexId: 'pumpfun' } }, A, now, { agr: true }).length, 0); // nunca na curva
   assert.equal(ecTest({ Y: { ...tok, safety: { level: 'danger', alerts: [] } } }, A, now, { agr: true }).length, 0);
+}
+
+// Perfil Enlouquecido (só simulação): primeira correção depois do Radar, US$ 3, +50%
+{
+  const cfgT = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
+  const L = cfgT.perfis.enlouquecido;
+  const t0 = Date.UTC(2026, 10, 16, 22), ap = t0;
+  const cs = [[t0, 100, 110, 99, 108, 1], [t0 + 3e5, 108, 140, 107, 138, 1], [t0 + 6e5, 138, 139, 112, 115, 1], [t0 + 9e5, 115, 122, 114, 121, 1]];
+  const tok = { mint: 'Z', symbol: 'Z', status: 'aprovada', approvedAt: ap, dexId: 'pumpswap', score: 62, safety: { level: 'ok' }, shape: { tipo: 'organica' }, candles: cs, priceUsd: 121, periods: { m5: { buys: 30, sells: 20 } } };
+  const g = crazyEntry(tok, t0 + 9e5, L);
+  assert.ok(g && g.recuo >= 15, 'entra na primeira correção com reação');
+  assert.equal(crazyEntry({ ...tok, dexId: 'pumpfun' }, t0 + 9e5, L), null);
+  assert.equal(crazyEntry({ ...tok, priceUsd: 113 }, t0 + 9e5, L), null); // sem reação ainda
+  const st = {}; const logs = [];
+  simCrazy({ state: st, tokens: { Z: tok }, cfg: cfgT, now: t0 + 9e5, log: (m) => logs.push(m), solUsd: 140 });
+  assert.equal(st.simLouco.open.length, 1);
+  // sobe 55% sem força -> vende no +50%
+  const t2 = { ...tok, priceUsd: 190, buyRatioH1: 50, candles: [...cs, [t0 + 12e5, 121, 190, 120, 188, 1]] };
+  simCrazy({ state: st, tokens: { Z: t2 }, cfg: cfgT, now: t0 + 12e5, log: (m) => logs.push(m), solUsd: 140 });
+  assert.equal(st.simLouco.closed[0].why, 'alvo +50%');
+  assert.ok(st.simLouco.closed[0].pnlPct > 40);
+  // não entra de novo na mesma moeda (só a primeira correção)
+  simCrazy({ state: st, tokens: { Z: tok }, cfg: cfgT, now: t0 + 15e5, log: () => {}, solUsd: 140 });
+  assert.equal(st.simLouco.open.length, 0);
 }
 if (process.argv.includes('--demo')) {
   state.config = cfg;

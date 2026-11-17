@@ -612,10 +612,10 @@
   .pf-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0 12px; }
   .pf-table th, .pf-table td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
   .pf-table th { color: var(--muted); font-size: 12px; } .pf-table td:first-child { color: var(--muted); }
-  .pf-cmps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: var(--sp-4); }
-  .pf-cmp { text-align: left; padding: 10px 12px; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-family: inherit; color: var(--text); display: grid; gap: 2px; }
+  .pf-cmps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: var(--sp-4); }
+  .pf-cmp { text-align: left; padding: 9px 10px; min-width: 0; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-family: inherit; color: var(--text); display: grid; gap: 2px; }
   .pf-cmp.on { border-color: var(--line-2); background: var(--panel-3); }
-  .pf-cmp span { font-size: 12px; font-weight: 700; color: var(--muted); } .pf-cmp b { font-size: 17px; font-weight: 800; } .pf-cmp small { font-size: 11px; color: var(--faint); }
+  .pf-cmp span { font-size: 12px; font-weight: 700; color: var(--muted); } .pf-cmp b { font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .pf-cmp small { font-size: 11px; color: var(--faint); }
   .r-arrow { font-style: normal; color: var(--faint); font-weight: 600; margin: 0 8px; }
   .r-tri { font-style: normal; font-size: .8em; margin: 0 3px 0 12px; }
   .row .r-side small.sold-line { margin-top: 3px; }
@@ -3783,12 +3783,14 @@ function baseBreakout(c, ctx = {}) {
   let simView = store.get('faro-simview', 'conservador');
   function renderSim() {
     const el = $('rt-sim'); if (!el) return;
-    const sim = simView === 'agressivo' ? data.simAgr : data.sim, st = sim?.stats;
+    const sim = simView === 'agressivo' ? data.simAgr : simView === 'enlouquecido' ? data.simLouco : data.sim, st = sim?.stats;
     const cmpCard = (name, label, x) => { const s2 = x?.stats; return `<button class="pf-cmp ${simView === name ? 'on' : ''} ${name === perfilOf() ? 'live' : ''}" data-simview="${name}">
         <span>${label}${name === perfilOf() ? ' <i class="mini-tag ok">ativo</i>' : ''}</span>
         <b class="num ${cls(s2?.pnlSol)}">${(s2?.pnlSol || 0) >= 0 ? '+' : ''}${solFmt(s2?.pnlSol || 0, 4)}</b>
         <small>${s2?.ops || 0} operações - ${Math.round(s2?.winRate || 0)}% de acerto${s2?.open ? ` - ${s2.open} abertas` : ''}</small></button>`; };
-    const cmp = `<div class="pf-cmps">${cmpCard('conservador', 'Conservador', data.sim)}${cmpCard('agressivo', 'Agressivo', data.simAgr)}</div>`;
+    const cmp = `<div class="pf-cmps">${cmpCard('conservador', 'Conservador', data.sim)}${cmpCard('agressivo', 'Agressivo', data.simAgr)}${cmpCard('enlouquecido', 'Enlouquecido', data.simLouco)}</div>
+      ${simView === 'enlouquecido' ? `<p class="note"><b>Enlouquecido (só simulação):</b> entra na primeira correção depois que a moeda chega ao Radar, com US$ ${data.config?.perfis?.enlouquecido?.valorUsd ?? 3}, e vende em +50% (segura até +80% se a alta estiver muito forte). Stop -20% e no máximo 2h por operação.${st?.avgMin ? ` Tempo médio por operação: ${Math.round(st.avgMin)} min.` : ''}</p>` : ''}`;
+    if (simView === 'enlouquecido' && !sim) { el.innerHTML = cmp + '<p class="note">A simulação do Enlouquecido começa na próxima rodada do robô.</p>'; return; }
     if (simView === 'agressivo' && !sim) { el.innerHTML = cmp + '<p class="note">A simulação do perfil Agressivo começa na próxima rodada do robô. Ela roda sempre, mesmo com o Conservador ativo, para você comparar.</p>'; return; }
     if (!sim) { el.innerHTML = '<p class="note">A simulação começa na próxima rodada do robô. A cada sinal de Boa entrada (nota 70+, risco/retorno 1:2 ou melhor), ele "entra" de mentira com o valor por operação e sai pelas mesmas regras do robô de verdade. Nenhum dinheiro é usado.</p>'; return; }
     const solUsd = LIVE.solUsd || 0;

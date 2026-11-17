@@ -102,7 +102,11 @@
       "confirmaVendasPct": 60
     }
   },
-  "sinais": { "notaMinima": 60, "naoRepetirSeNaoSubiuPct": 10, "repeticaoJanelaHoras": 24 },
+  "sinais": {
+    "notaMinima": 60,
+    "naoRepetirSeNaoSubiuPct": 10,
+    "repeticaoJanelaHoras": 24
+  },
   "perfil": "equilibrado",
   "banca": {
     "usd": 10,
@@ -145,6 +149,23 @@
         "maxAbertas": 3,
         "perdaMaxDiaVezesBase": 4
       }
+    },
+    "enlouquecido": {
+      "_comentario": "Só simulação por enquanto. Primeira correção depois do Radar, valor fixo, +50% (segura até +80% se a alta estiver muito forte), stop -20%, no máximo 2h.",
+      "ligado": true,
+      "somenteSimulacao": true,
+      "valorUsd": 3,
+      "notaMin": 50,
+      "correcaoMinPct": 15,
+      "correcaoMaxPct": 45,
+      "alvoPct": 50,
+      "alvoMaxPct": 80,
+      "forteCompraPct": 60,
+      "stopPct": 20,
+      "horasMax": 2,
+      "maxAbertas": 4,
+      "maxComprasPorDia": 15,
+      "perdaMaxDiaVezes": 5
     }
   }
 }

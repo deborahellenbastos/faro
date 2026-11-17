@@ -1,5 +1,5 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
-import { simStep } from './sim.mjs';
+import { simStep, simCrazy } from './sim.mjs';
 import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg } from './autobuy.mjs';
 import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
@@ -112,7 +112,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     }
   }
 
-  const simOpen = new Set([...(state.sim?.open || []), ...(state.simAgr?.open || [])].map((o) => o.mint));
+  const simOpen = new Set([...(state.sim?.open || []), ...(state.simAgr?.open || []), ...(state.simLouco?.open || [])].map((o) => o.mint));
   const REENTRY_MS = (cfg.compra?.reentradaHoras ?? 3) * 3600000;
   const reentryOpen = (t) => !!(t.reentry && !t.held && now - t.reentry.at < REENTRY_MS);
   const curveOn = (t) => !!(t.curva?.ok && now - t.curva.at < 3600000);
@@ -542,6 +542,11 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // rompimentos frescos (até 10 min) em moedas do radar, com as mesmas travas de segurança da lista de compra
   const rompList = Object.values(tokens).filter((t) => t.romp && now - t.romp.at <= 10 * 60000 && !t.held && t.status === 'aprovada' && t.safety?.level !== 'danger' && t.dexId !== 'pumpfun' && !buyList.includes(t));
   try { simStep({ state, tokens, candidates: [...buyList, ...curveList.filter((t) => !buyList.includes(t)), ...notaList], rompidas: rompList, cfg, now, log }); } catch (e) { log(`Simulação falhou: ${e.message}`, true); }
+  // Perfil Enlouquecido (só simulação): primeira correção depois do Radar, US$ 3, giro rápido
+  try {
+    const solUsdNow = Object.values(tokens).map((t) => (t.priceNative > 0 ? t.priceUsd / t.priceNative : 0)).find((v) => v > 0) || 0;
+    simCrazy({ state, tokens, cfg, now, log, solUsd: solUsdNow });
+  } catch (e) { log(`Simulação enlouquecida falhou: ${e.message}`, true); }
   // Simulação do perfil agressivo, sempre rodando ao lado (para comparar antes e depois de trocar)
   try { simStep({ state, key: 'simAgr', label: 'SIMULAÇÃO AGRESSIVO', tokens, candidates: agrList, rompidas: [], cfg: cfgAgr, now, log }); } catch (e) { log(`Simulação agressiva falhou: ${e.message}`, true); }
   if (trader?.canBuy && state.autoCompra?.on && realList.length) {
@@ -554,7 +559,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
 
   // 7. Limpeza
   const rejected = Object.values(tokens).filter((t) => t.status === 'reprovada').sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));
-  const simNow = new Set([...(state.sim?.open || []), ...(state.simAgr?.open || [])].map((o) => o.mint));
+  const simNow = new Set([...(state.sim?.open || []), ...(state.simAgr?.open || []), ...(state.simLouco?.open || [])].map((o) => o.mint));
   for (const t of rejected.slice(MAX_REJECTED_KEPT)) if (!simNow.has(t.mint)) delete tokens[t.mint];
   for (const t of Object.values(tokens)) {
     if (t.held || simNow.has(t.mint)) { delete t._rug; continue; }
