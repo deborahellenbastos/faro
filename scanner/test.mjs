@@ -564,3 +564,21 @@ console.log('Teste do dinheiro de venda que chega depois: ok');
   assert.equal(securityOk({ safety: { level: 'danger', alerts: [{ id: 'liq-caiu', level: 'danger' }] } }), false);
 }
 console.log('Teste da segurança na reentrada: ok');
+
+// 17/11: entrada em subida saudável (Dow + médias 9/21 + volume), para moedas seguras que não corrigem até a zona (Acrux)
+{
+  const { trendEntry } = await import('./signals.mjs');
+  const mk = (pullback = true) => {
+    const c = []; let p = 1, t = 0;
+    const push = (o, cl, v) => c.push([t += 300000, o, Math.max(o, cl) * 1.01, Math.min(o, cl) * 0.99, cl, v]);
+    for (let w = 0; w < 3; w++) { for (let i = 0; i < 5; i++) { const o = p; p *= 1.04; push(o, p, 1000); } for (let i = 0; i < 3; i++) { const o = p; p *= 0.985; push(o, p, 300); } }
+    if (pullback) for (let i = 0; i < 3; i++) { const o = p; p *= 0.99; push(o, p, 300); } else for (let i = 0; i < 3; i++) { const o = p; p *= 1.05; push(o, p, 1000); }
+    { const o = p; p *= 1.03; push(o, p, 900); }
+    return c;
+  };
+  assert.ok(trendEntry(mk(), { safety: 'ok', score: 75, rrMin: 2 })?.boa, 'subida saudável com correção até a média: entra');
+  assert.equal(trendEntry(mk(), { safety: 'warn', score: 75, rrMin: 2 }), null, 'segurança com alerta: não');
+  assert.equal(trendEntry(mk(), { safety: 'ok', score: 60, rrMin: 2 }), null, 'nota abaixo de 70: não');
+  assert.equal(trendEntry(mk(false), { safety: 'ok', score: 75, rrMin: 2 }), null, 'sem correção até a média (perseguindo): não');
+}
+console.log('Teste da subida saudável: ok');

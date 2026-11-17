@@ -1,7 +1,7 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { simStep, simCrazy, marketTide } from './sim.mjs';
-import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg } from './autobuy.mjs';
-import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout } from './signals.mjs';
+import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk } from './autobuy.mjs';
+import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
@@ -422,6 +422,11 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (x) sig = { tipo: 'saida', ...x };
     } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t) || curveOn(t)) {
       sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };
+      // Subida saudável (aula de análise técnica): moeda segura que sobe sem corrigir até a zona. Vale para o Conservador
+      if (!sig.boa && SG.tendencia?.ligado !== false) {
+        const te = trendEntry(t.candles, { ...ctx, safety: securityOk(t) && (t.checks || []).every((k) => k.ok !== false) ? 'ok' : 'warn', notaTendencia: SG.tendencia?.notaMinima ?? 70 });
+        if (te) sig = { tipo: 'entrada', ...te };
+      }
       // Rompimento (só simulação): guarda à parte, não mexe no sinal principal nem na compra real
       const br = breakoutSignal(t.candles, ctx);
       if (br) { if (!t.romp || t.romp.key !== br.key) { t.romp = { ...br, at: now }; log(`ROMPIMENTO (simulação): ${t.symbol}`); } }

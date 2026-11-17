@@ -2609,6 +2609,46 @@ function baseBreakout(c, ctx = {}) {
   return { fase: 'rompimento-base', titulo: 'Rompimento de base', boa: true, base: true, msg: `Ficou ${Math.round(win.length * 5 / 60 * 10) / 10}h presa numa faixa e rompeu o teto com volume e compra. Stop logo abaixo do teto, alvo na altura da faixa (ou +50%).`, stop, alvo, rr, key: `base-${win[0][0]}` };
 }
 
+// Subida saudável (aula de análise técnica, 17/11): para moedas seguras que sobem sem corrigir até a zona de 50% a 61,8%
+// (caso Acrux). Velas de 5 min. Regras da aula:
+// - Dow: topos e fundos subindo; - médias: preço acima da MME 9 e 21, as duas subindo, 9 acima da 21;
+// - volume confirma: velas de alta com mais volume que as de baixa; correção com pouco volume;
+// - clímax (vela gigante com volume 3x a média) = não entra; - não persegue: no máximo 25% acima da MME 21.
+// Entrada: a correção encosta na MME 9 e a vela seguinte retoma com compra. Stop abaixo do último fundo (ou da MME 21).
+const emaOf = (arr, n) => { const k = 2 / (n + 1); let e = arr[0]; return arr.map((v, i) => (i ? (e = v * k + e * (1 - k)) : e)); };
+function trendEntry(c, ctx = {}) {
+  if (!Array.isArray(c) || c.length < 24) return null;
+  if (ctx.safety && ctx.safety !== 'ok') return null;
+  if (ctx.score != null && ctx.score < (ctx.notaTendencia ?? 70)) return null;
+  if (ctx.shape && ['morta', 'reta'].includes(ctx.shape)) return null;
+  const n = c.length, closes = c.map((x) => x[4]);
+  const e9 = emaOf(closes, 9), e21 = emaOf(closes, 21);
+  const px = ctx.px > 0 ? ctx.px : closes[n - 1];
+  if (!(px > e21[n - 1] && e9[n - 1] > e21[n - 1] && e21[n - 1] > e21[n - 7] && e9[n - 1] > e9[n - 4])) return null;
+  const blk = [c.slice(n - 24, n - 16), c.slice(n - 16, n - 8), c.slice(n - 8)];
+  const hs = blk.map((b) => Math.max(...b.map((x) => x[2]))), ls = blk.map((b) => Math.min(...b.map((x) => x[3])));
+  if (!(hs[1] > hs[0] && ls[1] > ls[0] && ls[2] > ls[1] && hs[2] >= hs[1] * 0.97)) return null;
+  const w = c.slice(n - 21), avgV = (a) => (a.length ? a.reduce((s, x) => s + (x[5] || 0), 0) / a.length : 0);
+  const vAvg = avgV(w), up = w.filter((x) => x[4] >= x[1]), dn = w.filter((x) => x[4] < x[1]);
+  if (vAvg > 0 && !(avgV(up) > avgV(dn) * 1.2)) return null;
+  const last = c[n - 1], prev = c[n - 2];
+  if (vAvg > 0 && Math.max(last[5] || 0, prev[5] || 0) > vAvg * 3 && Math.max(last[2] - last[3], prev[2] - prev[3]) / px > 0.15) return null;
+  if (px > e21[n - 1] * 1.25) return null;
+  const pull = c.slice(n - 4, n - 1);
+  const touched = pull.some((x, i) => x[3] <= e9[n - 4 + i] * 1.01);
+  const pullQuiet = !(vAvg > 0) || avgV(pull) <= vAvg * 1.1;
+  const resume = px > last[1] && px > e9[n - 1] && (!(vAvg > 0) || (last[5] || 0) >= vAvg * 0.8);
+  const buyOk = ctx.buys5 == null || ctx.buys5 + ctx.sells5 === 0 || ctx.buys5 >= ctx.sells5;
+  if (!(touched && pullQuiet && resume && buyOk)) return null;
+  const stop = Math.min(Math.min(...c.slice(n - 8).map((x) => x[3])), e21[n - 1]) * 0.97;
+  if ((px - stop) / px > 0.18) return null;
+  const top = Math.max(...c.slice(n - 24).map((x) => x[2]));
+  const alvo = Math.max(top + (top - ls[0]) * 0.5, px * 1.4);
+  const rr = px > stop ? (alvo - px) / (px - stop) : 0;
+  if (rr < (ctx.rrMin || 1.5)) return null;
+  return { fase: 'entrada', titulo: 'Boa entrada (subida saudável)', boa: true, tendencia: true, msg: 'Subida saudável: topos e fundos subindo, preço acima das médias de 9 e 21 e mais volume nas altas. Corrigiu até a média com pouco volume e retomou com compra. Stop abaixo do último fundo, alvo na continuação da alta.', stop, alvo, rr, key: `tend-${c[n - 8][0]}` };
+}
+
   // </fim-sinais>
 
   // Ícone de informação: toca para abrir/fechar a explicação (funciona no celular, sem depender de passar o mouse)
@@ -2693,7 +2733,17 @@ function baseBreakout(c, ctx = {}) {
       return x ? { tipo: 'saida', ...x } : null;
     }
     const reent = !!(t.reentry && !t.held && Date.now() - t.reentry.at < (data?.config?.compra?.reentradaHoras ?? 3) * 3600000);
-    if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reent) return { tipo: 'entrada', reentrada: reent, ...entrySignal(c, ctx) };
+    if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reent) {
+      const z = entrySignal(c, ctx);
+      // Subida saudável (mesma regra do robô): moeda segura subindo sem corrigir até a zona
+      if (!z.boa && SG.tendencia?.ligado !== false) {
+        const SEC = new Set(['rugged', 'mint', 'freeze', 'lp', 'risco-novo', 'dev-vendendo', 'concentracao', 'insiders', 'liq-sumiu', 'score']);
+        const secOk = !(t.safety?.alerts || []).some((a) => a.level === 'danger' || (SEC.has(a.id) && a.level === 'warn')) && (t.checks || []).every((k) => k.ok !== false);
+        const te = trendEntry(c, { ...ctx, safety: secOk ? 'ok' : 'warn', notaTendencia: SG.tendencia?.notaMinima ?? 70 });
+        if (te) return { tipo: 'entrada', reentrada: reent, ...te };
+      }
+      return { tipo: 'entrada', reentrada: reent, ...z };
+    }
     return null;
   }
   // Stop móvel ao vivo: o do robô, subindo junto com o preço que o painel vê agora
