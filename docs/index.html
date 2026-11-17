@@ -1286,6 +1286,14 @@
   /* Controles do gráfico: coluna à esquerda, acima do logo (o meio fica livre para ler o volume) */
   .ov-nav { left: 8px !important; right: auto !important; bottom: 58px !important; transform: none !important; display: grid !important; grid-template-columns: 30px 30px; gap: 5px !important; }
   .ov-nav button { width: 30px !important; height: 30px !important; font-size: 15px !important; border-radius: 8px !important; }
+  /* Modal de aviso: centralizado (sem vazar pela direita) e botão de fechar discreto */
+  .ntm { padding: 20px !important; place-items: center !important; }
+  .ntm-card { box-sizing: border-box; width: min(440px, 100%) !important; margin: 0 auto; border-radius: 24px !important; }
+  .ntm-h { align-items: flex-start !important; gap: 12px !important; }
+  .ntm-h b { font-size: 18px !important; line-height: 1.3; padding-top: 4px; }
+  .ntm-x { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(255,255,255,.07); color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: background .2s, color .2s; }
+  .ntm-x svg { width: 16px; height: 16px; }
+  .ntm-x:hover, .ntm-x:active { background: rgba(255,255,255,.12); color: var(--text); }
 </style>
 </head>
 <body>
@@ -1751,7 +1759,7 @@
     }
     if (x.mint && ['compra', 'venda', 'saida', 'alerta', 'robo', 'recupera', 'entrada', 'nova'].includes(type)) wallet = walletBlock(x, t);
     const m = $('ntm');
-    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>${esc(x.title)}</b><button class="icon-btn" data-ntmclose aria-label="Fechar">&times;</button></div>
+    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>${esc(x.title)}</b><button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <small class="ntm-at">${when}</small>
       ${what ? `<h5>O que aconteceu</h5><div class="ntm-rows">${what}</div>` : ''}
       ${why ? `<h5>${whyTitle}</h5><div class="ntm-rows">${why}</div>` : ''}
@@ -3850,7 +3858,7 @@ function baseBreakout(c, ctx = {}) {
     const A = autoState(), c = data.config?.compra || {}, S = data.config?.simulacao || {}, st = data.sim?.stats;
     const per = data.banca?.faixaUsd ? `US$ ${Number(data.banca.faixaUsd).toFixed(2).replace('.', ',')}` : `${c.solPorCompra} SOL`;
     const m = $('ntm');
-    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Compra automática</b><button class="icon-btn" data-ntmclose aria-label="Fechar">&times;</button></div>
+    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Compra automática</b><button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <p>Quando aparecer uma <b>Boa entrada</b> (ou <b>Boa reentrada</b> depois de um stop), o robô compra sozinho, sem a Phantom. As proteções de venda continuam valendo.</p>
       <h5>Travas</h5><ul class="ntm-list"><li>${per} por compra (a faixa da sua banca)</li><li>Até ${S.maxAbertas ?? 2} abertas e ${c.maxComprasPorDia ?? 5} compras por dia</li>
         <li>Para no dia se perder ${S.perdaMaxDiaVezesBase ?? 3}x o valor por compra</li><li>Só nota ${c.scoreMinimo ?? 70}+, risco/retorno 1:${S.riscoRetornoMin ?? 2}+ e sem perigo</li></ul>
@@ -3895,7 +3903,7 @@ function baseBreakout(c, ctx = {}) {
     const A = data.config?.perfis?.agressivo || {}, c = data.config?.compra || {}, S = data.config?.simulacao || {};
     const row = (l, a, b) => `<tr><td>${l}</td><td>${a}</td><td>${b}</td></tr>`;
     const m = $('ntm');
-    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Perfil de operação</b><button class="icon-btn" data-ntmclose aria-label="Fechar">&times;</button></div>
+    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Perfil de operação</b><button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <p>O perfil decide quando o robô <b>compra</b>. As travas contra golpe, a curva da pump.fun (nunca compra), os stops e a vigia são iguais nos dois.</p>
       <table class="pf-table"><thead><tr><th></th><th>Conservador</th><th>Agressivo</th></tr></thead><tbody>
         ${row('Nota mínima', c.scoreMinimo ?? 70, `${A.compra?.scoreMinimo ?? 60} (ou a da aprovação)`)}
