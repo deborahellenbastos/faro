@@ -1988,6 +1988,15 @@
     b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
     setTimeout(() => b.classList.remove('pop'), 700);
   }, true);
+  // Atualiza a lista sem piscar as fotos: se nada mudou, não mexe; se mudou, reaproveita as fotos já carregadas
+  function setListHtml(el, html) {
+    if (el.__html === html) return;
+    const imgs = new Map();
+    el.querySelectorAll('img').forEach((im) => { if (im.complete && im.naturalWidth) imgs.set(im.getAttribute('src'), im); });
+    el.innerHTML = html; el.__html = html;
+    if (!imgs.size) return;
+    el.querySelectorAll('img').forEach((im) => { const old = imgs.get(im.getAttribute('src')); if (old) { imgs.delete(im.getAttribute('src')); im.replaceWith(old); } });
+  }
   function goTo(mint) {
     markSeen(mint);
     const t = data?.tokens?.[mint]; if (!t) return;
@@ -2061,7 +2070,7 @@
   // Carregando: esqueleto no lugar da lista (em vez de parecer que não há moedas)
   function setLoading(on) {
     const L = $('list'); if (!L) return;
-    if (on) L.innerHTML = `<div class="loading-note"><span class="spinner"></span>Carregando os dados do robô...</div>` + '<div class="sk-row"><i></i><span><b></b><em></em></span></div>'.repeat(5);
+    if (on) L.__html = null, L.innerHTML = `<div class="loading-note"><span class="spinner"></span>Carregando os dados do robô...</div>` + '<div class="sk-row"><i></i><span><b></b><em></em></span></div>'.repeat(5);
   }
   document.addEventListener('click', (e) => { if (e.target.closest('[data-retry]')) load(true); });
   async function load(manual) {
@@ -2097,7 +2106,7 @@
       if (data) { if (manual) toast('Sem conexão agora. Mostrando os últimos dados.'); return; }
       $('updated').textContent = 'Sem conexão';
       $('dot').className = 'dot off';
-      $('list').innerHTML = `<div class="empty">${ICON.radar}<b>Não consegui carregar os dados</b>Confira a internet. O Faro tenta de novo sozinho em alguns segundos.<br><button class="btn" style="margin-top:14px" data-retry>Tentar agora</button></div>`;
+      $('list').__html = null; $('list').innerHTML = `<div class="empty">${ICON.radar}<b>Não consegui carregar os dados</b>Confira a internet. O Faro tenta de novo sozinho em alguns segundos.<br><button class="btn" style="margin-top:14px" data-retry>Tentar agora</button></div>`;
       setTimeout(() => { if (!data) load(); }, 8000);
     } finally {
       setLoading(false);
@@ -4354,8 +4363,8 @@ function baseBreakout(c, ctx = {}) {
       }
       return head + rowHtml(t, t.mint === sel);
     }).join('');
-    $('list').innerHTML = slice.length || openHdr ? rows
-      : `<div class="empty">${ICON.radar}<b>${q ? 'Nada encontrado' : empty[0]}</b>${q ? 'Tente outro nome ou endereço.' : empty[1]}</div>`;
+    setListHtml($('list'), slice.length || openHdr ? rows
+      : `<div class="empty">${ICON.radar}<b>${q ? 'Nada encontrado' : empty[0]}</b>${q ? 'Tente outro nome ou endereço.' : empty[1]}</div>`);
     $('pager').hidden = items.length <= PAGE_SIZE;
     $('page').textContent = `${ui.page} de ${pages}`;
     $('prev').disabled = ui.page <= 1;
