@@ -728,6 +728,7 @@
     .list-panel .row.on { background: var(--panel); box-shadow: none; }
     .list-panel .list-sub { padding-left: 0; padding-right: 0; }
     .row .r-side small.sold-line { font-size: 12px; }
+    .r-arrow { font-style: normal; color: var(--faint); font-weight: 600; margin: 0 5px; }
     .m-hero { display: block; }
     body.show-detail .m-hero { display: none; }
     .list-panel { background: none; border: 0; padding: 0; box-shadow: none; }
@@ -2354,7 +2355,7 @@
       if (isSold(t) || isDust(t)) {
         main = `<b>${esc(t.symbol || t.mint.slice(0, 6))}</b><small>Vendida ${t.history?.[0] ? ago(t.history[0].at) : ''}</small>`;
         const r = closedResult(t);
-        side = r ? `<b class="num" title="Investido nesta operação">${money(r.spent)}</b><small class="num sold-line ${cls(r.pnl)}">${signedMoney(r.pnl)} (${pct(r.pct)})</small>` : '';
+        side = r ? `<b class="num" title="Quanto você colocou e quanto voltou para a carteira">${money(r.spent)}<i class="r-arrow">→</i>${money(r.received)}</b><small class="num sold-line ${cls(r.pnl)}">${signedMoney(r.pnl)} (${pct(r.pct)})</small>` : '';
       } else {
       main = `<b>${esc(t.symbol)} ${l !== 'ok' && !isLost(t) ? `<i class="sdot ${l}" title="${l === 'danger' ? 'Perigo' : 'Atenção'}"></i>` : ''}${isLost(t) ? '' : sigTag(t)}</b><small class="num">${isLost(t) ? 'Perdida - ' : ''}${t.held ? `${tokFmt(t.heldAmount)} ${esc(t.symbol)}` : 'marcada por você'}</small>`;
       const val = `<div class="r-val"><b class="num">${p?.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p?.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</div>`;
