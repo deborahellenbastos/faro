@@ -1926,7 +1926,7 @@
           || [t.watchSell, t.autoSell, t.takeProfit].some((x) => x?.ok && x.at > recent);
         if (sold || !(t.heldAmount > 0)) continue;
       }
-      const hit = g.tipo === 'entrada' ? g.fase === 'entrada' && !mine && levelOf(t) !== 'danger' && t.status !== 'reprovada' && !(isSold(t) && !g.reentrada)
+      const hit = g.tipo === 'entrada' ? g.fase === 'entrada' && !mine && levelOf(t) !== 'danger' && buyableStatus(t, g) && !(isSold(t) && !g.reentrada)
         : mine && ['realizar', 'sair', 'proteger', 'exaustao'].includes(g.fase);
       if (!hit) continue;
       const k = `${t.mint}:${g.tipo}:${g.fase}:${g.key}`;
@@ -1949,7 +1949,7 @@
     }
     // Perfil Agressivo ligado: avisa também os sinais do agressivo (38,2%, rompimento de base, rompimento, zona 1:1,5)
     if (perfilOf() === 'agressivo') for (const t of Object.values(data.tokens)) {
-      const g = t.sinalAgr; if (!g?.boa || isMine(t) || levelOf(t) === 'danger' || t.status === 'reprovada' || Date.now() - (g.at || 0) > 10 * 60000) continue;
+      const g = t.sinalAgr; if (!g?.boa || isMine(t) || levelOf(t) === 'danger' || !buyableStatus(t, g) || Date.now() - (g.at || 0) > 10 * 60000) continue;
       const k = `${t.mint}:agr:${g.fase}:${g.key}`; if (SIGSEEN.has(k)) continue; SIGSEEN.add(k);
       const sym = t.symbol || t.mint.slice(0, 6); entrada = true;
       addInbox(`${g.titulo} (agressivo): ${sym}`, `${autoBuyWhy(t, g)} ${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${(g.rr || 0).toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k, { kind: 'entrada', sig0: { msg: g.msg, stop: g.stop, alvo: g.alvo, rr: g.rr } });
@@ -2592,6 +2592,8 @@ function baseBreakout(c, ctx = {}) {
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-askclaude]'); if (b) askClaude(b.dataset.askclaude); });
 
   // Sinal ao vivo: velas do robô (5 min) ou as do gráfico aberto, com o preço de agora
+  // Só avisa entrada onde o robô pode comprar (mesma regra do robô): no Radar, na Análise com nota 75+, ou reentrada
+  const buyableStatus = (t, g) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || !!g?.reentrada;
   function liveSig(t) {
     const c = candlesOf(t);
     if (c.length < 6) return null;
