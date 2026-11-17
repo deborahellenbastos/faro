@@ -1419,6 +1419,22 @@
 <script>
 (() => {
   const PAGE_SIZE = 10;
+  // Análise e Reprovadas no celular: 5 por página (sem rolar); em telas mais altas cabe mais, conforme a altura
+  const LIST_FIT = { n: 0 };
+  function pageSize() {
+    if (!isNarrow() || (ui.tab !== 'aguardando' && ui.tab !== 'reprovada')) return PAGE_SIZE;
+    return LIST_FIT.n || 5;
+  }
+  function fitListPage() {
+    if (!isNarrow() || (ui.tab !== 'aguardando' && ui.tab !== 'reprovada')) return;
+    const L = $('list'), row = L && L.querySelector('.row'); if (!row) return;
+    const gap = 10, rowH = row.offsetHeight + gap;
+    const top = L.getBoundingClientRect().top + window.scrollY;
+    const bar = ($('tabbar')?.offsetHeight || 90) + 24, pager = 72;
+    const n = Math.max(5, Math.floor((window.innerHeight - top - bar - pager + gap) / rowH));
+    if (n !== LIST_FIT.n) { LIST_FIT.n = n; ui.page = 1; render(); }
+  }
+  window.addEventListener('resize', () => { LIST_FIT.n = 0; requestAnimationFrame(fitListPage); });
   const DATA_URL = location.hash === '#demo' ? 'demo.json' : 'data.json';
   const TITLES = {
     minhas: ['Carteira', 'Suas moedas, vigiadas a cada 5 minutos'],
@@ -4385,6 +4401,7 @@ function baseBreakout(c, ctx = {}) {
       if (!prefs.mortasOpen) items = items.filter((t) => !isDead(t));
       items = [...items.slice(0, at), { __deadHdr: true }, ...items.slice(at)];
     }
+    const PAGE_SIZE = pageSize();
     const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
     ui.page = Math.min(ui.page, pages);
     const slice = items.slice((ui.page - 1) * PAGE_SIZE, ui.page * PAGE_SIZE);
@@ -4411,6 +4428,7 @@ function baseBreakout(c, ctx = {}) {
     setListHtml($('list'), slice.length || openHdr ? rows
       : `<div class="empty">${ICON.radar}<b>${q ? 'Nada encontrado' : empty[0]}</b>${q ? 'Tente outro nome ou endereço.' : empty[1]}</div>`);
     $('pager').hidden = items.length <= PAGE_SIZE;
+    if (!LIST_FIT.n) requestAnimationFrame(fitListPage);
     $('page').textContent = `${ui.page} de ${pages}`;
     $('prev').disabled = ui.page <= 1;
     $('next').disabled = ui.page >= pages;
