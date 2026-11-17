@@ -1306,6 +1306,14 @@
   .qm span { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
   .qm b { font-size: 22px; font-weight: 800; }
   .qm small { color: var(--faint); font-size: 12px; line-height: 1.35; }
+  /* Quem fez: robô ou você */
+  .who { font-style: normal; display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; vertical-align: middle; letter-spacing: .01em; }
+  .who.robo { background: rgba(167,139,250,.16); color: #c4b5fd; }
+  .who.voce { background: rgba(96,165,250,.14); color: #93c5fd; }
+  .who-sum { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0 10px; }
+  .who-sum span { display: grid; gap: 2px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.035); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+  .who-sum .who { margin-left: 0; justify-self: start; }
+  .who-sum b { font-size: 16px; font-weight: 800; } .who-sum small { color: var(--faint); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -3165,6 +3173,21 @@ function trendEntry(c, ctx = {}) {
     </section>`;
   }
 
+  // Quem fez cada transação: robô (compra automática, vigia, lucro, escada) ou você (Phantom/painel)
+  function roboSigs() {
+    if (roboSigs.cache && roboSigs.at === data) return roboSigs.cache;
+    const R = new Set(data?.roboSigs || []);
+    for (const x of data?.trades || []) if (x.ok && x.sig) R.add(x.sig);
+    for (const t of Object.values(data?.tokens || {})) for (const a of [t.watchSell, t.autoSell, t.takeProfit, ...(t.partials || [])]) if (a?.ok !== false && a?.sig) R.add(a.sig);
+    roboSigs.cache = R; roboSigs.at = data; return R;
+  }
+  const whoTag = (sig) => (roboSigs().has(sig) ? '<em class="who robo">Robô</em>' : '<em class="who voce">Você</em>');
+  // Operação encerrada: quem comprou (a 1ª compra) e quem vendeu (a última venda)
+  function whoOfOp(t) {
+    const h = t.history || [], R = roboSigs();
+    const buy = [...h].reverse().find((o) => o.tokens > 0), sell = h.find((o) => o.tokens < 0);
+    return { buy: buy ? (R.has(buy.sig) ? 'robo' : 'voce') : null, sell: sell ? (R.has(sell.sig) ? 'robo' : 'voce') : null };
+  }
   function historyBlock(t) {
     const h = t.history || [];
     if (!h.length) return '';
@@ -3175,7 +3198,7 @@ function trendEntry(c, ctx = {}) {
       const buy = o.tokens > 0;
       return `<a class="hrow" href="https://solscan.io/tx/${esc(o.sig)}" target="_blank" rel="noopener">
         <i class="hico">${ICON.swap}</i>
-        <span class="hname"><b>${o.est ? (buy ? 'Recebida' : 'Enviada') : buy ? 'Compra' : 'Venda'}</b><small>${dt(o.at)}${o.est ? ' <span class="est" title="Transferência ou ordem limite: valor estimado pelo preço de mercado daquele minuto">- valor estimado</span>' : ''}</small></span>
+        <span class="hname"><b>${o.est ? (buy ? 'Recebida' : 'Enviada') : buy ? 'Compra' : 'Venda'}${o.est ? '' : whoTag(o.sig)}</b><small>${dt(o.at)}${o.est ? ' <span class="est" title="Transferência ou ordem limite: valor estimado pelo preço de mercado daquele minuto">- valor estimado</span>' : ''}</small></span>
         <span class="hval"><b class="num ${buy ? 'pos' : ''}">${buy ? '+' : '-'}${tokFmt(Math.abs(o.tokens))}</b><small class="num">${solFmt(Math.abs(o.sol), 4)}</small></span></a>`;
     }).join('');
     return `<div class="hist">
@@ -3309,7 +3332,8 @@ function trendEntry(c, ctx = {}) {
       const p = t.position;
       const l = levelOf(t);
       if (isSold(t) || isDust(t)) {
-        main = `<b>${esc(dispName(t))}</b><small>Vendida ${t.history?.[0] ? ago(t.history[0].at) : ''}</small>`;
+        const wo = whoOfOp(t), lbl = { robo: 'robô', voce: 'você' };
+        main = `<b>${esc(dispName(t))}</b><small>Vendida ${t.history?.[0] ? ago(t.history[0].at) : ''}${wo.buy ? ` - ${wo.buy === wo.sell || !wo.sell ? `${lbl[wo.buy]}` : `comprou ${lbl[wo.buy]}, vendeu ${lbl[wo.sell]}`}` : ''}</small>`;
         const r = closedResult(t);
         side = r ? `<b class="num" title="Quanto você colocou e quanto voltou para a carteira">${money(r.spent)}<i class="r-arrow">→</i>${money(r.received)}</b><small class="num sold-line ${cls(r.pnl)}">${signedMoney(r.pnl)}<i class="r-tri">${r.pct >= 0 ? '▲' : '▼'}</i>${Math.abs(r.pct).toFixed(1)}%</small>` : '';
       } else {
@@ -4615,6 +4639,14 @@ function trendEntry(c, ctx = {}) {
       aprovada: ['Radar limpo por enquanto', 'Os filtros estão rígidos de propósito. Melhor nenhuma do que uma ruim.'],
     }[ui.tab] || ['Nada por aqui', ''];
     const sub = (label, n) => `<div class="list-sub">${label}<small>${n}</small></div>`;
+    // Resultado das encerradas separado por quem entrou na operação (a 1ª compra foi do robô ou sua)
+    function whoSummary(list) {
+      const acc = { robo: { n: 0, pnl: 0 }, voce: { n: 0, pnl: 0 } };
+      for (const t of list) { const r = closedResult(t), w = whoOfOp(t).buy; if (!r || !w) continue; acc[w].n++; acc[w].pnl += r.pnl; }
+      if (!acc.robo.n && !acc.voce.n) return '';
+      const one = (k, label) => acc[k].n ? `<span><em class="who ${k}">${label}</em><b class="num ${cls(acc[k].pnl)}">${signedMoney(acc[k].pnl)}</b><small>${acc[k].n} ${acc[k].n === 1 ? 'operação' : 'operações'}</small></span>` : '';
+      return `<div class="who-sum">${one('robo', 'Robô')}${one('voce', 'Você')}</div>`;
+    }
     // "Em aberto" sempre no topo da Carteira (com 0 quando não há nenhuma), para o layout não pular
     const openHdr = ui.tab === 'minhas' && !q && ui.page === 1 && !mine.length ? sub('Em aberto', 0) : '';
     const rows = openHdr + slice.map((t, i) => {
@@ -4624,7 +4656,7 @@ function trendEntry(c, ctx = {}) {
       if (ui.tab === 'minhas' && !q) {
         const c = isClosed(t), dd = !c && isDead(t), prev = slice[i - 1];
         if (!c && !dd && i === 0) head = sub('Em aberto', mine.length);
-        if (c && (!prev || prev.__deadHdr || !isClosed(prev))) head = `<button class="list-sub fold open" data-encfold aria-expanded="true">Encerradas<small>${closed.length}</small>${ICON.chev}</button>`;
+        if (c && (!prev || prev.__deadHdr || !isClosed(prev))) head = `<button class="list-sub fold open" data-encfold aria-expanded="true">Encerradas<small>${closed.length}</small>${ICON.chev}</button>${whoSummary(closed)}`;
       }
       return head + rowHtml(t, t.mint === sel);
     }).join('');

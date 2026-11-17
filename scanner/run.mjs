@@ -634,6 +634,17 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   const counts = Object.values(tokens).reduce((a, t) => ((a[t.status] = (a[t.status] || 0) + 1), a), {});
   state.updatedAt = now;
   if (!wallet) delete state.wallet;
+  // Quais transações foram do robô (compra automática, vigia, venda por golpe, lucro, escada). O resto é manual (você)
+  {
+    const R = new Set(state.roboSigs || []);
+    for (const x of state.trades || []) if (x.ok && x.sig) R.add(x.sig);
+    for (const t of Object.values(tokens)) {
+      for (const a of [t.watchSell, t.autoSell, t.takeProfit, ...(t.partials || [])]) if (a?.ok !== false && a?.sig) R.add(a.sig);
+    }
+    for (const a of Object.values(vig?.sold || {})) if (a?.ok && a.sig) R.add(a.sig);
+    for (const a of vig?.partial || []) if (a?.sig) R.add(a.sig);
+    state.roboSigs = [...R].slice(-800);
+  }
   state.lastRun = {
     at: now,
     durationMs: Date.now() - started,
