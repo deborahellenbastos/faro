@@ -52,7 +52,10 @@ if [ ! -f /home/faro/.ssh/id_ed25519 ]; then
   sudo -u faro ssh-keygen -q -t ed25519 -N '' -C "robo-faro-servidor" -f /home/faro/.ssh/id_ed25519
 fi
 sudo -u faro sh -c 'ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null; sort -u -o ~/.ssh/known_hosts ~/.ssh/known_hosts'
-until sudo -u faro ssh -o BatchMode=yes -T git@github.com 2>&1 | grep -q "successfully authenticated"; do
+# O GitHub responde com código de saída 1 mesmo quando a chave funciona; com pipefail o teste
+# em pipe nunca passava. Por isso guarda a resposta numa variável e só depois procura a frase.
+github_ok() { local r; r=$(sudo -u faro ssh -o BatchMode=yes -o ConnectTimeout=15 -T git@github.com 2>&1 || true); [[ "$r" == *"successfully authenticated"* ]]; }
+until github_ok; do
   echo
   echo "Adicione esta chave no GitHub (é pública, pode copiar à vontade):"
   echo "  github.com/$REPO -> Settings -> Deploy keys -> Add deploy key"
