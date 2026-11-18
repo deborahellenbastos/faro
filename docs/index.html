@@ -1421,6 +1421,11 @@
   .tabbar .tb-count.has-new { background: #3b82f6; color: #fff !important; }
   .tabbar .tb-count.has-new::before { display: none; }
   .tabbar .tb-count:not(:empty) ~ .nav-dot, .tabbar .nav-dot:has(+ .tb-count:not(:empty)) { display: none; }
+  /* Tooltip das marcações do gráfico */
+  .mark-tip { position: absolute; z-index: 6; max-width: 280px; padding: 10px 12px; border-radius: 12px; background: rgba(18,20,24,.96); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 10px 30px rgba(0,0,0,.5); pointer-events: none; display: grid; gap: 8px; font-size: 12.5px; }
+  .mark-tip[hidden] { display: none; }
+  .mark-tip b { font-size: 13px; } .mark-tip small { margin-left: 8px; color: var(--faint); font-size: 11.5px; }
+  .mark-tip p { margin: 3px 0 0; color: var(--muted); line-height: 1.4; }
   /* Venda de emergência no topo do gráfico (normal, expandido e mosaico) */
   .emerg.emerg-sm { width: auto; height: 32px; padding: 0 12px; font-size: 13px; flex: none; }
   .mo-info .emerg-sm { margin-left: auto; height: 28px; padding: 0 10px; font-size: 12px; }
@@ -3704,6 +3709,7 @@ function fakeBuys(per = {}) {
       const vs = ch.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
       ch.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
       const x = { mint: t.mint, t, ch, cs, vs, tool: 'cursor', pending: null };
+      host.style.position = 'relative'; markTip(ch, cs, host);
       ch.subscribeClick((param) => {
         if (x.tool === 'cursor' || !param.point) return;
         const price = cs.coordinateToPrice(param.point.y); if (!(price > 0)) return;
@@ -3741,6 +3747,22 @@ function fakeBuys(per = {}) {
     const tr = e.target.closest('[data-motrash]'); if (tr) { const m = tr.dataset.motrash; saveDraw(m, { h: [], t: [], r: [] }); const x = MOS.tiles.find((y) => y.mint === m); if (x) moDraw(x); toast('Traços apagados'); return; }
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('mosaic')) closeMosaic(); });
+  // Tooltip das marcações: ao passar o mouse (ou tocar) na vela com C, V, Entre, Saia, R ou alerta, mostra o porquê
+  function markTip(chart, series, host) {
+    const tip = document.createElement('div'); tip.className = 'mark-tip'; tip.hidden = true; host.appendChild(tip);
+    chart.subscribeCrosshairMove((param) => {
+      const list = param.time != null && param.point ? series.__info?.get(Number(param.time)) : null;
+      if (!list?.length) { tip.hidden = true; return; }
+      const hm = series.__hm || ((x) => '');
+      const html = list.map((x) => `<div><b style="color:${x.color}">${x.title}</b>${x.at ? `<small>${hm(x.at)}</small>` : ''}${x.txt ? `<p>${x.txt}</p>` : ''}</div>`).join('');
+      if (tip.__html !== html) { tip.innerHTML = html; tip.__html = html; }
+      tip.hidden = false;
+      const W = host.clientWidth, w = tip.offsetWidth, h = tip.offsetHeight;
+      let x = param.point.x + 14; if (x + w > W - 70) x = param.point.x - w - 14;
+      let y = param.point.y - h - 12; if (y < 6) y = param.point.y + 16;
+      tip.style.left = Math.max(6, x) + 'px'; tip.style.top = y + 'px';
+    });
+  }
   async function buildChart() {
     const LW = await loadLW();
     CH.host = document.createElement('div'); CH.host.className = 'lw-host';
@@ -3759,6 +3781,7 @@ function fakeBuys(per = {}) {
     CH.vol = CH.chart.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
     CH.chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     CH.chart.subscribeClick(onChartClick);
+    markTip(CH.chart, CH.candle, CH.host);
     CH.chart.subscribeCrosshairMove((param) => {
       if (CH.tool !== 'r' || !CH.pending || !param.point) return rulerTip(null);
       const price = CH.candle.coordinateToPrice(param.point.y);
@@ -3945,9 +3968,13 @@ function fakeBuys(per = {}) {
     }
     const sec = ivalSec();
     const first = CH.bars[0]?.time || 0;
+    // Explicação de cada marcação (aparece ao passar o mouse ou tocar na vela): por que entrar, sair, o que o robô fez
+    const info = new Map(), hm = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const addInfo = (time, color, title, txt, at) => { const a = info.get(time) || []; a.push({ color, title, txt: txt || '', at }); info.set(time, a); };
     const marks = (t.history || []).filter((o) => o.tokens && o.at / 1000 >= first).map((o) => {
-      const buy = o.tokens > 0;
-      return { time: Math.floor(o.at / 1000 / sec) * sec + TZ, position: buy ? 'belowBar' : 'aboveBar', color: buy ? '#10d27f' : '#ff5b5b', shape: buy ? 'arrowUp' : 'arrowDown', text: buy ? 'C' : 'V' };
+      const buy = o.tokens > 0, time = Math.floor(o.at / 1000 / sec) * sec + TZ, robo = roboSigs().has(o.sig);
+      addInfo(time, buy ? '#10d27f' : '#ff5b5b', `${buy ? 'Compra' : 'Venda'} ${robo ? 'do robô' : 'sua'}`, `${int(Math.abs(o.tokens))} ${esc(t.symbol || '')} por ${solFmt(Math.abs(o.sol || 0), 4)}`, o.at);
+      return { time, position: buy ? 'belowBar' : 'aboveBar', color: buy ? '#10d27f' : '#ff5b5b', shape: buy ? 'arrowUp' : 'arrowDown', text: buy ? 'C' : 'V' };
     });
     // Sinais que o Faro deu (insiders, liquidez, venda do robô...) no candle em que apareceram
     const SIG = { insiders: 'insiders', vigia: 'robô', 'auto-venda': 'golpe', 'lucro-auto': 'lucro', 'liq-sumiu': 'liquidez', 'vivo-liq': 'liquidez', 'preco-topo': 'queda', vendas: 'vendas', lp: 'LP', 'dev-vendendo': 'dev', 'risco-novo': 'RugCheck', concentracao: 'top 10', score: 'risco', mint: 'mint', freeze: 'freeze', rugged: 'rug' };
@@ -3955,26 +3982,29 @@ function fakeBuys(per = {}) {
       if (!a.at || a.at / 1000 < first) continue;
       const time = Math.floor(a.at / 1000 / sec) * sec + TZ;
       // Venda do robô não é alerta ruim: marca "robô vendeu" (o V da venda já aparece no candle)
-      if (ROBO_IDS.has(a.id)) { marks.push({ time, position: 'aboveBar', color: '#f472b6', shape: 'circle', text: /não compensa/.test(a.msg) ? 'robô não vendeu' : 'robô vendeu' }); continue; }
+      if (ROBO_IDS.has(a.id)) { const nv = /não compensa/.test(a.msg); addInfo(time, '#f472b6', nv ? 'Robô não vendeu' : 'Robô vendeu', esc(a.msg || ''), a.at); marks.push({ time, position: 'aboveBar', color: '#f472b6', shape: 'circle', text: nv ? 'robô não vendeu' : 'robô vendeu' }); continue; }
       const col = a.level === 'danger' ? '#ff5b5b' : a.level === 'warn' ? '#f5b14c' : '#8c939f';
+      addInfo(time, col, a.level === 'danger' ? 'Perigo' : 'Atenção', esc(a.msg || ''), a.at);
       marks.push({ time, position: 'aboveBar', color: col, shape: 'circle', text: `! ${SIG[a.id] || 'alerta'}` });
     }
     // "Entre" = boa entrada / "Saia" = sinal de saída (os mesmos avisos da central), no candle em que apareceram
     { const seenK = new Set();
-      const sigs = INBOX.list.filter((x) => x.mint === t.mint && (ntType(x) === 'entrada' || ntType(x) === 'saida')).map((x) => ({ at: x.at, tipo: ntType(x), bom: /^Saída/.test(x.title) }));
-      if (t.sinal?.at && (t.sinal.boa || t.sinal.bom || t.sinal.ruim)) sigs.push({ at: t.sinal.at, tipo: t.sinal.tipo === 'entrada' ? 'entrada' : 'saida', bom: !!t.sinal.bom });
+      const sigs = INBOX.list.filter((x) => x.mint === t.mint && (ntType(x) === 'entrada' || ntType(x) === 'saida')).map((x) => ({ at: x.at, tipo: ntType(x), bom: /^Saída/.test(x.title), title: (x.title || '').replace(/^[^:]*:\s*/, '').replace(new RegExp(`^${(t.symbol || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*-\\s*`), ''), txt: x.body }));
+      if (t.sinal?.at && (t.sinal.boa || t.sinal.bom || t.sinal.ruim)) sigs.push({ at: t.sinal.at, tipo: t.sinal.tipo === 'entrada' ? 'entrada' : 'saida', bom: !!t.sinal.bom, title: t.sinal.titulo, txt: t.sinal.msg });
       for (const g of sigs) {
         if (g.at / 1000 < first) continue;
         const time = Math.floor(g.at / 1000 / sec) * sec + TZ, k = `${g.tipo}:${time}`;
         if (seenK.has(k)) continue; seenK.add(k);
+        addInfo(time, g.tipo === 'entrada' ? '#10d27f' : g.bom ? '#10d27f' : '#f5b14c', `${g.tipo === 'entrada' ? 'Entre' : 'Saia'}${g.title ? ': ' + esc(g.title) : ''}`, esc(g.txt || ''), g.at);
         marks.push(g.tipo === 'entrada'
           ? { time, position: 'belowBar', color: '#10d27f', shape: 'arrowUp', text: 'Entre' }
           : { time, position: 'aboveBar', color: g.bom ? '#10d27f' : '#f5b14c', shape: 'arrowDown', text: 'Saia' });
       } }
     // R = momento em que a moeda entrou no radar (mesma cor da linha "radar")
-    if (t.approvedAt && t.approvedAt / 1000 >= first) marks.push({ time: Math.floor(t.approvedAt / 1000 / sec) * sec + TZ, position: 'aboveBar', color: '#a78bfa', shape: 'arrowDown', text: 'R' });
+    if (t.approvedAt && t.approvedAt / 1000 >= first) { const time = Math.floor(t.approvedAt / 1000 / sec) * sec + TZ; addInfo(time, '#a78bfa', 'Entrou no Radar', `Aprovada pelo robô${t.score != null ? ` (nota ${Math.round(t.score)})` : ''}`, t.approvedAt); marks.push({ time, position: 'aboveBar', color: '#a78bfa', shape: 'arrowDown', text: 'R' }); }
     marks.sort((a, b) => a.time - b.time);
     CH.candle.setMarkers(marks);
+    CH.candle.__info = info; CH.candle.__hm = hm;
     if (!CH.__mosaic) updateSince(t);
   }
 
