@@ -2168,7 +2168,12 @@
   }
   function checkSignals() {
     try { checkRobotBuys(); } catch {}
-    if (START_MINT && !startDone && data?.tokens?.[START_MINT]) { startDone = true; setTimeout(() => { goTo(START_MINT); runStartOrder(); }, 0); }
+    if (START_MINT && !startDone && data?.tokens?.[START_MINT]) {
+      startDone = true; setTimeout(() => { goTo(START_MINT); runStartOrder(); }, 0);
+      // Tira a moeda do endereço depois de abrir: senão, toda vez que a página recarrega (a Phantom e o iPhone recarregam
+      // sozinhos), ela volta para essa moeda (18/11: voltava sempre para a JALU, a do link da compra pela Phantom)
+      setTimeout(() => { try { const u = new URL(location.href); u.searchParams.delete('m'); if (u.searchParams.get('op') === '1') u.searchParams.delete('op'); history.replaceState(null, '', u.toString()); } catch {} }, 1500);
+    }
     try { runOpMode(); } catch {}
     if (!data?.tokens || isDemo()) return;
     let entrada = false, ruim = false, bom = false;
