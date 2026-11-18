@@ -2141,7 +2141,12 @@
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-optab]'); if (b) { e.preventDefault(); e.stopPropagation(); openOpTab(b.dataset.optab); } }, true);
   let opDone = false, opHeld = '';
+  let mosRestored = false;
   function runOpMode() {
+    // mosaico aberto na guia normal: recarregar a página mantém o mosaico aberto
+    if (!OP_MODE && !mosRestored && data?.tokens) { mosRestored = true;
+      if (sessionStorage.getItem('faro-mos-on') === '1' && Object.values(data.tokens).filter((x) => x.held && !isDead(x) && !isDust(x)).length > 1) setTimeout(() => openMosaic(), 0);
+      else sessionStorage.removeItem('faro-mos-on'); }
     if (!OP_MODE || !data?.tokens) return;
     if (OP_MODE === 'mosaico') {
       // reabre o mosaico quando entra ou sai uma moeda comprada (só se ele ainda estiver aberto)
@@ -3718,6 +3723,7 @@ function fakeBuys(per = {}) {
   }
   async function openMosaic() {
     closeMosaic();
+    try { sessionStorage.setItem('faro-mos-on', '1'); } catch {}
     const list = Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x)).sort((a, b) => (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
     const el = document.createElement('div'); el.id = 'mosaic'; document.body.appendChild(el); document.body.classList.add('mosaic-on');
     el.innerHTML = `<div class="mo-top"><button class="back" data-mosaicclose>${ICON.back}Voltar</button><b>Compradas<small>${list.length}</small></b><span style="flex:1"></span>${OP_MODE ? '' : `<button class="btn btn-sm desk-only" data-optab="mosaico" title="Abrir o mosaico em outra guia">${ICON.ext}<span class="lbl">Outra guia</span></button>`}
@@ -3764,8 +3770,8 @@ function fakeBuys(per = {}) {
   function moSetTool(x, k) { x.tool = k; x.pending = null; $('mosaic')?.querySelectorAll(`[data-motool][data-momint="${CSS.escape(x.mint)}"]`).forEach((b) => b.classList.toggle('on', b.dataset.motool === k)); }
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-mosaic]')) { e.preventDefault(); openMosaic(); return; }
-    if (e.target.closest('[data-mosaicclose]')) { closeMosaic(); return; }
-    const go = e.target.closest('[data-mosaicgo]'); if (go) { const m = go.dataset.mosaicgo; closeMosaic(); goTo(m); return; }
+    if (e.target.closest('[data-mosaicclose]')) { sessionStorage.removeItem('faro-mos-on'); closeMosaic(); return; }
+    const go = e.target.closest('[data-mosaicgo]'); if (go) { const m = go.dataset.mosaicgo; sessionStorage.removeItem('faro-mos-on'); closeMosaic(); goTo(m); return; }
     const iv = e.target.closest('[data-moiv]'); if (iv) { MOS.iv = iv.dataset.moiv; store.set('faro-mos-iv', MOS.iv); $('mosaic').querySelectorAll('[data-moiv]').forEach((b) => b.classList.toggle('on', b.dataset.moiv === MOS.iv)); MOS.tiles.forEach((x) => { x.drawn = false; moFill(x); }); return; }
     const tl = e.target.closest('[data-motool]'); if (tl) { const x = MOS.tiles.find((y) => y.mint === tl.dataset.momint); if (x) moSetTool(x, tl.dataset.motool); return; }
     const nv = e.target.closest('[data-monav]'); if (nv) { const x = MOS.tiles.find((y) => y.mint === nv.dataset.momint); if (!x) return; const ts = x.ch.timeScale();
@@ -3776,7 +3782,7 @@ function fakeBuys(per = {}) {
       $('mosaic').querySelectorAll(fb.hasAttribute('data-mofib') ? '[data-mofib]' : '[data-mometas]').forEach((b) => b.classList.toggle('on', on)); MOS.tiles.forEach(moDraw); return; }
     const tr = e.target.closest('[data-motrash]'); if (tr) { const m = tr.dataset.motrash; saveDraw(m, { h: [], t: [], r: [] }); const x = MOS.tiles.find((y) => y.mint === m); if (x) moDraw(x); toast('Traços apagados'); return; }
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('mosaic')) closeMosaic(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('mosaic') && $('ntm')?.hidden !== false) { sessionStorage.removeItem('faro-mos-on'); closeMosaic(); } });
   // Tooltip das marcações: ao passar o mouse (ou tocar) na vela com C, V, Entre, Saia, R ou alerta, mostra o porquê
   function markTip(chart, series, host) {
     const tip = document.createElement('div'); tip.className = 'mark-tip'; tip.hidden = true; host.appendChild(tip);
