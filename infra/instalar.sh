@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instala o robô Faro num servidor Ubuntu 24.04 novo (Hetzner). Rode como root:
+# Instala o robô Faro num servidor Ubuntu 24.04 novo (DigitalOcean, Hetzner, Vultr...). Rode como root:
 #   curl -fsSL https://raw.githubusercontent.com/deborahellenbastos/faro/main/infra/instalar.sh -o instalar.sh && bash instalar.sh
 # Pode rodar de novo quando quiser: ele só completa o que faltar (e pergunta se quer trocar os segredos).
 set -euo pipefail
@@ -19,6 +19,12 @@ apt-get update -qq
 apt-get upgrade -y -qq
 apt-get install -y -qq git curl ca-certificates ufw fail2ban unattended-upgrades logrotate >/dev/null
 dpkg-reconfigure -f noninteractive unattended-upgrades >/dev/null 2>&1 || true
+
+# Servidor pequeno (1 GB): cria 2 GB de memória de reserva (swap) para o npm e o robô não travarem
+if [ "$(awk '/MemTotal/ {print $2}' /proc/meminfo)" -lt 1900000 ] && ! swapon --show | grep -q .; then
+  fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap -q /swapfile && swapon /swapfile && echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  echo "Swap de 2 GB criado."
+fi
 
 passo "2/7 Instalando o Node 22"
 if ! node -v 2>/dev/null | grep -q '^v22'; then
