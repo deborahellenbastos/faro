@@ -628,3 +628,9 @@ console.log('Teste da entrada por operação: ok');
   assert.equal(cfgT.venda.stopMovel.confirmarSegundos, 10);
   console.log('Teste do stop móvel na vigia: ok');
 }
+// (18/11, Pussy) o pico da vigia é de cada operação: recompra depois de zerar não herda o pico antigo
+{
+  const src = await readFile(new URL('./watch.mjs', import.meta.url), 'utf8');
+  assert.match(src, /resetPeak\(t, px\)/, 'a vigia deve zerar o pico numa operação nova');
+  console.log('Teste do pico por operação: ok');
+}

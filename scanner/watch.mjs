@@ -127,6 +127,7 @@ async function refreshHoldings() {
       // Entrou na carteira (ou voltou) depois da rodada: o custo guardado é de outra operação, então não vale até ler a compra
       const stale = !!old.position?.known && Math.abs(h.amount - (old.heldAmount || 0)) > Math.max(1e-9, (old.heldAmount || 0) * 0.02);
       const t = { ...old, held: true, heldAmount: h.amount, snapAmount: h.amount, staleCost: stale || !old.held, position: old.position, isNew: !old.held, reboughtAt: old.held ? 0 : Date.now() };
+      if (!old.held && mem.peak) { mem.peak[t.mint] = 0; if (mem.peakKey) mem.peakKey[t.mint] = 'recompra'; } // recompra depois de zerar: pico novo
       if (!done(t)) { held.push(t); log(`nova na carteira: ${t.symbol}`); }
     }
   } catch (e) { log(`não consegui ler a carteira: ${e.message}`, true); }
@@ -231,8 +232,14 @@ async function sell(t, why, kind, px) {
     if (tries >= 3) mem.sold[t.mint] = { ok: false, at: Date.now(), why, erro: e.message, kind };
   }
 }
+// O pico é de cada operação: comprou de novo depois de zerar, o pico antigo some
+// (18/11, Pussy: recomprou às 11:14 e a vigia vendeu por "caiu 70% do pico", que era o pico da operação das 10:37)
+const peakKey = (t) => Math.max(t.position?.lastBuyAt || 0, t.heldSince || 0);
+mem.peakKey = mem.peakKey || {};
+const resetPeak = (t, base) => { const k = peakKey(t); if (mem.peakKey[t.mint] !== k) { mem.peakKey[t.mint] = k; mem.peak[t.mint] = base || 0; } };
 for (const t of held) {
-  const since = t.position?.lastBuyAt || t.heldSince || 0;
+  const since = Math.max(t.position?.lastBuyAt || 0, t.heldSince || 0, t.reboughtAt || 0);
+  resetPeak(t, 0);
   const candleTop = Math.max(0, ...(t.candles || []).filter((c) => c[0] >= since - 300000).map((c) => c[2]));
   mem.peak[t.mint] = Math.max(mem.peak[t.mint] || 0, t.position?.avgPriceUsd || 0, candleTop, t.priceUsd || 0);
 }
@@ -256,6 +263,7 @@ while (Date.now() < until) {
       const px = Number(p?.priceUsd), liq = Number(p?.liquidity?.usd);
       if (!(px > 0)) continue;
       if (done(t)) continue;
+      resetPeak(t, px);
       mem.peak[t.mint] = Math.max(mem.peak[t.mint] || 0, t.position?.avgPriceUsd || 0, px);
       const w = (mem.liq[t.mint] = (mem.liq[t.mint] || []).filter((x) => now - x[0] <= liqWin));
       if (liq > 0) w.push([now, liq]);
