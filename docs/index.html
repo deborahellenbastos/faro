@@ -1405,6 +1405,8 @@
   .ci-bar { display: inline-block; width: 70px; height: 6px; border-radius: 3px; background: rgba(255,91,91,.55); overflow: hidden; }
   .ci-bar > i { display: block; height: 100%; background: var(--green); }
   @media (max-width: 700px) { .ci-tx small, .ci-bar { display: none; } }
+  .mo-h .mo-open { flex: 0 1 auto; } .mo-h .copy { flex: none; margin-left: -6px; }
+  .chart-box.max .cmax-sym + .copy { margin-left: -8px; display: inline-grid !important; }
   .mo-info { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 0 12px 8px; }
   .mo-info .ci-score .score { transform: scale(.85); transform-origin: left center; }
   .mo-info .ci-tx small, .mo-info .ci-bar { display: inline-block; } .mo-info .ci-bar { width: 50px; }
@@ -3141,6 +3143,7 @@ function fakeBuys(per = {}) {
       <div class="chart-tools">
         <button class="back cmax-only" data-chartmin>${ICON.back}Voltar</button>
         <b class="cmax-only cmax-sym">${esc(t.symbol || '')}</b>
+        <button class="copy cmax-only" data-copy="${esc(t.mint)}" title="Copiar endereço do contrato" aria-label="Copiar endereço">${ICON.copy}</button>
         <span class="cmax-only cmax-info" data-cmaxinfo="${esc(t.mint)}"></span>
         ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
         <span style="flex:1"></span>
@@ -3657,7 +3660,7 @@ function fakeBuys(per = {}) {
   const MOS = { tiles: [], timer: null, iv: store.get('faro-mos-iv', '5m') };
   function closeMosaic() { const m = $('mosaic'); if (m) m.remove(); MOS.tiles.forEach((x) => { try { x.ch.remove(); } catch {} }); MOS.tiles = []; clearInterval(MOS.timer); MOS.timer = null; document.body.classList.remove('mosaic-on'); }
   const MO_TOOLS = [['cursor', TOOL_ICON?.cursor || '&#8598;', 'Cursor'], ['h', TOOL_ICON?.h || '&#8212;', 'Linha horizontal: clique no preço'], ['t', TOOL_ICON?.t || '&#8599;', 'Tendência: clique no início e no fim']];
-  function moHead(t) { const p = t.position || {}; return `<div class="mo-h"><button class="mo-open" data-mosaicgo="${esc(t.mint)}" title="Abrir a moeda">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b></span></button><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div><div class="mo-info">${infoHtml(t)}</div>`; }
+  function moHead(t) { const p = t.position || {}; return `<div class="mo-h"><button class="mo-open" data-mosaicgo="${esc(t.mint)}" title="Abrir a moeda">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b></span></button><button class="copy" data-copy="${esc(t.mint)}" title="Copiar endereço do contrato" aria-label="Copiar endereço">${ICON.copy}</button><span style="flex:1"></span><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div><div class="mo-info">${infoHtml(t)}</div>`; }
   // Usa o mesmo desenho do gráfico principal (entrada, meta, stop de perda/móvel, metas do robô, fib, ordens, traços,
   // marcas de compra/venda e sinais), apontando o desenho para o gráfico deste quadro
   function moDraw(x) {
