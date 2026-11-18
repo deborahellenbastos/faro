@@ -28,8 +28,12 @@ const wallet = (process.env.FARO_WALLET || '').trim();
 if (!V.ligado || process.env.VIGIA === 'false' || !password || !wallet) { await idle(); process.exit(0); }
 
 let state;
-try { state = decrypt(JSON.parse(await readFile(path.join(root, 'docs', 'data.enc.json'), 'utf8')), password); }
-catch { log('Não consegui abrir os dados; só esperando.', true); await idle(); process.exit(0); }
+// No servidor a vigia roda junto com a rodada, que pode estar gravando o arquivo agora: tenta de novo algumas vezes
+for (let i = 0; i < 4 && !state; i++) {
+  try { state = decrypt(JSON.parse(await readFile(path.join(root, 'docs', 'data.enc.json'), 'utf8')), password); }
+  catch { await new Promise((r) => setTimeout(r, 1500)); }
+}
+if (!state) { log('Não consegui abrir os dados; só esperando.', true); await idle(); process.exit(0); }
 
 cfg.carteira = { enderecoPublico: wallet };
 const trader = await createTrader(cfg, log);
@@ -269,11 +273,22 @@ while (Date.now() < until) {
       const costNow = cost > 0 && posAmt > 0 && t.heldAmount < posAmt ? cost * (t.heldAmount / posAmt) : cost;
       const gain = avgPx > 0 ? (px / avgPx - 1) * 100 : costNow > 0 ? ((t.heldAmount * px) / costNow - 1) * 100 : liveEntry[t.mint] && pxSol > 0 ? (pxSol / liveEntry[t.mint] - 1) * 100 : null;
       // Stop móvel: o da última rodada, subindo junto com o pico que a vigia vê ao vivo (nunca desce)
+      // 18/11 (Pussy): a vigia viu +36% às 10:40, mas o stop só ligou na rodada das 10:42. Agora a vigia liga o stop
+      // móvel na hora em que vê a moeda passar de +ativarPct (pico medido só desde a compra atual, nunca de uma operação antiga)
+      const buyAtT = t.position?.lastBuyAt || t.heldSince || 0;
+      let PR = (mem.peakRun = mem.peakRun || {})[t.mint];
+      if (!PR || PR.buyAt !== buyAtT) PR = mem.peakRun[t.mint] = { buyAt: buyAtT, pk: 0 };
+      PR.pk = Math.max(PR.pk, px);
       let trailPx = 0;
-      if (trailOn && !t.staleCost && t.trail?.ativo && t.position?.avgPriceUsd > 0) {
-        const entry = t.position.avgPriceUsd, pk = mem.peak[t.mint];
-        const follow = (pk / entry - 1) * 100 >= (SM.seguirAPartirPct ?? 60) ? Math.min(pk * (1 - (SM.distanciaPct ?? 25) / 100), pk * 0.88) : 0;
-        trailPx = Math.max(t.trail.stop, follow, entry * (1 + (SM.minimoTravadoPct ?? 5) / 100));
+      if (trailOn && !t.staleCost && t.position?.avgPriceUsd > 0) {
+        const entry = t.position.avgPriceUsd;
+        const liveOn = !t.trail?.ativo && (PR.pk / entry - 1) * 100 >= (SM.ativarPct ?? 30);
+        if (t.trail?.ativo || liveOn) {
+          if (liveOn && PR.logged !== true) { PR.logged = true; log(`${t.symbol}: STOP MÓVEL ligado pela vigia (chegou a +${((PR.pk / entry - 1) * 100).toFixed(0)}%)`); }
+          const pk = liveOn ? PR.pk : mem.peak[t.mint];
+          const follow = (pk / entry - 1) * 100 >= (SM.seguirAPartirPct ?? 60) ? Math.min(pk * (1 - (SM.distanciaPct ?? 25) / 100), pk * 0.88) : 0;
+          trailPx = Math.max(t.trail?.ativo ? t.trail.stop : 0, follow, entry * (1 + (SM.minimoTravadoPct ?? 5) / 100));
+        }
       }
       const cost0 = t.position?.known ? t.position.costOpenUsd : 0;
       const gain0 = gain;
@@ -286,8 +301,8 @@ while (Date.now() < until) {
       }
       if (golpe) await sell(t, `golpe no contrato: ${golpe}`, 'golpe', px);
       // Filtro de pavio: só vende se ficar abaixo do stop por confirmarSegundos seguidos.
-      // Se já passou 10% abaixo do stop, não espera (queda de verdade, cada segundo conta)
-      else if (trailPx && px < trailPx && px >= trailPx * 0.9 && !confirmBelow(t, now, SM.confirmarSegundos ?? 30, 'stop móvel')) { /* aguardando confirmação */ }
+      // Se já passou vendaDiretaAbaixoPct (5%) abaixo do stop, não espera (queda de verdade, cada segundo conta)
+      else if (trailPx && px < trailPx && px >= trailPx * (1 - (SM.vendaDiretaAbaixoPct ?? 5) / 100) && !confirmBelow(t, now, SM.confirmarSegundos ?? 10, 'stop móvel')) { /* aguardando confirmação */ }
       else if (trailPx && px < trailPx) await sell(t, `stop móvel: caiu abaixo de US$ ${trailPx.toPrecision(4)} (garantindo +${((trailPx / t.position.avgPriceUsd - 1) * 100).toFixed(0)}%)`, 'stop-movel', px);
       // Stop de perda: a posição ainda no prejuízo caiu stopPerda% desde a entrada (antes não existia: só o -40% do topo)
       else if (lossOn && gain != null && gain <= -lossPct && gain > -(lossPct + 5) && !confirmBelow(t, now, SP.confirmarSegundos ?? 20, 'stop de perda')) { /* aguardando confirmação */ }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Robô Faro no servidor: roda direto, sem as pausas do GitHub.
-# Uma rodada (busca e análise) a cada FARO_INTERVALO segundos e, no meio delas, a vigia rápida das suas moedas.
+# Uma rodada (busca e análise) a cada FARO_INTERVALO segundos e a vigia rápida das suas moedas rodando sem parar, em paralelo.
 # Só trabalha quando infra/onde-roda.txt (no GitHub) diz "vps". Assim o GitHub e o servidor nunca operam juntos.
 set -u
 cd "$(dirname "$0")/.." || exit 1
@@ -50,6 +50,21 @@ enviar_log() {
   git push -q -f origin "$commit:refs/heads/servidor-log" 2>/dev/null || true
 }
 
+ativo() {
+  [ "$(tr -d '[:space:]' < infra/onde-roda.txt 2>/dev/null)" = "vps" ] && [ -f "$ESTADO/ativo-desde" ] \
+    && [ $(( $(date +%s) - $(cat "$ESTADO/ativo-desde") )) -ge "$CARENCIA" ]
+}
+# Vigia sem pausa: roda o tempo todo, em paralelo com a rodada (no GitHub ela parava enquanto a rodada rodava).
+# A cada 60 s ela recomeça e relê os dados que a rodada acabou de gravar.
+vigia_continua() {
+  while :; do
+    if ativo; then timeout 90 node scanner/watch.mjs 60 || sleep 5; else sleep 10; fi
+  done
+}
+vigia_continua &
+VIGIA_PID=$!
+trap 'kill $VIGIA_PID 2>/dev/null' EXIT
+
 alinhar || echo "Sem acesso ao GitHub agora; tento de novo"
 N=0
 while :; do
@@ -66,9 +81,6 @@ while :; do
   timeout 600 node scanner/index.mjs || echo "Rodada com erro; segue para a próxima"
   salvar
   N=$((N + 1)); [ $((N % 3)) -eq 1 ] && enviar_log
-  ESPERA=$(( INTERVALO - ($(date +%s) - INICIO) ))
-  # Na espera, a vigia rápida olha suas moedas a cada ~10s
-  if [ "$ESPERA" -gt 5 ]; then timeout $(( ESPERA + 30 )) node scanner/watch.mjs "$ESPERA" || sleep 5; else sleep 5; fi
-  # Se a vigia saiu antes (sem moedas para olhar), completa a espera: nunca roda mais rápido que o intervalo
-  RESTO=$(( INTERVALO - ($(date +%s) - INICIO) )); [ "$RESTO" -gt 0 ] && sleep "$RESTO"
+  # A vigia já está rodando em paralelo; aqui só espera a próxima rodada (nunca roda mais rápido que o intervalo)
+  RESTO=$(( INTERVALO - ($(date +%s) - INICIO) )); [ "$RESTO" -gt 5 ] && sleep "$RESTO" || sleep 5
 done

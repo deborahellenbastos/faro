@@ -98,7 +98,8 @@
       "seguirAPartirPct": 60,
       "distanciaPct": 25,
       "minimoTravadoPct": 5,
-      "confirmarSegundos": 30
+      "confirmarSegundos": 10,
+      "vendaDiretaAbaixoPct": 5
     },
     "stopPerda": {
       "ligado": true,

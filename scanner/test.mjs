@@ -620,3 +620,11 @@ console.log('Teste da entrada por operação: ok');
   assert.equal(prefilter({ ...base, ageMin: 10, liquidityUsd: 30000 }, cfgT).length, 0, 'com liquidez boa não espera');
   console.log('Teste da espera por pouca liquidez: ok');
 }
+// (18/11, Pussy) a vigia liga o stop móvel sozinha e confirma em 10 s
+{
+  const src = await readFile(new URL('./watch.mjs', import.meta.url), 'utf8');
+  assert.match(src, /liveOn = !t\.trail\?\.ativo/, 'a vigia deve ligar o stop móvel ao ver +ativarPct');
+  const cfgT = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
+  assert.equal(cfgT.venda.stopMovel.confirmarSegundos, 10);
+  console.log('Teste do stop móvel na vigia: ok');
+}
