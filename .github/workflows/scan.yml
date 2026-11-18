@@ -34,15 +34,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      # O robô roda num lugar só: aqui (github) ou no servidor (vps). Quem manda é infra/onde-roda.txt
+      - name: Onde o robô roda
+        id: onde
+        run: echo "local=$(tr -d '[:space:]' < infra/onde-roda.txt 2>/dev/null || echo github)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v4
+        if: ${{ steps.onde.outputs.local != 'vps' }}
         with:
           node-version: 22
 
       - name: Instalar bibliotecas de compra/venda (só se alguma estiver ligada)
-        if: ${{ vars.AUTO_BUY == 'true' || vars.AUTO_SELL == 'true' || vars.LUCRO_AUTO != 'false' }}
+        if: ${{ steps.onde.outputs.local != 'vps' && (vars.AUTO_BUY == 'true' || vars.AUTO_SELL == 'true' || vars.LUCRO_AUTO != 'false') }}
         run: npm install --no-save --no-audit --no-fund @solana/web3.js@1 bs58@6
 
       - name: Rodar o robô a cada 5 minutos, por ~55 minutos
+        if: ${{ steps.onde.outputs.local != 'vps' }}
         run: |
           git config user.name "robo-faro"
           git config user.email "robo-faro@users.noreply.github.com"
@@ -76,6 +83,8 @@ jobs:
             INICIO=$(date +%s)
             node scanner/index.mjs || echo "Rodada com erro; segue para a próxima"
             salvar
+            # Migrou para o servidor? Para aqui (o servidor espera 7 min antes de assumir)
+            [ "$(tr -d '[:space:]' < infra/onde-roda.txt 2>/dev/null)" = "vps" ] && { echo "O robô passou para o servidor. Parando o GitHub."; break; }
             AGORA=$(date +%s)
             [ $(( INICIO + 300 )) -ge "$FIM" ] && break
             ESPERA=$(( 300 - (AGORA - INICIO) ))
@@ -86,7 +95,7 @@ jobs:
       # O agendador do GitHub falha com frequência. Ao terminar, o robô agenda a própria continuação;
       # o agendamento acima fica só como reserva, caso a corrente se quebre.
       - name: Chamar a próxima execução
-        if: always()
+        if: ${{ always() && steps.onde.outputs.local != 'vps' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run scan.yml --ref "$BRANCH" || echo "Não consegui chamar a próxima; o agendamento reserva assume"
