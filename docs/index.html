@@ -1412,6 +1412,12 @@
   body.side-mini .nav-item em[data-count]:empty { display: none; }
   body.side-mini .nav-item em[data-count].has-new { background: #3b82f6; color: #fff !important; }
   body.side-mini .nav-item em[data-count].has-new::before { display: none; }
+  /* Badges de quantidade na barra do celular (Carteira e Radar) */
+  .tabbar .tb-count { position: absolute; top: 3px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; display: grid; place-items: center; font-style: normal; font-size: 10.5px; font-weight: 800; line-height: 1; color: var(--text); background: #2a2e36; box-shadow: 0 0 0 2px rgba(22,24,29,1); }
+  .tabbar .tb-count:empty { display: none; }
+  .tabbar .tb-count.has-new { background: #3b82f6; color: #fff !important; }
+  .tabbar .tb-count.has-new::before { display: none; }
+  .tabbar .tb-count:not(:empty) ~ .nav-dot, .tabbar .nav-dot:has(+ .tb-count:not(:empty)) { display: none; }
   /* Notificações: radar neutro; venda com lucro em verde */
   .nt .nt-ico.k-nova { background: var(--panel-3) !important; color: var(--muted) !important; }
   .nt .nt-ico.k-lucro { background: rgba(16,210,127,.14) !important; color: var(--green) !important; }
@@ -1509,8 +1515,8 @@
 
   <!-- Barra de abas no celular -->
   <nav class="tabbar" id="tabbar">
-    <button data-tab="minhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><path d="M16 14h.01"/></svg>Carteira<i class="nav-dot" data-dot hidden></i></button>
-    <button data-tab="aprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg>Radar</button>
+    <button data-tab="minhas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><path d="M16 14h.01"/></svg>Carteira<i class="nav-dot" data-dot hidden></i><em class="tb-count" data-count="minhas"></em></button>
+    <button data-tab="aprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg>Radar<em class="tb-count" data-count="aprovada"></em></button>
     <button data-tab="aguardando"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Análise</button>
     <button data-tab="reprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path class="x1" d="m9.5 9.5 5 5"/><path class="x2" d="m14.5 9.5-5 5"/></svg>Reprovadas</button>
     <button class="tb-robot" data-open-robot><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg>Robô</button>
