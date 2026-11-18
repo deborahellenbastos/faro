@@ -3886,7 +3886,19 @@ function fakeBuys(per = {}) {
       }
       if (t.held && (t.position.valueUsd || 0) >= (data?.config?.venda?.valorMinimoUsd ?? 1)) {
         const tr = liveTrail(t, candlesOf(t), posStart(t));
-        if (tr?.ativo) add(tr.stop, '#f5b14c', `stop móvel +${Math.round(tr.travadoPct)}%`, 1, 2);
+        if (tr?.ativo) {
+          // A linha do stop móvel começa na vela em que ele ligou (+30% sobre a entrada), não atravessa o gráfico todo:
+          // antes parecia que velas anteriores tinham "furado" um stop que ainda não existia (FEET, 18/11)
+          const E = t.position.avgPriceUsd, liga = data?.config?.venda?.stopMovel?.ativarPct ?? 30, st = posStart(t);
+          const bars = CH.bars?.length ? CH.bars : candlesOf(t).map((x) => ({ time: Math.floor(x[0] / 1000), high: x[2] }));
+          const hit = E > 0 ? bars.find((b) => b.time * 1000 >= st - 60000 && b.high >= E * (1 + liga / 100)) : null;
+          const last = bars[bars.length - 1];
+          if (hit && last) {
+            const ls = CH.chart.addLineSeries({ color: '#f5b14c', lineWidth: 2, priceLineVisible: false, lastValueVisible: true, title: `stop móvel +${Math.round(tr.travadoPct)}%`, crosshairMarkerVisible: false, priceFormat: { type: 'custom', formatter: pxFmt, minMove: 1e-12 } });
+            ls.setData([{ time: hit.time + TZ, value: tr.stop }, { time: Math.max(last.time, hit.time + 1) + TZ, value: tr.stop }]);
+            CH.trends.push(ls);
+          } else add(tr.stop, '#f5b14c', `stop móvel +${Math.round(tr.travadoPct)}%`, 1, 2);
+        }
         else if (data?.config?.venda?.stopPerda?.ligado) { const sp = data.config.venda.stopPerda.pct ?? 25; add(t.position.avgPriceUsd * (1 - sp / 100), '#ff5b5b', `stop -${sp}% (robô vende)`, 1, 1); }
       }
       // Saída: preço médio das suas vendas
