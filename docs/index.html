@@ -1412,6 +1412,10 @@
   body.side-mini .nav-item em[data-count]:empty { display: none; }
   body.side-mini .nav-item em[data-count].has-new { background: #3b82f6; color: #fff !important; }
   body.side-mini .nav-item em[data-count].has-new::before { display: none; }
+  /* Notificações: radar neutro; venda com lucro em verde */
+  .nt .nt-ico.k-nova { background: var(--panel-3) !important; color: var(--muted) !important; }
+  .nt .nt-ico.k-lucro { background: rgba(16,210,127,.14) !important; color: var(--green) !important; }
+  .nt.lucro b { color: var(--green) !important; }
   #inbox-clear:disabled { opacity: .4; cursor: default; text-decoration: none; }
   @media (max-width: 700px) { .desk-only { display: none !important; } }
   /* Favoritas: botão de coração ao lado do sino */
@@ -1753,6 +1757,8 @@
       if (k === 'compra') return ['k-compra', ICON.buy];
       if (k === 'venda') return ['k-venda', ICON.sell];
       if (k === 'saida') return ['k-saida', ICON.saida];
+      // venda do robô: mesmo ícone das vendas (o título "Robô vendeu" já diz quem foi)
+      if (k === 'robo' && /^Robô vendeu/.test(x.title || '')) return (x.lucro || x.res?.pnl > 0) ? ['k-lucro', ICON.coins] : ['k-venda', ICON.sell];
       if (k === 'robo') return ['', ICON.bot];
       if (k === 'recupera') return ['k-lucro', ICON.up];
       return ['', ico[x.level] || ICON.swap];
