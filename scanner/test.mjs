@@ -604,3 +604,9 @@ console.log('Teste da entrada por operação: ok');
   assert.equal(fakeBuys({ m5: { buys: 20, sells: 2, chg: -15 } }), null, 'poucas transações não contam');
   console.log('Teste das compras falsas: ok');
 }
+// (17/11, JALU) a regra do ganho pelo preço de entrada vive na vigia (watch.mjs): venda parcial não pode virar "caiu 77%"
+{
+  const src = await readFile(new URL('./watch.mjs', import.meta.url), 'utf8');
+  assert.match(src, /avgPx > 0 \? \(px \/ avgPx - 1\) \* 100/, 'a vigia deve medir o ganho pelo preço de entrada');
+  console.log('Teste da venda parcial: ok');
+}

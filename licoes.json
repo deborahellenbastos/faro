@@ -198,9 +198,9 @@
       "data": "2026-11-17",
       "titulo": "Compras falsas: quase só compra na contagem e o preço caindo mesmo assim",
       "moedas": [
-        "JALU (BSsmLA6UN8fzJ8qUkV4KwC5LxR7ab3TaUtcwvAyJpump)"
+        "LUCIA (3HPU5agEYMrecTnrunbDWAKkPy5Z4CMyt4GnTDe9pump)"
       ],
-      "aconteceu": "Às ~20:30 a JALU (Jason & Lucia) mostrava 10.400 compras x 1.387 vendas na última hora (88% compras, cerca de US$ 22 por transação) e mesmo assim o preço caía. Mais cedo eram ~60% compras. Segundos depois veio o golpe. A Kerah percebeu o padrão olhando o gráfico.",
+      "aconteceu": "Às ~20:30 a LUCIA mostrava 10.400 compras x 1.387 vendas na última hora (88% compras, cerca de US$ 22 por transação) e mesmo assim o preço caía. A Kerah comprou às 20:29 e segundos depois veio o golpe: às 20:33 já tinha caído 95%. Ela percebeu o padrão olhando o gráfico.",
       "regra": "Contagem de compras não é força: robôs fazem milhares de compras pequenas para parecer alta enquanto poucas vendas grandes derrubam o preço. Se 80% ou mais das transações são compras (mín. 40 em 5 min ou 200 em 1h) e o preço caiu 10% ou mais na mesma janela, a moeda vira Perigo no painel e o robô não compra. Até 17/11 a regra ainda não aparece nas estatísticas da simulação (stats.regras). Na última leitura do dia, ela marcaria CSI (81% compras e -47% na hora, logo depois do sinal de entrada das 17:40, que no Crazy perdeu 28% em 2 min), Rex (84%, -58%) e Lucia the Baddie (93% em 5 min, -52%): as três desabaram. Quase pegou a JALU às 21:38 (79% compras, -10% na hora), que seguiu viva com US$ 62 mil de liquidez: baixar o limite para 75% criaria esse alarme falso.",
       "status": "em teste",
       "tipo": "golpe"

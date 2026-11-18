@@ -261,7 +261,13 @@ while (Date.now() < until) {
       // 1. Golpe no contrato  2. Queda forte  3. Lucro em posição pequena
       const cost = t.position?.known && !t.staleCost ? t.position.costOpenUsd : 0;
       const pxSol = /^W?SOL$/i.test(p?.quoteToken?.symbol || '') ? Number(p?.priceNative) : 0;
-      const gain = cost > 0 ? ((t.heldAmount * px) / cost - 1) * 100 : liveEntry[t.mint] && pxSol > 0 ? (pxSol / liveEntry[t.mint] - 1) * 100 : null;
+      // Ganho pelo preço de entrada (17/11, JALU: a Kerah vendeu 75% e a conta "valor que sobrou / custo de tudo" deu -77%
+      // e disparou o stop no resto). Venda parcial muda a quantidade, não o preço de entrada. Sem preço médio, o custo é
+      // proporcional à quantidade que ainda está na carteira.
+      const avgPx = t.position?.known && !t.staleCost ? Number(t.position.avgPriceUsd) || 0 : 0;
+      const posAmt = Number(t.snapAmount || t.position?.amount) || 0;
+      const costNow = cost > 0 && posAmt > 0 && t.heldAmount < posAmt ? cost * (t.heldAmount / posAmt) : cost;
+      const gain = avgPx > 0 ? (px / avgPx - 1) * 100 : costNow > 0 ? ((t.heldAmount * px) / costNow - 1) * 100 : liveEntry[t.mint] && pxSol > 0 ? (pxSol / liveEntry[t.mint] - 1) * 100 : null;
       // Stop móvel: o da última rodada, subindo junto com o pico que a vigia vê ao vivo (nunca desce)
       let trailPx = 0;
       if (trailOn && !t.staleCost && t.trail?.ativo && t.position?.avgPriceUsd > 0) {
