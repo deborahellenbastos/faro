@@ -3071,7 +3071,11 @@ function fakeBuys(per = {}) {
     let msg = null;
     if (pnl != null && pnl <= -60) msg = `Preço despencou ${Math.abs(pnl).toFixed(0)}% desde a sua compra`;
     else if (m5 <= -60 || h1 <= -70) msg = `Preço desabou ${Math.abs(Math.min(m5 || 0, h1 || 0)).toFixed(0)}% em ${m5 <= -60 ? '5 minutos' : '1 hora'} (cara de rug: liquidez puxada ou dev vendendo)`;
-    else { const f = fakeBuys(t.periods); if (f) msg = f.msg.charAt(0).toUpperCase() + f.msg.slice(1); }
+    else {
+      // compras falsas: na hora ou nos 30 min depois da última vez que o robô viu o padrão (não fica piscando)
+      const f = fakeBuys(t.periods) || (t.compraFalsa && Date.now() - t.compraFalsa.at <= 30 * 60000 ? t.compraFalsa : null);
+      if (f) msg = f.msg.charAt(0).toUpperCase() + f.msg.slice(1);
+    }
     return msg ? { id: 'crash', level: 'danger', msg, at: Date.now() } : null;
   }
   const levelOf = (t) => (crashAlert(t) ? 'danger' : t.safety?.level || 'ok');

@@ -1,7 +1,7 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { simStep, simCrazy, marketTide } from './sim.mjs';
 import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore, readFavs } from './autobuy.mjs';
-import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry } from './signals.mjs';
+import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry, fakeBuys } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
@@ -402,6 +402,13 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     }
   }
 
+  // 5c2. Compras falsas: o alerta fica 30 min depois da última vez que o padrão apareceu (sem piscar Perigo/Segura
+  // quando a conta fica em cima do limite de 80%, caso JALU 17/11)
+  for (const t of Object.values(tokens)) {
+    const f = fakeBuys(t.periods);
+    if (f) t.compraFalsa = { at: now, msg: f.msg, desde: t.compraFalsa?.desde || now };
+    else if (t.compraFalsa && now - t.compraFalsa.at > 30 * 60000) delete t.compraFalsa;
+  }
   // 5d. Sinais de entrada (radar) e de saída (suas posições), com as lições dos vídeos
   const rrMin = cfg.simulacao?.riscoRetornoMin || 2;
   const SG = cfg.sinais || {};
