@@ -1113,6 +1113,7 @@
 
   /* Notificações no celular: folha que sobe de baixo, sem rolagem, com páginas */
   .inbox-grip { display: none; }
+  #inbox { overscroll-behavior: contain; touch-action: none; } #inbox #inbox-list { overscroll-behavior: contain; touch-action: pan-y; }
   @media (max-width: 1099px) {
     #inbox.drawer { align-items: flex-end; justify-content: stretch; }
     #inbox .drawer-panel { width: 100%; height: auto; max-height: calc(100dvh - env(safe-area-inset-top) - 14px); height: calc(100dvh - env(safe-area-inset-top) - 14px);
@@ -1926,8 +1927,17 @@
   window.addEventListener('resize', () => { INBOX.per = 0; INBOX.fitLock = false; INBOX.trimmed = false; const P = $('inbox').querySelector('.drawer-panel'); if (P) P.style.removeProperty('height'); });
   $('inbox').addEventListener('click', (e) => { if (e.target.id === 'inbox') closeInbox(); });
   { let y0 = null, dy = 0; const P = () => $('inbox')?.querySelector('.drawer-panel');
-    document.addEventListener('touchstart', (e) => { if (!$('inbox').classList.contains('show') || !e.target.closest('#inbox .inbox-grip, #inbox .drawer-head')) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
-    document.addEventListener('touchmove', (e) => { if (y0 == null) return; dy = Math.max(0, e.touches[0].clientY - y0); const p = P(); if (p) { p.style.transition = 'none'; p.style.transform = `translateY(${dy}px)`; } }, { passive: true });
+    // Lista com rolagem própria que ainda não está no topo: o gesto rola a lista em vez de fechar
+    const listScrolls = (t) => { const L = t.closest('#inbox-list'); return L && L.scrollHeight > L.clientHeight + 2 && L.scrollTop > 0; };
+    // Arrastar para baixo em qualquer ponto do sheet fecha (antes só pelo puxador e pelo título)
+    document.addEventListener('touchstart', (e) => { if (!$('inbox').classList.contains('show') || !e.target.closest('#inbox .drawer-panel') || listScrolls(e.target)) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+    // Com o sheet aberto, a tela de trás não rola (o iPhone ignora overflow: hidden no body)
+    document.addEventListener('touchmove', (e) => {
+      if (!$('inbox')?.classList.contains('show')) return;
+      const L = e.target.closest('#inbox-list'), canScroll = L && L.scrollHeight > L.clientHeight + 2;
+      if (y0 != null) { dy = Math.max(0, e.touches[0].clientY - y0); if (dy > 0 || !canScroll) e.preventDefault(); const p = P(); if (p && dy > 0) { p.style.transition = 'none'; p.style.transform = `translateY(${dy}px)`; } return; }
+      if (!canScroll) e.preventDefault();
+    }, { passive: false });
     document.addEventListener('touchend', () => { if (y0 == null) return; y0 = null; const p = P(); if (p) { p.style.transition = ''; p.style.transform = ''; } if (dy > 100) closeInbox(); dy = 0; });
   }
   document.addEventListener('click', (e) => {
