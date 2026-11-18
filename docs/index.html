@@ -1412,7 +1412,7 @@
   body.side-mini .nav-item em[data-count]:empty { display: none; }
   body.side-mini .nav-item em[data-count].has-new { background: #3b82f6; color: #fff !important; }
   body.side-mini .nav-item em[data-count].has-new::before { display: none; }
-  #inbox-clear[hidden] { display: none !important; }
+  #inbox-clear:disabled { opacity: .4; cursor: default; text-decoration: none; }
   @media (max-width: 700px) { .desk-only { display: none !important; } }
   /* Favoritas: botão de coração ao lado do sino */
   .favbtn[hidden] { display: none !important; }
@@ -1737,7 +1737,7 @@
     const b = $('bell-n'); if (b) { b.hidden = !unreadN; b.textContent = unreadN > 99 ? '99+' : unreadN; }
     { const bell = $('bell'); if (bell) { if (unreadN > (INBOX.lastUnread || 0)) { bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring'); } bell.classList.toggle('has-unread', !!unreadN); INBOX.lastUnread = unreadN; } }
     try { if (navigator.setAppBadge) unreadN ? navigator.setAppBadge(unreadN) : navigator.clearAppBadge(); } catch {}
-    { const c = $('inbox-clear'); if (c) c.hidden = !unreadN; }
+    { const c = $('inbox-clear'); if (c) c.disabled = !unreadN; }
     const el = $('inbox-list'); if (!el || !$('inbox').classList.contains('show')) return;
     // No celular: só o que cabe na tela (sem rolagem), o resto vai para as páginas
     const per = isNarrow() ? (INBOX.per || 6) : 10, pages = Math.max(1, Math.ceil(INBOX.list.length / per));
