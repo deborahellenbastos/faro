@@ -1969,12 +1969,15 @@
   const walletOn = () => !!data?.lastRun?.wallet;
   // Encerradas: vendi tudo, ou ainda tenho mas perdeu 95% ou mais (rug)
   const isSold = (t) => !!t.closedOp && !t.held;
-  const isLost = (t) => !!(t.held && t.position?.known && t.position.openPnlPct <= -95);
+  // Golpe com a liquidez zerada (menos de US$ 100 no pool) também é perdida, mesmo que a conta do resultado diga outra coisa
+  const isLost = (t) => !!(t.held && t.position?.known && (t.position.openPnlPct <= -95 || (t.liquidityUsd != null && t.liquidityUsd < 100)));
   const isClosed = (t) => isSold(t) || isDust(t);
   // Morta: você ainda tem, mas vale menos de US$ 1 e o gráfico morreu (ou caiu 50%+). Sai da conta das transações abertas
   // e volta sozinha se passar a valer US$ 1 ou mais
   // Sobra de venda: vendeu quase tudo e ficou um resto que não vale nem 1 centavo. Conta como operação encerrada
-  const isDust = (t) => !!(t.held && t.position?.known && (t.position.sells || 0) > 0 && (t.position.valueUsd || 0) < 0.01 && !isLost(t));
+  // Resto que sobrou de uma venda (vale menos de 1 centavo): sai da lista de abertas. Antes exigia uma venda contada na
+  // operação; a Christmas (18/11) ficou com 0,002 token depois do golpe e continuava como aberta
+  const isDust = (t) => !!(t.held && t.position?.known && (t.position.valueUsd || 0) < 0.01 && !isLost(t));
   // Perdida (-95% ou mais) que você ainda tem também fica nas mortas
   const isDead = (t) => !!(t.held && t.position?.known && !isDust(t) && (isLost(t) || ((t.position.valueUsd || 0) < 1 && (t.shape?.tipo === 'morta' || t.position.openPnlPct <= -50))));
   // Resultado de uma operação encerrada fica congelado (não muda com o preço da moeda nem do SOL depois da venda)
