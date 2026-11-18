@@ -4,6 +4,8 @@
   },
   "busca": {
     "idadeMinimaMinutos": 5,
+    "idadePoucaLiquidezMin": 20,
+    "poucaLiquidezUsd": 20000,
     "idadeMaximaHoras": 24,
     "maxRugcheckPorRodada": 25,
     "diasAcompanhando": 3

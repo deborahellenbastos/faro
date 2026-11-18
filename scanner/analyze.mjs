@@ -65,6 +65,9 @@ export function prefilter(m, cfg) {
   const reasons = [];
   if (m.ageMin == null) reasons.push('Sem data de criação do par');
   else if (m.ageMin < b.idadeMinimaMinutos) reasons.push(`Muito nova (${m.ageMin.toFixed(0)} min), aguardando ${b.idadeMinimaMinutos} min`);
+  // 17/11: com par de até 15 min e liquidez abaixo de US$ 20 mil, 10 de 12 aprovadas viraram rug. Pouca liquidez espera mais.
+  else if (b.idadePoucaLiquidezMin && m.liquidityUsd < (b.poucaLiquidezUsd ?? 20000) && m.ageMin < b.idadePoucaLiquidezMin)
+    reasons.push(`Nova e com pouca liquidez (${m.ageMin.toFixed(0)} min, ${fmtUsd(m.liquidityUsd)}): aguardando ${b.idadePoucaLiquidezMin} min`);
   if (m.liquidityUsd < f.liquidezMinimaUsd) reasons.push(`Liquidez baixa (${fmtUsd(m.liquidityUsd)})`);
   if (m.mcapUsd < f.marketCapMinimoUsd) reasons.push(`Market cap baixo (${fmtUsd(m.mcapUsd)})`);
   if (m.mcapUsd > f.marketCapMaximoUsd) reasons.push(`Market cap acima do limite (${fmtUsd(m.mcapUsd)})`);

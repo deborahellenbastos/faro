@@ -610,3 +610,13 @@ console.log('Teste da entrada por operação: ok');
   assert.match(src, /avgPx > 0 \? \(px \/ avgPx - 1\) \* 100/, 'a vigia deve medir o ganho pelo preço de entrada');
   console.log('Teste da venda parcial: ok');
 }
+// (17/11) par novo com pouca liquidez espera 20 min antes de ir ao Radar
+{
+  const { prefilter } = await import('./analyze.mjs');
+  const cfgT = { busca: { idadeMinimaMinutos: 5, idadePoucaLiquidezMin: 20, poucaLiquidezUsd: 20000 }, filtros: { liquidezMinimaUsd: 0, marketCapMinimoUsd: 0, marketCapMaximoUsd: 1e12, volumeH1MinUsd: 0, comprasSobreTotalH1MinPct: 0 } };
+  const base = { mcapUsd: 90000, volumeH1: 5000, buyRatioH1: 60 };
+  assert.match(prefilter({ ...base, ageMin: 10, liquidityUsd: 15000 }, cfgT).join(), /pouca liquidez/, 'nova e com pouca liquidez espera');
+  assert.equal(prefilter({ ...base, ageMin: 25, liquidityUsd: 15000 }, cfgT).length, 0, 'depois de 20 min passa');
+  assert.equal(prefilter({ ...base, ageMin: 10, liquidityUsd: 30000 }, cfgT).length, 0, 'com liquidez boa não espera');
+  console.log('Teste da espera por pouca liquidez: ok');
+}
