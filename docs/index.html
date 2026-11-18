@@ -1407,6 +1407,23 @@
   @media (max-width: 700px) { .ci-tx small, .ci-bar { display: none; } }
   .mo-h .mo-open { flex: 0 1 auto; } .mo-h .copy { flex: none; margin-left: -6px; }
   .chart-box.max .cmax-sym + .copy { margin-left: -8px; display: inline-grid !important; }
+  .pill[data-safety] { cursor: pointer; transition: filter .15s, transform .15s; }
+  .pill[data-safety]:hover { filter: brightness(1.25); }
+  .pill[data-safety]:active { transform: scale(.96); }
+  .pill[data-safety]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  .sf-card { width: 480px; }
+  .sf-top { display: flex; align-items: center; gap: 10px; margin-top: -4px; }
+  .sf-top small { color: var(--faint); font-size: 12px; }
+  .sf-alerts { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .sf-alerts li { display: grid; gap: 2px; padding: 10px 12px; border-radius: var(--r-2); background: var(--panel-2); border: 1px solid var(--line); font-size: 14px; line-height: 1.45; }
+  .sf-alerts li.warn { border-color: rgba(245,177,76,.35); }
+  .sf-alerts li.danger { border-color: rgba(255,91,91,.45); }
+  .sf-alerts li small { color: var(--faint); font-size: 12px; }
+  .sf-card .check-list { grid-template-columns: 1fr; margin-top: 0; }
+  .sf-pop { animation: sfPop .9s ease-out 2; }
+  @keyframes sfPop { 0% { box-shadow: 0 0 0 0 currentColor; } 100% { box-shadow: 0 0 0 10px transparent; } }
+  .sf-flash { animation: sfFlash 1.1s ease-out 2; border-radius: var(--r-3); }
+  @keyframes sfFlash { 0% { box-shadow: 0 0 0 0 rgba(16,210,127,.45); } 100% { box-shadow: 0 0 0 14px rgba(16,210,127,0); } }
   .mo-info { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 0 12px 8px; }
   .mo-info .ci-score .score { transform: scale(.85); transform-origin: left center; }
   .mo-info .ci-tx small, .mo-info .ci-bar { display: inline-block; } .mo-info .ci-bar { width: 50px; }
@@ -3127,7 +3144,8 @@ function fakeBuys(per = {}) {
     return msg ? { id: 'crash', level: 'danger', msg, at: Date.now() } : null;
   }
   const levelOf = (t) => (crashAlert(t) ? 'danger' : t.safety?.level || 'ok');
-  const statusPill = (t) => { const l = levelOf(t); return `<span class="pill ${l === 'ok' ? '' : l}">${{ ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[l]}</span>`; };
+  const safetyAttrs = (t) => `data-safety="${esc(t.mint)}" role="button" tabindex="0" title="Ver a segurança da moeda"`;
+  const statusPill = (t) => { const l = levelOf(t); return `<span class="pill ${l === 'ok' ? '' : l}" ${safetyAttrs(t)}>${{ ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[l]}</span>`; };
 
   function lpLocked(t) {
     if ((t.safety?.alerts || []).some((a) => a.id === 'lp' || a.id === 'demo-lp')) return false;
@@ -4863,10 +4881,68 @@ function fakeBuys(per = {}) {
   function infoHtml(t) {
     const l = levelOf(t), P = t.periods?.h1 || {}, b = Number(P.buys ?? t.buysH1) || 0, v = Number(P.sells ?? t.sellsH1) || 0, tot = b + v;
     const pctB = tot ? Math.round((b / tot) * 100) : null;
-    return `<span class="pill ${l === 'ok' ? '' : l}">${{ ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[l]}</span>
+    return `<span class="pill ${l === 'ok' ? '' : l}" ${safetyAttrs(t)}>${{ ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[l]}</span>
       ${t.score != null ? `<span class="ci-score" title="Nota">${scoreBadge(t.score, true)}</span>` : ''}
       ${tot ? `<span class="ci-tx" title="Transações na última hora"><b class="pos num">${int(b)}</b><small>compras</small><i class="ci-bar"><i style="width:${pctB}%"></i></i><b class="neg num">${int(v)}</b><small>vendas</small></span>` : ''}`;
   }
+  // ---------- Selo de segurança clicável ----------
+  // Tela normal: rola rápido até os avisos/análise de segurança da moeda.
+  // Gráfico em tela cheia ou mosaico: abre num modal (não tira você da tela aberta) e o modal atualiza ao vivo.
+  const scrollerOf = (el) => { for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) { const o = getComputedStyle(p).overflowY; if ((o === 'auto' || o === 'scroll') && p.scrollHeight > p.clientHeight + 4) return p; } return null; };
+  function fastScrollTo(el, gap = 80) {
+    const sc = scrollerOf(el);
+    const from = sc ? sc.scrollTop : window.scrollY;
+    const to = Math.max(0, sc ? el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - gap : el.getBoundingClientRect().top + window.scrollY - gap);
+    const t0 = performance.now(), D = 220;
+    const step = (n) => { const k = Math.min(1, (n - t0) / D), y = from + (to - from) * (1 - Math.pow(1 - k, 3)); if (sc) sc.scrollTop = y; else window.scrollTo(0, y); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
+  function goSafety(mint) {
+    const t = data?.tokens?.[mint]; if (!t) return;
+    const isSel = ui.sel[ui.tab] === mint && document.querySelector('#detail .alerts, #detail details[data-keep^="seg:"]');
+    if (!isSel) { markSeen(mint); ui.sel[ui.tab] = mint; if (isNarrow()) openSheet(); render(); }
+    setTimeout(() => requestAnimationFrame(() => {
+      const seg = document.querySelector(`#detail details[data-keep="seg:${CSS.escape(mint)}"]`);
+      const a = document.querySelector('#detail .alerts') || seg?.closest('section') || seg; if (!a) return;
+      if (seg && !document.querySelector('#detail .alerts')) { seg.open = true; OPEN.set('seg:' + mint, true); }
+      fastScrollTo(a);
+      a.classList.remove('flash', 'sf-flash'); void a.offsetWidth; a.classList.add(a.matches('.alerts') ? 'flash' : 'sf-flash');
+    }), isSel ? 0 : 90);
+  }
+  function safetyModalHtml(t) {
+    const l = levelOf(t), cr = crashAlert(t), al = [...(cr ? [cr] : []), ...(t.safety?.alerts || [])], ck = t.checks || [];
+    const head = l === 'danger' ? 'Perigo: o que mudou' : l === 'warn' ? 'Atenção: vale ficar de olho' : 'Avisos do robô';
+    const when = t.safety?.checkedAt ? `checada ${ago(t.safety.checkedAt)}` : t.lastChecked ? `checada ${ago(t.lastChecked)}` : '';
+    const rows = ck.map((c) => { const k = c.ok === true ? 'ok' : c.ok === false ? 'no' : 'na'; return `<div class="check"><i class="ci ${k}">${c.ok === true ? '&#10003;' : c.ok === false ? '&#10005;' : '!'}</i><div><b>${esc(c.label)}</b><span>${esc(c.detail)}</span></div></div>`; }).join('');
+    return `<div class="ntm-card sf-card sf-${l}" role="dialog" aria-modal="true" data-sfmint="${esc(t.mint)}" data-sflvl="${l}">
+      <div class="ntm-h"><b>Segurança - ${esc(dispName(t))}</b><button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <div class="sf-top"><span class="pill ${l === 'ok' ? '' : l}">${{ ok: 'Segura', warn: 'Atenção', danger: 'Perigo' }[l]}</span>${when ? `<small>${when} - atualiza sozinho</small>` : '<small>atualiza sozinho</small>'}</div>
+      ${al.length ? `<h5>${head}</h5><ul class="sf-alerts">${al.map((a) => `<li class="${esc(a.level || '')}"><span>${esc(a.msg)}</span><small>${a.at ? ago(a.at) : ''}</small></li>`).join('')}</ul>` : '<p>Nenhum alerta agora. O robô segue checando a moeda.</p>'}
+      ${ck.length ? `<h5>Análise de segurança - ${ck.filter((c) => c.ok === true).length} de ${ck.length} ok</h5><div class="check-list">${rows}</div>` : ''}
+    </div>`;
+  }
+  function openSafety(mint) {
+    const t = data?.tokens?.[mint]; if (!t) return;
+    const m = $('ntm'); const html = safetyModalHtml(t);
+    m.innerHTML = html; m.__sf = html; m.hidden = false;
+  }
+  function refreshSafety() {
+    const m = $('ntm'); if (!m || m.hidden) return;
+    const card = m.querySelector('[data-sfmint]'); if (!card) return;
+    const t = data?.tokens?.[card.dataset.sfmint]; if (!t) return;
+    const html = safetyModalHtml(t); if (m.__sf === html) return;
+    const before = card.dataset.sflvl, keep = card.scrollTop;
+    m.innerHTML = html; m.__sf = html;
+    const nc = m.querySelector('[data-sfmint]'); if (nc) { nc.scrollTop = keep; if (nc.dataset.sflvl !== before) { const p = nc.querySelector('.sf-top .pill'); p?.classList.add('sf-pop'); } }
+  }
+  setInterval(refreshSafety, 2000);
+  document.addEventListener('click', (e) => {
+    const p = e.target.closest('[data-safety]'); if (!p) return;
+    e.preventDefault(); e.stopPropagation();
+    const mint = p.dataset.safety;
+    if (document.querySelector('.chart-box.max') || document.body.classList.contains('mosaic-on')) openSafety(mint); else goSafety(mint);
+  }, true);
+  document.addEventListener('keydown', (e) => { const p = e.target.closest?.('[data-safety]'); if (p && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); p.click(); } });
   function mountDetail(t) {
     updateEmergDock(t);
     const el = $('detail');
@@ -5101,6 +5177,7 @@ function fakeBuys(per = {}) {
     const t = sel && data.tokens[sel];
     const fresh = mountDetail(t);
     if (t) updCmaxInfo(t);
+    refreshSafety();
     // a moeda aberta no detalhe conta como vista depois de 2 segundos na tela
     if (t && isUnseen(t) && !document.hidden) { clearTimeout(ui._seenT); ui._seenT = setTimeout(() => { if (ui.sel[ui.tab] === t.mint) { markSeen(t.mint); render(); } }, 2000); }
     mountCharts(t, fresh);
