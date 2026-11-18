@@ -92,7 +92,7 @@
         "GTA"
       ],
       "aconteceu": "O sinal aparece justamente na correção, e a correção derruba a parte de 'momento' da nota (força de compra e volume da última hora).",
-      "regra": "Teste: vale a nota da aprovação (70+) quando a parte sólida (holders, liquidez, segurança, distribuição) segue de pé.",
+      "regra": "Teste: vale a nota da aprovação (70+) quando a parte sólida (holders, liquidez, segurança, distribuição) segue de pé. Simulação até 17/11: nenhuma entrada ainda pela nota da aprovação (0 operações no Conservador e no Agressivo). Sem dados para decidir.",
       "status": "em teste",
       "tipo": "compra"
     },
@@ -127,7 +127,7 @@
         "GTA"
       ],
       "aconteceu": "Ficou 4 horas presa numa faixa, rompeu o teto e subiu 45%. Nenhum sinal reconhecia esse padrão.",
-      "regra": "Sinal de rompimento de base (1h ou mais numa faixa, fecha acima do teto com volume e compra). Vale no perfil Agressivo e na simulação.",
+      "regra": "Sinal de rompimento de base (1h ou mais numa faixa, fecha acima do teto com volume e compra). Vale no perfil Agressivo e na simulação. Simulação até 17/11 (Agressivo): 2 entradas. LEOSTAR (base, 09:29) saiu no stop com -20%. BLACKX (rompimento, 10:30) segue aberta com +38% às 21:38. Poucas operações para decidir.",
       "status": "em teste",
       "tipo": "sinal"
     },
@@ -138,7 +138,7 @@
         "LEOSTAR"
       ],
       "aconteceu": "Corrigiu só até perto da 38,2% e voltou a subir. A zona de entrada (50% a 61,8%) nunca foi tocada.",
-      "regra": "Entrada rasa na 38,2% quando a tendência é forte (gráfico orgânico, compra 55%+ na hora) e reage com compra. Vale no perfil Agressivo e na simulação.",
+      "regra": "Entrada rasa na 38,2% quando a tendência é forte (gráfico orgânico, compra 55%+ na hora) e reage com compra. Vale no perfil Agressivo e na simulação. Simulação até 17/11 (Agressivo): 2 entradas na 38,2%, as duas no stop (LEOSTAR -34%, GTA -19%), somando -0,026 SOL. O único sinal novo do dia (CSI, 17:40) não foi aberto pelo Agressivo e a CSI caiu 58% depois. Até aqui a entrada rasa não pagou.",
       "status": "em teste",
       "tipo": "sinal"
     },
@@ -158,7 +158,7 @@
       "titulo": "Maré vermelha do mercado",
       "moedas": [],
       "aconteceu": "Ideia tirada de um post no X: quando a maioria das moedas está caindo no dia, comprar é o que precisa de justificativa.",
-      "regra": "Teste: quando 70% ou mais das moedas do Radar (mínimo 5) estão caindo no dia, marca a maré como vermelha. A simulação mede o resultado das entradas feitas com maré vermelha, para saber se valeria pausar ou ficar mais exigente.",
+      "regra": "Teste: quando 70% ou mais das moedas do Radar (mínimo 5) estão caindo no dia, marca a maré como vermelha. A simulação mede o resultado das entradas feitas com maré vermelha, para saber se valeria pausar ou ficar mais exigente. Simulação até 17/11: nenhuma entrada com maré vermelha nos três perfis (0 operações). No fim do dia, 4 de 8 moedas caindo (50%, abaixo dos 70%).",
       "status": "em teste",
       "tipo": "compra"
     },
@@ -170,7 +170,7 @@
         "VI"
       ],
       "aconteceu": "Ideia tirada de um post no X. Em 16/11 os stops vieram em sequência no mesmo período ruim.",
-      "regra": "Teste: depois de 2 stops seguidos, pausa de 45 minutos sem novas entradas. A simulação mede o resultado das entradas que essa pausa teria evitado.",
+      "regra": "Teste: depois de 2 stops seguidos, pausa de 45 minutos sem novas entradas. A simulação mede o resultado das entradas que essa pausa teria evitado. Simulação até 17/11: no Crazy, 3 entradas caíram dentro da pausa (NI, ACRUX, JESTER) e as 3 perderam, somando -0,028 SOL. A pausa teria evitado esse prejuízo. No Conservador e no Agressivo não houve 2 stops seguidos (0 operações).",
       "status": "em teste",
       "tipo": "compra"
     },
@@ -179,7 +179,7 @@
       "titulo": "Sair quando o volume some",
       "moedas": [],
       "aconteceu": "Ideia tirada de um post no X: a operação foi fechada quando o volume caiu 60%. Hoje o Faro realiza em +50% e +80% olhando sinais de fraqueza, mas não usa a queda de volume como gatilho próprio.",
-      "regra": "Teste: já com lucro de 10% ou mais, se o volume das 2 últimas velas de 5 min cair 60% ou mais em relação à vela de maior volume desde a entrada, anota esse preço. A simulação compara o resultado de sair ali com o das saídas normais.",
+      "regra": "Teste: já com lucro de 10% ou mais, se o volume das 2 últimas velas de 5 min cair 60% ou mais em relação à vela de maior volume desde a entrada, anota esse preço. A simulação compara o resultado de sair ali com o das saídas normais. Simulação até 17/11: 6 operações marcadas. Conservador/Agressivo: 3 (GTA, LEOSTAR, JVOLT, todas no lucro), +0,0405 SOL nas saídas normais contra +0,0428 SOL saindo no volume (+0,002). Crazy: 3 (GOAT, GTA, JESTER), -0,0059 SOL contra +0,0114 SOL saindo no volume (+0,017). Nas 6, sair no volume foi melhor.",
       "status": "em teste",
       "tipo": "venda"
     },
@@ -190,7 +190,7 @@
         "JALU (BSsmLA6UN8fzJ8qUkV4KwC5LxR7ab3TaUtcwvAyJpump)"
       ],
       "aconteceu": "A Kerah entrou na JALU (Jason & Lucia) às ~20:00, numa leitura manual: selo Segura e nota 76; desde as 19:00 o preço voltou várias vezes à mesma região de suporte (perto da entrada) sem perder, com um pavio abaixo às 19:48 que voltou na hora; depois fundos mais altos às 19:50, 20:00 e 20:05; compras dominando a última hora (10.248 x 6.880, ~60%). Às 20:13 estava +7% e subindo. Antes, no mesmo dia, o robô tinha vendido as entradas dela na JALU por erro (custo antigo depois de recompra), corrigido às 19:40.",
-      "regra": "Teste: conferir na análise diária se o sinal 'subida saudável' (ou o rompimento de base) do robô teria dado entrada nesse mesmo trecho. Padrão a ensinar ao robô se ele não pegou: segurança 7/7 + pelo menos 3 toques no mesmo suporte em 1h sem fechar abaixo (pavio pode) + fundo mais alto depois do último toque + compras >= 60% na última hora.",
+      "regra": "Teste: conferir na análise diária se o sinal 'subida saudável' (ou o rompimento de base) do robô teria dado entrada nesse mesmo trecho. Padrão a ensinar ao robô se ele não pegou: segurança 7/7 + pelo menos 3 toques no mesmo suporte em 1h sem fechar abaixo (pavio pode) + fundo mais alto depois do último toque + compras >= 60% na última hora. Conferido em 17/11: o robô não deu sinal de entrada nesse trecho (às 19:50 a JALU estava em \"Dentro do plano\"). A simulação Crazy tinha entrado na JALU às 17:20 e saído no stop às 17:42 (-28%). Depois das entradas das 19:50, 20:22 e 21:39 (preço médio US$ 0,000756), a JALU subiu no máximo cerca de +8% e às 21:55 estava em US$ 0,00067 (-11%). Por enquanto o padrão não pagou.",
       "status": "em teste",
       "tipo": "entrada"
     },
@@ -201,9 +201,121 @@
         "JALU (BSsmLA6UN8fzJ8qUkV4KwC5LxR7ab3TaUtcwvAyJpump)"
       ],
       "aconteceu": "Às ~20:30 a JALU (Jason & Lucia) mostrava 10.400 compras x 1.387 vendas na última hora (88% compras, cerca de US$ 22 por transação) e mesmo assim o preço caía. Mais cedo eram ~60% compras. Segundos depois veio o golpe. A Kerah percebeu o padrão olhando o gráfico.",
-      "regra": "Contagem de compras não é força: robôs fazem milhares de compras pequenas para parecer alta enquanto poucas vendas grandes derrubam o preço. Se 80% ou mais das transações são compras (mín. 40 em 5 min ou 200 em 1h) e o preço caiu 10% ou mais na mesma janela, a moeda vira Perigo no painel e o robô não compra.",
+      "regra": "Contagem de compras não é força: robôs fazem milhares de compras pequenas para parecer alta enquanto poucas vendas grandes derrubam o preço. Se 80% ou mais das transações são compras (mín. 40 em 5 min ou 200 em 1h) e o preço caiu 10% ou mais na mesma janela, a moeda vira Perigo no painel e o robô não compra. Até 17/11 a regra ainda não aparece nas estatísticas da simulação (stats.regras). Na última leitura do dia, ela marcaria CSI (81% compras e -47% na hora, logo depois do sinal de entrada das 17:40, que no Crazy perdeu 28% em 2 min), Rex (84%, -58%) e Lucia the Baddie (93% em 5 min, -52%): as três desabaram. Quase pegou a JALU às 21:38 (79% compras, -10% na hora), que seguiu viva com US$ 62 mil de liquidez: baixar o limite para 75% criaria esse alarme falso.",
       "status": "em teste",
       "tipo": "golpe"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Venda pelo custo ou pelo pico de uma operação antiga",
+      "moedas": [
+        "BLACKX",
+        "RYANAIR",
+        "B6rVYj",
+        "GTA 6 Coin",
+        "JALU",
+        "JVOLT"
+      ],
+      "aconteceu": "Até a correção das 19:40, 7 vendas do robô usaram números da operação anterior. BLACKX 10:12 'lucro de +101%' e RYANAIR 10:12 'lucro de +70%' saíram com -7% e -2% de verdade. B6rVYj 10:26 e GTA 6 Coin 07:39 'stop móvel garantindo lucro' saíram com -30% e -16%. JALU 19:32 '+208%' e 19:37 '+1394723722630%' saíram no zero a zero. JVOLT 13:36: a vigia vendeu a compra do robô com -31% dizendo 'caiu 43% do pico', porque a média ainda misturava a compra da Kerah das 12:53. A mesma entrada na simulação saiu no stop móvel com +44%.",
+      "regra": "As correções das 19:40 e 20:01 já recalculam custo, entrada e stop por operação. Falta zerar também o pico guardado pela vigia (mem.peak em watch.mjs, que hoje nunca é apagado) quando a posição vai a zero, e ter um teste de 'vende tudo e recompra em minutos' cobrindo lucro, stop móvel e queda do pico.",
+      "status": "sugerida",
+      "tipo": "venda"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Recompra do robô depois da venda da vigia",
+      "moedas": [
+        "JVOLT"
+      ],
+      "aconteceu": "A vigia vendeu a JVOLT às 13:36 por 'liquidez saindo (-23%)'. Às 15:08 o robô comprou de novo, pela regra de reentrada (até 6h), 0,050 SOL (US$ 3,63). Às 15:29 a liquidez sumiu (-94%) e a posição virou US$ 0,02. A simulação Conservador não fez essa reentrada.",
+      "regra": "Proposta: depois de uma venda da vigia que citou liquidez saindo, não reentrar na mesma moeda no dia, ou só reentrar com a liquidez acima da que havia na compra anterior e 60 min sem nova queda. Medir na simulação antes (1 caso só).",
+      "status": "sugerida",
+      "tipo": "compra"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Moeda falsa com o mesmo nome",
+      "moedas": [
+        "BAWSAQ (5kP8HhF7, falsa)"
+      ],
+      "aconteceu": "Às 07:47 a Kerah comprou 0,0328 SOL (US$ 2,40) de uma BAWSAQ que não era a do Radar (4La95N): recebeu 0,007 token, a US$ 288 cada. A moeda não tem liquidez e a posição vale zero.",
+      "regra": "Antes de comprar pelo painel, conferir o endereço: se o símbolo é igual ao de uma moeda do Radar e o endereço é outro, ou se não há pool com liquidez, marcar Perigo e travar o botão de comprar.",
+      "status": "sugerida",
+      "tipo": "protecao"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Aprovadas com par muito novo e pouca liquidez",
+      "moedas": [
+        "Google",
+        "CALLING",
+        "BONK",
+        "Autopilot",
+        "BELLA",
+        "nCat",
+        "GTAVI",
+        "VICE 6",
+        "Caracal",
+        "INU",
+        "QWENPAW"
+      ],
+      "aconteceu": "Das 26 moedas aprovadas no dia, 15 viraram rug ou caíram mais de 90%. Entre as aprovadas com o par de até 15 min de vida, 13 de 18 viraram rug (72%). Com o par mais velho que 15 min, 2 de 8 (25%). Com par de até 15 min e liquidez abaixo de US$ 20 mil, 10 de 12 (83%). Nesse grupo só a ACRUX, a maior alta do dia, e a GrokChan ficaram de pé.",
+      "regra": "Proposta: quando a liquidez for menor que US$ 20 mil, aprovar só com o par de 20 min ou mais (hoje busca.idadeMinimaMinutos = 5). Antes de ligar, rodar alguns dias só na simulação para ver quantas boas como a ACRUX ficariam de fora.",
+      "status": "sugerida",
+      "tipo": "filtro"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Stop de -15% sai bem pior que -15%",
+      "moedas": [
+        "RYANAIR",
+        "KIM",
+        "INU",
+        "ACRUX"
+      ],
+      "aconteceu": "Nas 7 vendas por stop de perda com limite de -15%, o robô leu quedas de 18% a 37% (média de -25%) na hora de vender. A simulação conta o stop com só 5% de escorregão (slippageStopPct), então mostra perdas menores que as reais.",
+      "regra": "Proposta: na simulação, usar 10% de escorregão no stop para ficar parecida com a carteira de verdade. No robô, testar confirmarSegundos de 20 para 10 nas moedas com liquidez abaixo de US$ 20 mil.",
+      "status": "sugerida",
+      "tipo": "venda"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Correção funda marcada como moeda morta",
+      "moedas": [
+        "ACRUX"
+      ],
+      "aconteceu": "A ACRUX subiu de US$ 0,0000365 (aprovação às 14:36) para cerca de US$ 0,00025. Corrigiu até US$ 0,000115, uns 63% da alta, que é a parte funda da zona. Às 19:35 o sinal disse 'Evitar: já passou do auge' (formato 'morta', 54% abaixo do topo). Às 19:30 o stop do robô tinha vendido a compra da Kerah com -31%. Depois a moeda foi a US$ 0,000296, um topo novo, +153% desde a venda.",
+      "regra": "Proposta: depois de uma alta muito forte (+300% ou mais), medir a 'moeda morta' pela correção da alta (Fibonacci) e não pela distância do topo. Só chamar de morta se perder 78,6% da alta ou se a liquidez cair. Testar só na simulação.",
+      "status": "sugerida",
+      "tipo": "sinal"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Compra manual logo depois da aprovação",
+      "moedas": [
+        "Google",
+        "LUCIA (Busted Lucia)",
+        "INU",
+        "SUPERPLUMB"
+      ],
+      "aconteceu": "O robô espera 15 min depois da aprovação, mas o botão de compra do painel não espera. A Kerah comprou Google 3 min depois da aprovação (rug em minutos, -98%), LUCIA 2 min depois (rug em 5 min, -99%), INU 8 min depois (-23%) e SUPERPLUMB 2 min depois (+22%). As 4 somaram -US$ 3,22.",
+      "regra": "Proposta: nos primeiros 15 min depois da aprovação, o botão Comprar mostra 'o robô ainda espera: X min' e pede uma segunda confirmação.",
+      "status": "sugerida",
+      "tipo": "painel"
+    },
+    {
+      "data": "2026-11-17",
+      "titulo": "Recompras seguidas na mesma moeda que já deu stop",
+      "moedas": [
+        "RYANAIR",
+        "DCCN",
+        "KIM",
+        "MINNIE"
+      ],
+      "aconteceu": "RYANAIR: 5 entradas de 10:04 a 11:21, com 4 stops seguidos, -US$ 3,08. DCCN: 3 entradas, 2 stops, -US$ 2,44. KIM: 3 entradas, -US$ 2,19. MINNIE: 3 entradas, -US$ 2,19. As quatro somam -US$ 9,90, mais de um terço do prejuízo do dia, e todas viraram rug ou caíram mais de 60% depois.",
+      "regra": "Proposta: o Cético por moeda. Depois de 2 stops na mesma moeda no dia, o painel avisa e trava nova compra nela por 60 min.",
+      "status": "sugerida",
+      "tipo": "compra"
     }
   ]
 }
