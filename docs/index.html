@@ -3652,6 +3652,10 @@ function fakeBuys(per = {}) {
       MOS.tiles.forEach((x) => { moFill(x); const h = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); const nt = data?.tokens?.[x.mint]; if (h && nt) { const html = moHead(nt); if (h.__html !== html) { h.nextElementSibling?.classList.contains('mo-info') && h.nextElementSibling.remove(); h.outerHTML = html; const nh = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); if (nh) nh.__html = html; } } });
     }, 30000);
   }
+  // Menu lateral recolhível (só ícones), lembrado entre visitas
+  { const apply = (on) => { document.body.classList.toggle('side-mini', on); const b = document.querySelector('[data-sidetoggle]'); if (b) { b.title = b.ariaLabel = on ? 'Abrir o menu' : 'Recolher o menu'; } document.querySelectorAll('.sidebar .nav-item').forEach((n) => { if (!n.title) n.title = n.querySelector('span')?.textContent || ''; }); setTimeout(() => window.dispatchEvent(new Event('resize')), 260); };
+    apply(!!store.get('faro-side-mini', false));
+    document.addEventListener('click', (e) => { if (e.target.closest('[data-sidetoggle]')) { const on = !document.body.classList.contains('side-mini'); store.set('faro-side-mini', on); apply(on); } }); }
   function moSetTool(x, k) { x.tool = k; x.pending = null; $('mosaic')?.querySelectorAll(`[data-motool][data-momint="${CSS.escape(x.mint)}"]`).forEach((b) => b.classList.toggle('on', b.dataset.motool === k)); }
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-mosaic]')) { e.preventDefault(); openMosaic(); return; }
