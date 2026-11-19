@@ -2745,7 +2745,10 @@ function trailStop(c, pos, o = {}, prev = 0) {
   if (!(pos?.entryPx > 0)) return null;
   const ativar = o.ativarPct ?? 30, dist = o.distanciaPct ?? 25, minLock = o.minimoTravadoPct ?? 5;
   const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
-  const peak = Math.max(pos.entryPx, pos.peak || 0, ...since.map((x) => x[2]));
+  // 19/11 (pedido da Kerah): pico pelo FECHAMENTO das velas (pico: 'fechamento'). O pavio de cima é só um instante
+  // e colava o stop num preço que a moeda nunca sustentou
+  const pc = o.pico === 'fechamento' ? 4 : 2;
+  const peak = Math.max(pos.entryPx, pos.peak || 0, ...since.map((x) => x[pc]));
   const peakGain = (peak / pos.entryPx - 1) * 100;
   if (peakGain < ativar && !(prev > 0)) return { ativo: false, peak, ativarPx: pos.entryPx * (1 + ativar / 100), falta: ativar - peakGain };
   // Começo da alta (até seguirAPartirPct): o stop fica logo acima da entrada, só sai se devolver quase tudo.
@@ -3007,7 +3010,7 @@ function fakeBuys(per = {}) {
     if (t.held && t.position?.known) {
       const p = t.position, tr = t.trail;
       L.push(`Minha posição: entrei a ${price(p.avgPriceUsd)}, investi ${money(p.spentUsd)}, vale ${money(p.valueUsd)} agora (${pct(p.openPnlPct)}).${tr?.ativo ? ` Stop móvel do robô em ${price(tr.stop)}.` : ''}`);
-      L.push('Meu robô vende sozinho: golpe no contrato, queda forte com confirmação, stop móvel (liga em +30%, segue o topo a partir de +60%), realização em +50%/+80% se a alta perder força, e +100%.');
+      L.push('Meu robô vende sozinho: golpe no contrato, queda forte com confirmação, stop móvel (liga em +20% e vende se cair 12% do maior fechamento de 1 min), realização em +50%/+80% se a alta perder força, e +100%.');
     } else {
       L.push(`Não tenho essa moeda. Banca: ${money(walletTotals().solUsd || 0)} disponível, valor por operação ${data.banca?.faixaUsd ? 'US$ ' + data.banca.faixaUsd : (data.config?.compra?.solPorCompra || '') + ' SOL'}.`);
     }
@@ -3266,7 +3269,7 @@ function fakeBuys(per = {}) {
           <button data-tool="r" class="${CH.tool === 'r' ? 'on' : ''}" title="Régua de porcentagem (2 cliques)">${TOOL_ICON.r}</button>
           <i></i>
           <button data-fibtoggle class="${store.get('faro-fib', true) ? 'on' : ''}" title="Fibonacci: níveis de 38,2%, 50% e 61,8% da última alta (zona de compra)">${TOOL_ICON.fib}</button>
-          <button data-metastoggle class="${store.get('faro-metas', false) ? 'on' : ''}" title="Metas do robô (só nas moedas que você tem): +30% liga o stop móvel, +60% o stop segue o topo, +50% e +80% realiza se a alta perder força">${TOOL_ICON.metas}</button>
+          <button data-metastoggle class="${store.get('faro-metas', false) ? 'on' : ''}" title="Metas do robô (só nas moedas que você tem): +20% liga o stop móvel (vende se cair 12% do maior fechamento), +50% e +80% realiza se a alta perder força">${TOOL_ICON.metas}</button>
           <button data-chartreset title="Voltar o gráfico para a posição normal">${TOOL_ICON.reset}</button>
           <button data-tool="trash" title="Apagar os traços desta moeda">${TOOL_ICON.trash}</button>
         </div>
@@ -3990,7 +3993,7 @@ function fakeBuys(per = {}) {
   // Marcações: seu preço médio / alerta, ordens limite, seus traços e os pontos de compra (C) e venda (V)
   function decorate(t) {
     // Metas do robô só existem para moedas que você tem: nas outras, o botão fica desabilitado
-    document.querySelectorAll('[data-metastoggle]').forEach((b) => { b.disabled = !t.held; b.title = t.held ? 'Metas do robô: +30% liga o stop móvel, +60% o stop segue o topo, +50% e +80% realiza se a alta perder força' : 'Metas do robô: só para moedas que você tem'; });
+    document.querySelectorAll('[data-metastoggle]').forEach((b) => { b.disabled = !t.held; b.title = t.held ? 'Metas do robô: +20% liga o stop móvel (vende se cair 12% do maior fechamento), +50% e +80% realiza se a alta perder força' : 'Metas do robô: só para moedas que você tem'; });
     for (const l of CH.lines) { try { CH.candle.removePriceLine(l); } catch {} }
     for (const s2 of CH.trends) { try { CH.chart.removeSeries(s2); } catch {} }
     CH.lines = []; CH.trends = [];
@@ -4009,7 +4012,7 @@ function fakeBuys(per = {}) {
       // Metas do robô (liga e desliga pelo botão da bandeira): stop móvel e realização em faixas
       if (t.held && store.get('faro-metas', false)) {
         const E = t.position.avgPriceUsd, V = data?.config?.venda || {};
-        if (V.stopMovel?.ligado) { add(E * (1 + (V.stopMovel.ativarPct ?? 30) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.ativarPct ?? 30}% liga stop móvel`, 3, 1); add(E * (1 + (V.stopMovel.seguirAPartirPct ?? 60) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.seguirAPartirPct ?? 60}% stop segue o topo`, 3, 1); }
+        if (V.stopMovel?.ligado) { add(E * (1 + (V.stopMovel.ativarPct ?? 30) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.ativarPct ?? 30}% liga stop móvel`, 3, 1); if ((V.stopMovel.seguirAPartirPct ?? 60) > (V.stopMovel.ativarPct ?? 30)) add(E * (1 + (V.stopMovel.seguirAPartirPct ?? 60) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.seguirAPartirPct ?? 60}% stop segue o topo`, 3, 1); }
         if (V.realizar?.ligado) for (const f of V.realizar.faixas || []) add(E * (1 + f.lucroPct / 100), 'rgba(16,210,127,.65)', `+${f.lucroPct}% ${f.sinais <= 1 ? 'vende no 1º sinal' : `vende com ${f.sinais} sinais`}`, 3, 1);
       }
       if (t.held && (t.position.valueUsd || 0) >= (data?.config?.venda?.valorMinimoUsd ?? 1)) {

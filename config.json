@@ -97,10 +97,12 @@
       ]
     },
     "stopMovel": {
+      "_comentario": "19/11 (regra A, pedido da Kerah): liga com +20% e vende quando cair 12% do maior fechamento de 1 min. No teste com 52 vendas melhorou 8 de 13 e piorou 4. Antes: liga +30%, travado em +5% até +60%, depois 25% do topo",
       "ligado": true,
-      "ativarPct": 30,
-      "seguirAPartirPct": 60,
-      "distanciaPct": 25,
+      "ativarPct": 20,
+      "seguirAPartirPct": 20,
+      "distanciaPct": 12,
+      "pico": "fechamento",
       "minimoTravadoPct": 5,
       "confirmarSegundos": 10,
       "vendaDiretaAbaixoPct": 5

@@ -76,8 +76,9 @@ export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, can
     // stop móvel igual ao robô real (só sobe)
     const SM = cfg.venda?.stopMovel;
     if (SM?.ligado && t?.candles?.length) {
-      const tr = trailStop(t.candles, { entryPx: o.entry, entryAt: o.at, peak: Math.max(o.peak || 0, hi) }, SM, o.trail || 0);
-      o.peak = Math.max(o.peak || 0, hi);
+      const hiT = SM.pico === 'fechamento' ? Math.max(px || 0, ...bars.map((x) => x[4])) : hi;
+      const tr = trailStop(t.candles, { entryPx: o.entry, entryAt: o.at, peak: Math.max(o.peak || 0, hiT) }, SM, o.trail || 0);
+      o.peak = Math.max(o.peak || 0, hiT);
       if (tr?.ativo) o.trail = tr.stop;
     }
     const lucroPx = o.entry * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);

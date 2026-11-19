@@ -293,13 +293,21 @@ while (Date.now() < until) {
       let PR = (mem.peakRun = mem.peakRun || {})[t.mint];
       if (!PR || PR.buyAt !== buyAtT) PR = mem.peakRun[t.mint] = { buyAt: buyAtT, pk: 0 };
       PR.pk = Math.max(PR.pk, px);
+      // 19/11 (regra A, pedido da Kerah): fechamento de 1 minuto = último preço visto em cada minuto.
+      // O stop móvel segue o MAIOR FECHAMENTO, não o pico de um instante (pavio)
+      const minuto = Math.floor(now / 60000);
+      if (PR.m == null) PR.m = minuto;
+      else if (minuto !== PR.m) { PR.cpk = Math.max(PR.cpk || 0, PR.last || 0); PR.m = minuto; }
+      PR.last = px;
+      const peloFech = SM.pico === 'fechamento';
+      const pkT = peloFech ? PR.cpk || 0 : PR.pk;
       let trailPx = 0;
       if (trailOn && !t.staleCost && t.position?.avgPriceUsd > 0) {
         const entry = t.position.avgPriceUsd;
-        const liveOn = !t.trail?.ativo && (PR.pk / entry - 1) * 100 >= (SM.ativarPct ?? 30);
+        const liveOn = !t.trail?.ativo && (pkT / entry - 1) * 100 >= (SM.ativarPct ?? 30);
         if (t.trail?.ativo || liveOn) {
-          if (liveOn && PR.logged !== true) { PR.logged = true; log(`${t.symbol}: STOP MÓVEL ligado pela vigia (chegou a +${((PR.pk / entry - 1) * 100).toFixed(0)}%)`); }
-          const pk = liveOn ? PR.pk : mem.peak[t.mint];
+          if (liveOn && PR.logged !== true) { PR.logged = true; log(`${t.symbol}: STOP MÓVEL ligado pela vigia (fechou a +${((pkT / entry - 1) * 100).toFixed(0)}%)`); }
+          const pk = peloFech ? Math.max(pkT, t.trail?.peak || 0) : liveOn ? PR.pk : mem.peak[t.mint];
           const follow = (pk / entry - 1) * 100 >= (SM.seguirAPartirPct ?? 60) ? Math.min(pk * (1 - (SM.distanciaPct ?? 25) / 100), pk * 0.88) : 0;
           trailPx = Math.max(t.trail?.ativo ? t.trail.stop : 0, follow, entry * (1 + (SM.minimoTravadoPct ?? 5) / 100));
         }

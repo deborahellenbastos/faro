@@ -78,7 +78,10 @@ export function trailStop(c, pos, o = {}, prev = 0) {
   if (!(pos?.entryPx > 0)) return null;
   const ativar = o.ativarPct ?? 30, dist = o.distanciaPct ?? 25, minLock = o.minimoTravadoPct ?? 5;
   const since = (c || []).filter((x) => x[0] >= pos.entryAt - 300000);
-  const peak = Math.max(pos.entryPx, pos.peak || 0, ...since.map((x) => x[2]));
+  // 19/11 (pedido da Kerah): pico pelo FECHAMENTO das velas (pico: 'fechamento'). O pavio de cima é só um instante
+  // e colava o stop num preço que a moeda nunca sustentou
+  const pc = o.pico === 'fechamento' ? 4 : 2;
+  const peak = Math.max(pos.entryPx, pos.peak || 0, ...since.map((x) => x[pc]));
   const peakGain = (peak / pos.entryPx - 1) * 100;
   if (peakGain < ativar && !(prev > 0)) return { ativo: false, peak, ativarPx: pos.entryPx * (1 + ativar / 100), falta: ativar - peakGain };
   // Começo da alta (até seguirAPartirPct): o stop fica logo acima da entrada, só sai se devolver quase tudo.

@@ -634,3 +634,20 @@ console.log('Teste da entrada por operação: ok');
   assert.match(src, /resetPeak\(t, px\)/, 'a vigia deve zerar o pico numa operação nova');
   console.log('Teste do pico por operação: ok');
 }
+
+// Regra A (19/11): stop móvel liga com +20% e fica 12% abaixo do maior FECHAMENTO (o pavio não conta)
+{
+  const T0 = Date.now() - 20 * 60000; const c = [];
+  const push = (h, cl) => c.push([T0 + c.length * 60000, cl, h, cl * 0.98, cl, 100]);
+  push(1.02, 1); push(1.1, 1.08); push(1.6, 1.15); // pavio até +60%, mas fechou +15%
+  const o = { ativarPct: 20, seguirAPartirPct: 20, distanciaPct: 12, minimoTravadoPct: 5, pico: 'fechamento' };
+  assert.equal(trailStop(c, { entryPx: 1, entryAt: T0 }, o).ativo, false, 'pavio sozinho não liga o stop');
+  push(1.35, 1.3); push(1.32, 1.25);
+  const tr = trailStop(c, { entryPx: 1, entryAt: T0 }, o);
+  assert.ok(tr.ativo && Math.abs(tr.stop - 1.3 * 0.88) < 1e-9, 'stop 12% abaixo do maior fechamento');
+  const cfgA = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
+  assert.equal(cfgA.venda.stopMovel.pico, 'fechamento');
+  const src = await readFile(new URL('./watch.mjs', import.meta.url), 'utf8');
+  assert.match(src, /PR\.cpk = Math\.max\(PR\.cpk \|\| 0, PR\.last \|\| 0\)/, 'a vigia deve guardar o maior fechamento de 1 min');
+  console.log('Teste da regra A do stop móvel: ok');
+}
