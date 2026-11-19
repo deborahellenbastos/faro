@@ -42,7 +42,9 @@ else {
   try {
     const u = 'https://api.jup.ag/swap/v1/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWJd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000&slippageBps=50';
     const r = await fetch(u, { headers: { 'x-api-key': jup }, signal: AbortSignal.timeout(15000) });
-    if (r.ok) ok('JUPITER_API_KEY funciona');
+    // 401/403 = chave recusada. Qualquer outra resposta quer dizer que a Jupiter aceitou a chave
+    // (um 400 aqui é sobre a cotação de teste, não sobre a chave).
+    if (r.ok || (r.status !== 401 && r.status !== 403 && r.status < 500)) ok('JUPITER_API_KEY aceita pela Jupiter');
     else {
       // A resposta de erro da Jupiter não tem segredo nenhum e ajuda a saber o motivo
       const txt = (await r.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200);
