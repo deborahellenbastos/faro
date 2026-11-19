@@ -6,7 +6,7 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 BRANCH="${BRANCH:-main}"
 INTERVALO="${FARO_INTERVALO:-120}"
-CARENCIA="${FARO_CARENCIA:-420}"   # espera a última rodada do GitHub terminar antes de assumir (7 min)
+CARENCIA="${FARO_CARENCIA:-720}"   # espera o GitHub terminar a vigia e a última rodada antes de assumir (12 min)
 MSG="Atualiza painel [skip ci]"
 ESTADO="${FARO_ESTADO:-/var/lib/faro}"
 LOG="${FARO_LOG:-/var/log/faro/robo.log}"

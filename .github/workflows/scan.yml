@@ -79,7 +79,10 @@ jobs:
           }
 
           FIM=$(( $(date +%s) + 3300 ))
+          # Confere no GitHub (e não na cópia local, que fica velha durante a vigia) se o robô já passou para o servidor
+          foi_pro_servidor() { git fetch -q origin "$BRANCH" 2>/dev/null && [ "$(git show "origin/$BRANCH:infra/onde-roda.txt" 2>/dev/null | tr -d '[:space:]')" = "vps" ]; }
           while :; do
+            foi_pro_servidor && { echo "O robô passou para o servidor. Parando o GitHub antes da rodada."; break; }
             INICIO=$(date +%s)
             node scanner/index.mjs || echo "Rodada com erro; segue para a próxima"
             salvar
