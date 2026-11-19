@@ -1788,11 +1788,17 @@
   // ---------- Notificações do sistema (computador) ----------
   // ---------- Central de notificações: tudo que tocou som ou avisou fica guardado aqui ----------
   const INBOX = { list: store.get('faro-inbox', []), page: 1 };
+  // Aviso antigo (o painel só ficou sabendo agora, ao abrir): entra na central com a hora em que aconteceu,
+  // já como lido, e sem som nem notificação. Antes ele aparecia como "agora" e confundia (18/11).
+  const RECENTE_MIN = 15;
+  const recente = (at) => !at || Date.now() - at <= RECENTE_MIN * 60000;
   function addInbox(title, body, mint, level, id, extra) {
     const key = id || `${title}|${body}`;
     if (INBOX.list.some((x) => x.key === key && Date.now() - x.at < 10 * 60000)) return;
-    INBOX.list.unshift({ key, title, body, mint, level, at: Date.now(), read: false, snap: mint ? tokenSnap(mint) : null, ...(extra || {}) });
-    INBOX.list = INBOX.list.slice(0, 200);
+    const { eventAt, ...resto } = extra || {};
+    const at = eventAt && eventAt < Date.now() ? eventAt : Date.now();
+    INBOX.list.unshift({ key, title, body, mint, level, at, read: !recente(at), snap: mint ? tokenSnap(mint) : null, ...resto });
+    INBOX.list = INBOX.list.sort((a, b) => b.at - a.at).slice(0, 200);
     store.set('faro-inbox', INBOX.list); renderInbox();
   }
   function renderInbox() {
@@ -2002,8 +2008,9 @@
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('inbox').classList.contains('show')) closeInbox(); });
 
-  function notify(title, body, tag) {
-    addInbox(title, body, tag ? tag.split('-').slice(1).join('-') : null, /^Perigo|falh/i.test(title) ? 'danger' : /^Atenção/.test(title) ? 'warn' : /^(Nova|Boa entrada|Saída)/.test(title) ? 'good' : 'info');
+  function notify(title, body, tag, eventAt) {
+    addInbox(title, body, tag ? tag.split('-').slice(1).join('-') : null, /^Perigo|falh/i.test(title) ? 'danger' : /^Atenção/.test(title) ? 'warn' : /^(Nova|Boa entrada|Saída)/.test(title) ? 'good' : 'info', null, { eventAt });
+    if (!recente(eventAt)) return;
     if (!prefs.notif || !('Notification' in window) || Notification.permission !== 'granted') return;
     sysNotify(title, body, tag, tag ? tag.split('-').slice(1).join('-') : '');
   }
@@ -2108,7 +2115,7 @@
       if (!ROBO_IDS.has(a.id)) continue;
       const key = `robo-${t.mint}-${a.id}-${a.at}`;
       if (INBOX.list.some((x) => x.key === key || (x.mint === t.mint && x.body === a.msg && String(x.key).startsWith('robo-')))) continue;
-      INBOX.list.push({ key, title: `${roboTitle(a.msg)}: ${t.symbol}`, body: a.msg, mint: t.mint, level: a.level === 'danger' ? 'danger' : a.level === 'warn' ? 'warn' : 'info', at: a.at, read: false });
+      INBOX.list.push({ key, title: `${roboTitle(a.msg)}: ${t.symbol}`, body: a.msg, mint: t.mint, level: a.level === 'danger' ? 'danger' : a.level === 'warn' ? 'warn' : 'info', at: a.at, read: !recente(a.at) });
     }
     INBOX.list.sort((x, y) => y.at - x.at); store.set('faro-inbox', INBOX.list); renderInbox();
   }
@@ -2133,26 +2140,29 @@
     seen = { approved: [...new Set([...seen.approved, ...approved.map((t) => t.mint)])].slice(-500), alerts: alertKeys };
     store.set('moeda-seen', seen);
     if (!events.length) return;
-    // Um som por atualização: problema numa moeda sua tem prioridade (venda no lucro toca o som bom)
-    const loud = events.filter((e) => !(e.kind === 'robo' && /não compensa|já tinha saído da carteira/.test(e.alerts[0].msg)));
+    for (const e of events) e.at = e.kind === 'nova' ? e.t.approvedAt : Math.max(0, ...e.alerts.map((a) => a.at || 0)) || null;
+    // Um som por atualização: problema numa moeda sua tem prioridade (venda no lucro toca o som bom). Só para o que é recente
+    const loud = events.filter((e) => recente(e.at) && !(e.kind === 'robo' && /não compensa|já tinha saído da carteira/.test(e.alerts[0].msg)));
     if (!loud.length) return;
     // Venda do robô é proteção funcionando: toca o som de venda. Só falha de venda e perigo tocam o som de problema
     const bad = loud.some((e) => e.kind === 'perigo' || e.kind === 'atencao' || (e.kind === 'robo' && /falh/i.test(e.alerts[0].msg)));
     play(bad ? 'problema' : loud.some((e) => e.kind === 'robo') ? 'venda' : 'boa');
     for (const e of events) {
+      const novo = recente(e.at);
       if (e.kind === 'nova') {
-        toast(`Nova no radar: ${e.t.symbol} (nota ${e.t.score})`);
-        notify(`Nova no radar: ${e.t.symbol}`, `Nota ${e.t.score} - market cap ${usd(e.t.mcapUsd)}`, 'nova-' + e.t.mint);
+        if (novo) toast(`Nova no radar: ${e.t.symbol} (nota ${e.t.score})`);
+        notify(`Nova no radar: ${e.t.symbol}`, `Nota ${e.t.score} - market cap ${usd(e.t.mcapUsd)}`, 'nova-' + e.t.mint, e.at);
       } else if (e.kind === 'robo') {
         const a = e.alerts[0];
         if (/não compensa|já tinha saído da carteira/.test(a.msg)) continue; // não vendida por valer pouco ou já vendida: só fica registrada, sem som nem aviso
+        if (!novo) continue; // antiga: já está na central (com a hora certa) pelo backfillRobo
         toast(`${e.t.symbol}: ${a.msg.split('.')[0]}`);
         sysNotify(`Robô vendeu: ${e.t.symbol}`, a.msg, 'robo-' + e.t.mint, e.t.mint);
       } else {
-        notify(`${e.kind === 'perigo' ? 'Perigo' : 'Atenção'} em ${e.t.symbol}`, e.alerts.map((a) => a.msg).join('. '), 'alerta-' + e.t.mint);
+        notify(`${e.kind === 'perigo' ? 'Perigo' : 'Atenção'} em ${e.t.symbol}`, e.alerts.map((a) => a.msg).join('. '), 'alerta-' + e.t.mint, e.at);
       }
     }
-    if (document.hidden) unread += events.length;
+    if (document.hidden) unread += events.filter((e) => recente(e.at)).length;
   }
 
   // Avisa sinais de entrada e saída (central de notificações + som), uma vez por movimento.
@@ -2237,11 +2247,13 @@
       const t = data.tokens?.[x.mint], sym = x.symbol || t?.symbol || x.mint.slice(0, 6);
       const usdV = x.sol && (LIVE.solUsd || 0) ? ` (${money(x.sol * LIVE.solUsd)})` : '';
       const quando = Date.now() - x.at > 10 * 60000 ? ` ${ago(x.at)}` : '';
-      addInbox(`Robô comprou: ${sym}`, `Compra automática de ${solFmt(x.sol, 4)}${usdV}${quando}. ${x.sinal || 'No sinal de boa entrada.'} A vigia e os stops já estão protegendo a posição.`, x.mint, 'good', 'tx-' + x.sig, { kind: 'compra', sig: x.sig, txAt: x.at, sym });
+      addInbox(`Robô comprou: ${sym}`, `Compra automática de ${solFmt(x.sol, 4)}${usdV}${quando}. ${x.sinal || 'No sinal de boa entrada.'} A vigia e os stops já estão protegendo a posição.`, x.mint, 'good', 'tx-' + x.sig, { kind: 'compra', sig: x.sig, txAt: x.at, sym, eventAt: x.at });
+      if (!recente(x.at)) continue; // compra antiga: fica só registrada na central, com a hora certa
       toast(`Robô comprou ${sym}`);
       sysNotify(`Robô comprou: ${sym}`, `${solFmt(x.sol, 4)}${usdV}. ${x.sinal || ''}`, 'compra-' + x.mint, x.mint);
     }
-    if (novas.length) { store.set('faro-robo-compras', [...BUYSEEN].slice(-300)); play('boa'); }
+    if (novas.length) store.set('faro-robo-compras', [...BUYSEEN].slice(-300));
+    if (novas.some((x) => recente(x.at))) play('boa');
   }
   function checkSignals() {
     try { checkRobotBuys(); } catch {}
@@ -2273,17 +2285,18 @@
       if (SIGSEEN.has(k)) continue;
       SIGSEEN.add(k);
       const sym = t.symbol || t.mint.slice(0, 6);
+      const gAt = g.at && g.at < Date.now() ? g.at : null, novo = recente(gAt);
       if (g.tipo === 'entrada') {
-        entrada = true;
+        if (novo) entrada = true;
         const nb = autoBuyWhy(t, g);
-        addInbox(`Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}`, `${nb ? nb + ' ' : ''}${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${g.rr.toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k, { kind: 'entrada', sig0: { msg: g.msg, zona: g.zona, stop: g.stop, alvo: g.alvo, rr: g.rr } });
-        toast(`Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}`);
+        addInbox(`Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}`, `${nb ? nb + ' ' : ''}${g.msg} Stop ${price(g.stop)}, alvo ${price(g.alvo)} (risco/retorno 1:${g.rr.toFixed(1).replace('.', ',')}).`, t.mint, 'good', 'sinal-' + k, { kind: 'entrada', eventAt: gAt, sig0: { msg: g.msg, zona: g.zona, stop: g.stop, alvo: g.alvo, rr: g.rr } });
+        if (novo) toast(`Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}`);
       } else {
-        g.fase === 'realizar' ? (bom = true) : (ruim = true);
-        addInbox(`${g.fase === 'realizar' ? 'Saída' : 'Atenção'}: ${sym} - ${g.titulo.toLowerCase()}`, g.msg, t.mint, g.fase === 'realizar' ? 'good' : 'warn', 'sinal-' + k, { kind: 'saida', sig0: { msg: g.msg, stop: g.stop, alvo: g.alvo, fase: g.fase } });
-        toast(`${sym}: ${g.titulo.toLowerCase()}`);
+        if (novo) g.fase === 'realizar' ? (bom = true) : (ruim = true);
+        addInbox(`${g.fase === 'realizar' ? 'Saída' : 'Atenção'}: ${sym} - ${g.titulo.toLowerCase()}`, g.msg, t.mint, g.fase === 'realizar' ? 'good' : 'warn', 'sinal-' + k, { kind: 'saida', eventAt: gAt, sig0: { msg: g.msg, stop: g.stop, alvo: g.alvo, fase: g.fase } });
+        if (novo) toast(`${sym}: ${g.titulo.toLowerCase()}`);
       }
-      if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') {
+      if (novo && prefs.notif && 'Notification' in window && Notification.permission === 'granted') {
         sysNotify(g.tipo === 'entrada' ? `Boa ${g.reentrada ? 'reentrada' : 'entrada'}: ${sym}` : `${sym}: ${g.titulo}`, g.msg, 'sinal-' + t.mint, t.mint);
       }
     }
