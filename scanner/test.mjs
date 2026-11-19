@@ -665,3 +665,12 @@ console.log('Teste da entrada por operação: ok');
   assert.match(src, /fase: 'pico-passou'/, 'a rodada deve travar o sinal');
   console.log('Teste da trava pico já passou: ok');
 }
+
+// O que faltou para a Boa entrada (19/11)
+{
+  const src = await readFile(new URL('./signals.mjs', import.meta.url), 'utf8');
+  assert.match(src, /faltou\.push\(`vendas dominando/, 'o sinal deve dizer o que faltou');
+  const run = await readFile(new URL('./run.mjs', import.meta.url), 'utf8');
+  assert.match(run, /NA ZONA SEM ENTRADA/, 'a rodada deve anotar o motivo');
+  console.log('Teste do motivo sem entrada: ok');
+}

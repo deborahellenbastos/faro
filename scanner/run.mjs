@@ -502,6 +502,16 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     // "desde" muda só quando a fase muda (para o painel avisar uma vez)
     sig.at = prev && prev.tipo === sig.tipo && prev.fase === sig.fase && prev.key === sig.key ? prev.at : now;
     t.sinal = sig;
+    // 19/11: moeda do Radar na zona (ou travada) sem virar "Boa entrada": anota o motivo quando ele muda
+    if (sig.tipo === 'entrada' && !sig.boa && !t.held && t.status === 'aprovada' && ['zona', 'pico-passou', 'repetido'].includes(sig.fase)) {
+      const mot = sig.fase === 'pico-passou' ? ['pico já passou'] : sig.fase === 'repetido' ? ['sinal repetido'] : sig.faltou?.length ? sig.faltou : [sig.titulo];
+      const k = `${sig.fase}|${mot.map((x) => x.replace(/\(.*\)/, '')).join(',')}`;
+      if (t.zonaMot !== k) {
+        t.zonaMot = k;
+        t.zonaHist = [...(t.zonaHist || []), { at: now, px: t.priceUsd, fase: sig.fase, faltou: mot }].slice(-30);
+        log(`NA ZONA SEM ENTRADA: ${t.symbol} - ${mot.join('; ')}`);
+      }
+    } else if (t.zonaMot && !(sig.tipo === 'entrada' && sig.fase === 'zona')) delete t.zonaMot;
     if (sig.tipo === 'entrada' && (sig.boa || sig.notaBaixa) && sig.at === now) t.boa = { at: now, px: t.priceUsd, max: t.priceUsd, key: sig.key };
     if (sig.at === now && (sig.boa || sig.bom || sig.ruim)) log(`SINAL: ${t.symbol} - ${sig.titulo}`);
     if (sig.tipo === 'entrada' && sig.boa && sig.at === now && t.status === 'aprovada' && !t.held)

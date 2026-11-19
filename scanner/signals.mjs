@@ -50,6 +50,14 @@ export function entrySignal(c, ctx = {}) {
   const volOk = !avgVol || last[5] >= avgVol * 0.8 || prev[5] >= avgVol;
   const buyOk = ctx.buys5 == null || (ctx.buys5 + ctx.sells5 === 0) || ctx.buys5 >= ctx.sells5;
   const confirmed = held && green && (volOk || buyOk) && buyOk;
+  // 19/11 (pedido da Kerah): o que faltou para virar "Boa entrada" (o robô anota no log e guarda para o relatório)
+  const faltou = [];
+  if (!held) faltou.push('fundo ainda caindo');
+  if (!green) faltou.push('sem vela verde acima da anterior');
+  if (!buyOk) faltou.push(`vendas dominando (${ctx.buys5} compras x ${ctx.sells5} vendas em 5 min)`);
+  else if (!volOk) faltou.push('volume fraco');
+  if (rr < rrMin) faltou.push(`alvo paga ${rr.toFixed(1)}x o risco (pede ${rrMin}x)`);
+  if (ctx.safety === 'warn') faltou.push('alerta de atenção na moeda');
   const where = deep ? 'na parte funda da zona (61,8% a 78,6%)' : 'na zona de 50% a 61,8%';
   if (confirmed && rr >= rrMin && ctx.safety !== 'warn') {
     // Não repete o sinal numa moeda em que o último "Boa entrada" não andou (16/11: GOAT 4 sinais, ANGSTIPAN 3, nenhum passou de +11%)
@@ -62,12 +70,12 @@ export function entrySignal(c, ctx = {}) {
     // Nota baixa demais para o sinal (16/11: GOAT deu "Boa entrada" com nota 38 e caiu 29%).
     // notaBaixa: o teste da nota da aprovação (só simulação) ainda pode usar esse sinal
     if (ctx.notaMin > 0 && ctx.score != null && ctx.score < ctx.notaMin) {
-      return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: `Reagiu ${where}, mas a nota da moeda está em ${Math.round(ctx.score)} (o sinal pede ${ctx.notaMin}+).`, boa: false, notaBaixa: true };
+      return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: `Reagiu ${where}, mas a nota da moeda está em ${Math.round(ctx.score)} (o sinal pede ${ctx.notaMin}+).`, boa: false, notaBaixa: true, faltou: [`nota ${Math.round(ctx.score)} (pede ${ctx.notaMin}+)`] };
     }
     return { ...base, fase: 'entrada', titulo: 'Boa entrada', msg: `Segurou ${where} e reagiu com compra. Stop abaixo do fundo, alvo no topo anterior.`, boa: true };
   }
-  if (confirmed) return { ...base, fase: 'zona', titulo: 'Na zona, com reação', msg: ctx.safety === 'warn' ? 'Reagiu na zona, mas há um alerta de atenção na moeda.' : `Reagiu ${where}, mas o alvo paga menos de ${rrMin}x o risco.`, boa: false };
-  return { ...base, fase: 'zona', titulo: 'Na zona de compra', msg: !held ? `Está ${where}, mas ainda fazendo fundos mais baixos. Espere segurar.` : `Está ${where}. Espere uma vela verde fechar acima da anterior, com compra.`, boa: false };
+  if (confirmed) return { ...base, faltou, fase: 'zona', titulo: 'Na zona, com reação', msg: ctx.safety === 'warn' ? 'Reagiu na zona, mas há um alerta de atenção na moeda.' : `Reagiu ${where}, mas o alvo paga menos de ${rrMin}x o risco.`, boa: false };
+  return { ...base, faltou, fase: 'zona', titulo: 'Na zona de compra', msg: !held ? `Está ${where}, mas ainda fazendo fundos mais baixos. Espere segurar.` : `Está ${where}. Espere uma vela verde fechar acima da anterior, com compra.`, boa: false };
 }
 
 // Pico já passou (19/11, pedido da Kerah): nas 63 compras feitas depois do pico da moeda (15 a 19/11), só 8 deram
