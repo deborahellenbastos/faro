@@ -671,6 +671,11 @@
   .row .r-side small.sold-line { margin-top: 3px; }
   .m-set { display: none; gap: 12px; padding: 12px 14px; margin-bottom: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg); }
   @media (max-width: 1099px) { .m-set { display: grid; } }
+  /* Dentro das Encerradas: Hoje x Anteriores (19/11, pedido da Kerah) */
+  .list-day { display: flex; align-items: center; gap: 8px; padding: 8px 12px 6px; font-size: 12px; font-weight: 700; color: var(--faint); }
+  .list-day::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.07); }
+  .list-day b { color: var(--muted); font-weight: 800; }
+  .list-day .num { font-weight: 700; }
   .list-sub.fold { width: 100%; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; padding-bottom: 10px; }
   .list-sub.fold:hover { color: var(--text); }
   .list-sub.fold .chev { width: 14px; height: 14px; margin-left: auto; transition: transform .15s; }
@@ -826,7 +831,7 @@
     .list-panel .rows { padding: 0; gap: 8px; }
     .list-panel .row { background: var(--panel); border-radius: var(--r-3); padding: 12px 14px; }
     .list-panel .row.on { background: var(--panel); box-shadow: none; }
-    .list-panel .list-sub { padding-left: 0; padding-right: 0; }
+    .list-panel .list-sub, .list-panel .list-day { padding-left: 0; padding-right: 0; }
     .row .r-side small.sold-line { font-size: 13px; }
     .m-hero { display: block; }
     body.show-detail .m-hero { display: none; }
@@ -910,6 +915,7 @@
   .r-main small { margin-top: 3px; }
   .r-side b { font-size: 15px; }
   .list-sub { padding: 16px var(--sp-3) 8px; letter-spacing: .08em; }
+  .list-day { padding: 6px var(--sp-3) 6px; }
   .radar-chips { padding: 0 var(--sp-5) var(--sp-4); gap: 8px; }
   .radar-chips button { height: 36px; padding: 0 16px; border: 0; background: rgba(255,255,255,.05); font-size: 13px; }
   .radar-chips button.on { background: #fff; color: #08090b; }
@@ -5245,6 +5251,12 @@ function fakeBuys(per = {}) {
     }
     // "Em aberto" sempre no topo da Carteira (com 0 quando não há nenhuma), para o layout não pular
     const openHdr = ui.tab === 'minhas' && !q && ui.page === 1 && !mine.length ? sub('Em aberto', 0) : '';
+    // Encerradas divididas em Hoje e Anteriores (pela hora da venda), com a contagem e o resultado de cada grupo
+    const d0e = new Date(); d0e.setHours(0, 0, 0, 0);
+    const dayOf = (t) => ((t.history?.[0]?.at || 0) >= d0e.getTime() ? 'hoje' : 'antes');
+    const dayTot = { hoje: { n: 0, pnl: 0 }, antes: { n: 0, pnl: 0 } };
+    for (const t of closed) { const g = dayTot[dayOf(t)]; g.n++; g.pnl += closedResult(t)?.pnl || 0; }
+    const dayHdr = (k) => `<div class="list-day"><b>${k === 'hoje' ? 'Hoje' : 'Anteriores'}</b>${dayTot[k].n} - <span class="num ${cls(dayTot[k].pnl)}">${signedMoney(dayTot[k].pnl)}</span></div>`;
     const rows = openHdr + slice.map((t, i) => {
       if (t.__encHdr) return `<button class="list-sub fold" data-encfold aria-expanded="false">Encerradas<small>${closed.length}</small>${ICON.chev}</button>`;
       if (t.__deadHdr) return `<button class="list-sub fold ${prefs.mortasOpen ? 'open' : ''}" data-mortas aria-expanded="${!!prefs.mortasOpen}">Mortas<small>${dead.length}</small>${ICON.chev}</button>`;
@@ -5253,6 +5265,7 @@ function fakeBuys(per = {}) {
         const c = isClosed(t), dd = !c && isDead(t), prev = slice[i - 1];
         if (!c && !dd && i === 0) head = sub('Em aberto', mine.length);
         if (c && (!prev || prev.__deadHdr || !isClosed(prev))) head = `<button class="list-sub fold open" data-encfold aria-expanded="true">Encerradas<small>${closed.length}</small>${ICON.chev}</button>`;
+        if (c && (head || !prev || !isClosed(prev) || dayOf(prev) !== dayOf(t))) head += dayHdr(dayOf(t));
       }
       return head + rowHtml(t, t.mint === sel);
     }).join('');
