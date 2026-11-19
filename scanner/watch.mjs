@@ -11,6 +11,7 @@ import { createTrader } from './trader.mjs';
 import { getRugReport, getWalletHoldings, getRecentOps } from './api.mjs';
 import { summarizeRug, scamSignals, isLpSignal } from './analyze.mjs';
 import { weakSignals, realizeCheck } from './signals.mjs';
+import { avisar } from './push.mjs';
 
 const seconds = Math.max(0, Number(process.argv[2]) || 0);
 const until = Date.now() + seconds * 1000;
@@ -196,6 +197,7 @@ async function sellPart(t, frac, why, px, target) {
     mem.partial = mem.partial.slice(-60);
     t.heldAmount = (t.heldAmount || 0) * (1 - frac);
     log(`VENDEU ${Math.round(frac * 100)}% de ${t.symbol} por ${s.outSol.toFixed(4)} SOL (tx ${s.sig.slice(0, 8)}...)`);
+    await avisar({ titulo: `Robô realizou lucro: ${t.symbol}`, texto: `Vendeu ${Math.round(frac * 100)}% do que sobrou por ${s.outSol.toFixed(4)} SOL. Motivo: ${why}`, mint: t.mint, chave: `parcial-${s.sig}` });
   } catch (e) { log(`Venda parcial de ${t.symbol} falhou: ${e.message}`, true); }
 }
 function ladderStep(t, px, gainPx, weak, fromPeak) {
@@ -225,11 +227,15 @@ async function sell(t, why, kind, px) {
     if (s.nada) { mem.sold[t.mint] = { nada: true, at: Date.now(), why, kind }; log(`${t.symbol}: ia vender (${why}), mas a moeda já tinha saído da carteira.`); return; }
     mem.sold[t.mint] = { ok: true, at: Date.now(), sig: s.sig, outSol: s.outSol, why, kind };
     log(`VENDEU 100% de ${t.symbol} por ${s.outSol.toFixed(4)} SOL (tx ${s.sig.slice(0, 8)}...)`);
+    await avisar({ titulo: `Robô vendeu: ${t.symbol}`, texto: `Vendeu 100% por ${s.outSol.toFixed(4)} SOL. Motivo: ${why}`, mint: t.mint, chave: `venda-${s.sig}`, urgente: kind === 'golpe' });
   } catch (e) {
     const tries = ((mem.retry || {})[t.mint] || 0) + 1;
     log(`Venda de ${t.symbol} falhou (${tries}/3): ${e.message}`, true);
     mem.retry = { ...(mem.retry || {}), [t.mint]: tries };
-    if (tries >= 3) mem.sold[t.mint] = { ok: false, at: Date.now(), why, erro: e.message, kind };
+    if (tries >= 3) {
+      mem.sold[t.mint] = { ok: false, at: Date.now(), why, erro: e.message, kind };
+      await avisar({ titulo: `Venda falhou: ${t.symbol}`, texto: `O robô tentou vender (${why}) e não conseguiu: ${e.message}. Venda manualmente!`, mint: t.mint, chave: `falha-${t.mint}-${Math.floor(Date.now() / 3600000)}`, urgente: true });
+    }
   }
 }
 // O pico é de cada operação: comprou de novo depois de zerar, o pico antigo some

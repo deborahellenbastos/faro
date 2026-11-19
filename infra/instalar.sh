@@ -77,7 +77,7 @@ if [ ! -d "$DIR/.git" ]; then
 else
   sudo -u faro git -C "$DIR" fetch -q origin main && sudo -u faro git -C "$DIR" reset -q --hard origin/main
 fi
-sudo -u faro sh -c "cd $DIR && npm install --no-save --no-audit --no-fund @solana/web3.js@1 bs58@6 >/dev/null"
+sudo -u faro sh -c "cd $DIR && npm install --no-save --no-audit --no-fund @solana/web3.js@1 bs58@6 web-push@3 >/dev/null"
 
 passo "6/7 Segredos (só você digita; ficam só neste servidor, legíveis apenas pelo robô)"
 trocar=s

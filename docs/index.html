@@ -2011,8 +2011,35 @@
   let SWREG = null;
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then((r) => { SWREG = r; }).catch(() => {});
   navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.faroGoto) goTo(e.data.faroGoto); });
+  // Avisos com o app fechado (push): só no servidor próprio (meufaro.tech), não no GitHub Pages.
+  // O robô manda pelo servidor: vendas, compras, venda que falhou, boa entrada, nova no Radar e perigo.
+  const PUSH_OK = !/github\.io$/.test(location.hostname) && 'serviceWorker' in navigator && 'PushManager' in window;
+  let PUSH_ON = false;
+  const PUSH_TITULOS = /^(Robô vendeu|Robô comprou|Robô realizou|Venda falhou|Boa entrada|Nova no Radar|Perigo)/;
+  const b64uBytes = (s) => { const b = atob((s + '='.repeat((4 - (s.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, (c) => c.charCodeAt(0)); };
+  const postJson = (url, obj) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj || {}), cache: 'no-store' });
+  async function pushSync(on) {
+    if (!PUSH_OK) return false;
+    try {
+      const reg = SWREG || (await navigator.serviceWorker.ready);
+      let sub = await reg.pushManager.getSubscription();
+      if (!on) {
+        if (sub) { await postJson('push/sair', { endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe().catch(() => {}); }
+        PUSH_ON = false; return false;
+      }
+      if (!sub) {
+        const k = await fetch('push/chave', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        if (!k?.publicKey) return false;
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uBytes(k.publicKey) });
+      }
+      const r = await postJson('push/assinar', sub.toJSON());
+      PUSH_ON = r.ok; return r.ok;
+    } catch { PUSH_ON = false; return false; }
+  }
+  if (PUSH_OK) navigator.serviceWorker.ready.then(() => { if (prefs.notif && 'Notification' in window && Notification.permission === 'granted') pushSync(true); }).catch(() => {});
   function sysNotify(title, body, tag, mint) {
     if (!prefs.notif || !('Notification' in window) || Notification.permission !== 'granted') return;
+    if (PUSH_ON && PUSH_TITULOS.test(title)) return; // esse aviso já chega pelo servidor (push): não repete
     const opts = { body, tag, renotify: true, icon: 'icon-192.png', badge: 'icon-192.png', data: { mint: mint || '' } };
     if (SWREG) { SWREG.showNotification(title, opts).catch(() => {}); return; }
     try { const n = new Notification(title, opts); n.onclick = () => { window.focus(); if (mint) goTo(mint); n.close(); }; } catch {}
@@ -5396,6 +5423,11 @@ function fakeBuys(per = {}) {
       if (r !== 'granted') toast('Permissão negada no navegador');
     } else prefs.notif = !prefs.notif;
     store.set('moeda-prefs', prefs); syncToggles();
+    if (PUSH_OK) {
+      const ok = await pushSync(prefs.notif);
+      if (prefs.notif && ok) { postJson('push/teste').catch(() => {}); toast('Avisos ligados, também com o app fechado'); return; }
+      if (prefs.notif) toast('Avisos só com o painel aberto: não consegui ligar os avisos com o app fechado');
+    }
     if (prefs.notif) notify('Notificações ligadas', 'O Faro vai te avisar aqui mesmo com a aba em segundo plano', 'teste-x');
   });
   document.addEventListener('pointerdown', unlockAudio, { capture: true });

@@ -2,11 +2,13 @@
 // Entrega a pasta docs/ (o painel) e o data.enc.json que o robô grava a cada rodada.
 // Escuta só em 127.0.0.1: ninguém de fora chega aqui direto. Quem entrega para a internet é o
 // túnel do Cloudflare (cloudflared), com o login do Cloudflare Access na frente.
-// Só leitura: aceita GET e HEAD, nunca grava nada e não entrega nada fora de docs/.
+// Só leitura nos arquivos: entrega só o que está em docs/. A única escrita é a lista de aparelhos que recebem
+// avisos no celular (push), pelas rotas /push/..., que ficam atrás do mesmo login do Cloudflare.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chaves, guardarAparelho, tirarAparelho, avisar } from '../scanner/push.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'docs');
 const PORT = Number(process.env.FARO_PAINEL_PORTA || 8080);
@@ -46,10 +48,47 @@ function responder(res, status, corpo, headers = {}) {
   res.end(corpo);
 }
 
+const json = (res, status, obj) => responder(res, status, JSON.stringify(obj), { 'Content-Type': TIPOS['.json'], 'Cache-Control': 'no-store' });
+function lerCorpo(req, max = 8192) {
+  return new Promise((ok, falha) => {
+    let tam = 0; const partes = [];
+    req.on('data', (c) => { tam += c.length; if (tam > max) { falha(new Error('grande demais')); req.destroy(); } else partes.push(c); });
+    req.on('end', () => { try { ok(JSON.parse(Buffer.concat(partes).toString('utf8') || '{}')); } catch { falha(new Error('JSON inválido')); } });
+    req.on('error', falha);
+  });
+}
+// Avisos no celular. Só aceita pedidos vindos da própria página (mesma origem), contra outro site tentar usar a sessão.
+async function rotaPush(req, res, rota) {
+  if (rota === '/push/chave' && req.method === 'GET') {
+    const k = await chaves({ criar: true });
+    return json(res, 200, { publicKey: k.publicKey });
+  }
+  if (req.method !== 'POST') return responder(res, 405, 'Método não permitido', { Allow: 'POST' });
+  const origem = req.headers.origin || '';
+  const permitidas = [process.env.FARO_PAINEL_ORIGEM || 'https://meufaro.tech', `https://${req.headers.host}`];
+  if (!origem || !permitidas.includes(origem)) return responder(res, 403, 'Origem não permitida');
+  if (!/^application\/json/.test(req.headers['content-type'] || '')) return responder(res, 415, 'Use JSON');
+  let corpo;
+  try { corpo = await lerCorpo(req); } catch (e) { return responder(res, 400, e.message); }
+  try {
+    if (rota === '/push/assinar') {
+      const n = await guardarAparelho(corpo, req.headers['user-agent'] || '');
+      return json(res, 200, { ok: true, aparelhos: n });
+    }
+    if (rota === '/push/sair') return json(res, 200, { ok: true, aparelhos: await tirarAparelho(String(corpo.endpoint || '')) });
+    if (rota === '/push/teste') {
+      const n = await avisar({ titulo: 'Faro: avisos ligados', texto: 'Pronto! Agora o robô te avisa mesmo com o app fechado.', chave: `teste-${Date.now()}` });
+      return json(res, 200, { ok: n > 0, enviados: n });
+    }
+  } catch (e) { return responder(res, 400, e.message); }
+  return responder(res, 404, 'Não encontrado');
+}
+
 const server = createServer(async (req, res) => {
-  if (req.method !== 'GET' && req.method !== 'HEAD') return responder(res, 405, 'Método não permitido', { Allow: 'GET, HEAD' });
   let url;
   try { url = new URL(req.url, 'http://local'); } catch { return responder(res, 400, 'Endereço inválido'); }
+  if (url.pathname.startsWith('/push/')) return rotaPush(req, res, url.pathname);
+  if (req.method !== 'GET' && req.method !== 'HEAD') return responder(res, 405, 'Método não permitido', { Allow: 'GET, HEAD' });
   let rel = decodeURIComponent(url.pathname);
   if (rel.endsWith('/')) rel += 'index.html';
   const arquivo = path.resolve(ROOT, '.' + rel);

@@ -1,4 +1,5 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
+import { avisar } from './push.mjs';
 import { simStep, simCrazy, marketTide } from './sim.mjs';
 import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore, readFavs } from './autobuy.mjs';
 import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry, fakeBuys } from './signals.mjs';
@@ -478,6 +479,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     t.sinal = sig;
     if (sig.tipo === 'entrada' && (sig.boa || sig.notaBaixa) && sig.at === now) t.boa = { at: now, px: t.priceUsd, max: t.priceUsd, key: sig.key };
     if (sig.at === now && (sig.boa || sig.bom || sig.ruim)) log(`SINAL: ${t.symbol} - ${sig.titulo}`);
+    if (sig.tipo === 'entrada' && sig.boa && sig.at === now && t.status === 'aprovada' && !t.held)
+      await avisar({ titulo: `Boa entrada: ${t.symbol}`, texto: [sig.titulo, sig.msg].filter(Boolean).join('. '), mint: t.mint, chave: `boa-${t.mint}-${sig.key || now}` });
   }
 
   // 6b. Venda no lucro: posições pequenas (sem ordem limite possível) vendem 100% ao bater o alvo
@@ -618,6 +621,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       const limits = buyLimits(state, tokens, realCfg, now);
       const trades = await trader.maybeBuy(realList, state, realCfg, log, limits);
       state.trades.push(...trades);
+      for (const x of trades.filter((y) => y.ok && y.sig)) await avisar({ titulo: `Robô comprou: ${x.symbol}`, texto: `Compra automática de ${(x.sol || 0).toFixed(4)} SOL no sinal de boa entrada. A vigia e os stops já estão protegendo.`, mint: x.mint, chave: `compra-${x.sig}` });
       // Compra feita agora: já entra na carteira desta rodada, com entrada e posição (antes só aparecia na rodada seguinte, 5 min depois)
       const okBuys = trades.filter((x) => x.ok && x.sig);
       if (okBuys.length && wallet && state.wallet && api.getRecentOps) {
@@ -654,6 +658,14 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     if (!monitored(t)) { delete t.candles; delete t.hist; }
   }
   state.trades = state.trades.slice(-200);
+
+  // Avisos no celular (push, só no servidor): moeda nova no Radar e perigo numa moeda que você tem
+  for (const t of newlyApproved) await avisar({ titulo: `Nova no Radar: ${t.symbol}`, texto: `Aprovada com nota ${t.score ?? '-'}. Espere a correção: o Faro avisa a boa entrada.`, mint: t.mint, chave: `nova-${t.mint}` });
+  for (const t of Object.values(tokens)) {
+    if (!t.held || (t.heldAmount || 0) * (t.priceUsd || 0) < 0.25) continue;
+    for (const a of (t.safety?.alerts || []).filter((x) => x.level === 'danger' && !['vigia', 'auto-venda'].includes(x.id) && now - (x.at || 0) < 15 * 60000))
+      await avisar({ titulo: `Perigo: ${t.symbol}`, texto: a.msg, mint: t.mint, chave: `perigo-${t.mint}-${a.id}`, urgente: true });
+  }
 
   const counts = Object.values(tokens).reduce((a, t) => ((a[t.status] = (a[t.status] || 0) + 1), a), {});
   state.updatedAt = now;
