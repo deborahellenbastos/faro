@@ -43,7 +43,11 @@ else {
     const u = 'https://api.jup.ag/swap/v1/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWJd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000&slippageBps=50';
     const r = await fetch(u, { headers: { 'x-api-key': jup }, signal: AbortSignal.timeout(15000) });
     if (r.ok) ok('JUPITER_API_KEY funciona');
-    else ruim(`JUPITER_API_KEY recusada pela Jupiter (HTTP ${r.status}).`);
+    else {
+      // A resposta de erro da Jupiter não tem segredo nenhum e ajuda a saber o motivo
+      const txt = (await r.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200);
+      ruim(`JUPITER_API_KEY recusada pela Jupiter (HTTP ${r.status}${r.status === 401 ? ', chave errada ou incompleta' : ''}). Resposta: ${txt}`);
+    }
   } catch {
     ruim('Não consegui falar com a Jupiter agora (internet do servidor?). Tente de novo em 1 min.');
   }
