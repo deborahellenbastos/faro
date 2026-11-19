@@ -1065,6 +1065,10 @@
 
   /* Navegador do app da Phantom: sem rolagem lateral e com a barra de baixo acima da barra de endereço dela */
   html, body { overflow-x: hidden; max-width: 100%; }
+  /* 19/11: overflow-x hidden no html e no body quebrava o position: sticky da barra lateral (ela rolava junto com a página).
+     clip corta a rolagem lateral do mesmo jeito, sem criar uma área de rolagem */
+  @supports (overflow-x: clip) { html, body { overflow-x: clip; } }
+  .sidebar { align-self: start; }
   .app, .main, .workspace, .list-panel, .rows { min-width: 0; max-width: 100%; }
   @media (max-width: 1099px) {
     body.in-phantom .tabbar { bottom: calc(env(safe-area-inset-bottom) + 92px) !important; }
