@@ -371,6 +371,20 @@
       "regra": "Proposta: quando a carteira recebe CASH ou SOL até 2 min depois de uma saída de tokens sem SOL, o robô liga essa entrada à venda daquela moeda.",
       "status": "sugerida",
       "tipo": "painel"
+    },
+    {
+      "data": "2026-11-19",
+      "titulo": "Stop móvel devolvia lucro: regra A (liga com +20%, vende 12% abaixo do maior fechamento de 1 min)",
+      "moedas": [
+        "Pussy",
+        "FEET",
+        "BUCKZ",
+        "QUIT",
+        "BUNC"
+      ],
+      "aconteceu": "Nas 19 vendas do robô de 16 a 18/11 em que a moeda passou de +30%, o pico médio foi +70% e a venda média saiu com +23%. A regra antiga travava o stop em +5% entre +30% e +60%: a Pussy foi de +36% a -19% e a QUIT de +81% a +5%. No teste com os gráficos de 1 min das 52 vendas, a regra A melhorou 8 de 13 vendas e piorou 4 (ex.: AC sairia com +52% em vez de +69%). O pavio sozinho como gatilho deu resultado misto.",
+      "regra": "Aplicada direto no robô em 19/11 às 02:00, a pedido da Kerah (\"melhor perder um pico maior do que sair no prejuízo\"). config.json venda.stopMovel: ativarPct 20, seguirAPartirPct 20, distanciaPct 12, pico 'fechamento'. A vigia segue o maior fechamento de 1 min, não o pavio. Confirmação de 10 s abaixo do stop continua. No relatório diário: comparar as vendas por stop móvel com o pico de cada operação (quanto devolveu) e contar quantas a regra vendeu cedo demais (moeda subiu 30%+ depois).",
+      "status": "em teste"
     }
   ]
 }
