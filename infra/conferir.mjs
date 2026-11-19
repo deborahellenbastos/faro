@@ -1,6 +1,6 @@
 // Confere os segredos do servidor sem mostrar nenhum deles na tela.
-// Rode no servidor (como root):
-//   sudo -u faro bash -c 'set -a; . /etc/faro/faro.env; cd /opt/faro/repo && git pull -q; node infra/conferir.mjs'
+// Rode no servidor (como root), do mesmo jeito que o serviço do robô lê os segredos:
+//   cd /opt/faro/repo && sudo -u faro git pull -q; systemd-run --quiet --pipe --wait -p User=faro -p EnvironmentFile=/etc/faro/faro.env -p WorkingDirectory=/opt/faro/repo /usr/bin/node infra/conferir.mjs
 import { readFile } from 'node:fs/promises';
 import { decrypt } from '../scanner/vault.mjs';
 

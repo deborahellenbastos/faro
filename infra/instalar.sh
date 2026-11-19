@@ -7,8 +7,12 @@ REPO="deborahellenbastos/faro"
 DIR=/opt/faro/repo
 ENVF=/etc/faro/faro.env
 TTY=/dev/tty
-pergunta() { local v; read -r -p "$1" v < "$TTY"; echo "$v"; }
-segredo() { local v; read -r -s -p "$1" v < "$TTY"; echo >&2; echo "$v"; }
+pergunta() { local v; read -r -p "$1" v < "$TTY"; v="${v//$'\e'\[[A-D]/}"; echo "$v"; }
+# Lê sem mostrar na tela e limpa o que não faz parte do valor (espaços nas pontas, Enter do Windows, setas)
+limpa() { local v="$1"; v="${v//$'\e'\[[A-D]/}"; v="${v//$'\r'/}"; v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"; printf '%s' "$v"; }
+segredo() { local v; read -r -s -p "$1" v < "$TTY"; echo >&2; limpa "$v"; }
+# Grava entre aspas simples (o systemd e o bash leem igual, com espaços e símbolos como $ e !)
+aspas() { case "$1" in *"'"*) printf '%s' "$1" ;; *) printf "'%s'" "$1" ;; esac; }
 passo() { echo; echo "==> $*"; }
 
 [ "$(id -u)" = 0 ] || { echo "Rode como root (ssh root@IP)."; exit 1; }
@@ -93,11 +97,11 @@ if [ "${trocar,,}" = s ]; then
   VG=$(sn "VIGIA: vigia rápida ligada?")
   umask 077
   cat > "$ENVF" <<ENV
-FARO_SENHA=$SENHA
-FARO_WALLET=$WALLET
-SOLANA_PRIVATE_KEY=$PK
-JUPITER_API_KEY=$JUP
-SOLANA_RPC_URL=$RPC
+FARO_SENHA=$(aspas "$SENHA")
+FARO_WALLET=$(aspas "$WALLET")
+SOLANA_PRIVATE_KEY=$(aspas "$PK")
+JUPITER_API_KEY=$(aspas "$JUP")
+SOLANA_RPC_URL=$(aspas "$RPC")
 AUTO_BUY=$AB
 AUTO_SELL=$AS
 LUCRO_AUTO=$LA
@@ -107,6 +111,7 @@ FARO_INTERVALO=120
 ENV
   unset SENHA PK JUP RPC
 fi
+CONFERIR="systemd-run --quiet --pipe --wait -p User=faro -p EnvironmentFile=$ENVF -p WorkingDirectory=$DIR /usr/bin/node infra/conferir.mjs"
 chown root:faro "$ENVF"; chmod 640 "$ENVF"; chmod 750 /etc/faro; chown root:faro /etc/faro
 
 passo "7/7 Ligando o robô (sobe sozinho se o servidor reiniciar)"
@@ -147,6 +152,10 @@ systemctl enable faro >/dev/null 2>&1
 systemctl restart faro
 sleep 3
 systemctl is-active --quiet faro && echo "Robô ligado." || { echo "O robô não subiu. Veja: tail -n 50 /var/log/faro/robo.log"; exit 1; }
+echo
+echo
+echo "Conferindo os segredos (nada aparece na tela):"
+$CONFERIR || echo "Rode bash instalar.sh de novo e responda s para digitar os segredos outra vez."
 echo
 echo "Pronto! Por enquanto ele fica esperando: o robô só troca de lugar quando o Claude mudar infra/onde-roda.txt para vps."
 echo "Ver o que ele está fazendo: tail -f /var/log/faro/robo.log   (Ctrl+C para sair)"
