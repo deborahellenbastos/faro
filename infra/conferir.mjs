@@ -55,5 +55,5 @@ else {
   }
 }
 
-console.log(falhas ? `\n${falhas} problema(s). Corrija antes de virar o robô para o servidor.` : '\nTudo certo. Pode avisar o Claude para virar o robô.');
+console.log(falhas ? `\n${falhas} problema(s). Corrija antes de virar o robô para o servidor.` : '\nTudo certo. O robô pode comprar e vender com esses segredos.');
 process.exit(falhas ? 1 : 0);
