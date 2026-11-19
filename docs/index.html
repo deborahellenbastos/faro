@@ -1890,7 +1890,7 @@
     const T = x.title || '';
     if (/^Compra confirmada/.test(T)) return 'compra';
     if (/^Venda confirmada/.test(T)) return 'venda';
-    if (/^Nova no radar/.test(T)) return 'nova';
+    if (/^Nova no radar/i.test(T)) return 'nova';
     if (/^Boa (re)?entrada/.test(T)) return 'entrada';
     if (/^(Robô vendeu|Não vendida|Já vendida antes do robô|Venda automática falhou|Vigia)/.test(T)) return 'robo';
     if (/^(Perigo|Atenção) em/.test(T)) return 'alerta';
@@ -2028,7 +2028,8 @@
   // O robô manda pelo servidor: vendas, compras, venda que falhou, boa entrada, nova no Radar e perigo.
   const PUSH_OK = !/github\.io$/.test(location.hostname) && 'serviceWorker' in navigator && 'PushManager' in window;
   let PUSH_ON = false;
-  const PUSH_TITULOS = /^(Robô vendeu|Robô comprou|Robô realizou|Venda falhou|Boa entrada|Nova no Radar|Perigo)/;
+  // 19/11: sem diferenciar maiúscula (o painel escrevia "Nova no radar" e o servidor "Nova no Radar", e chegavam os dois)
+  const PUSH_TITULOS = /^(Robô vendeu|Robô comprou|Robô realizou|Venda falhou|Boa entrada|Nova no Radar|Perigo)/i;
   const b64uBytes = (s) => { const b = atob((s + '='.repeat((4 - (s.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, (c) => c.charCodeAt(0)); };
   const postJson = (url, obj) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj || {}), cache: 'no-store' });
   async function pushSync(on) {
@@ -2157,7 +2158,7 @@
       const novo = recente(e.at);
       if (e.kind === 'nova') {
         if (novo) toast(`Nova no radar: ${e.t.symbol} (nota ${e.t.score})`);
-        notify(`Nova no radar: ${e.t.symbol}`, `Nota ${e.t.score} - market cap ${usd(e.t.mcapUsd)}`, 'nova-' + e.t.mint, e.at);
+        notify(`Nova no Radar: ${e.t.symbol}`, `Nota ${e.t.score} - market cap ${usd(e.t.mcapUsd)}`, 'nova-' + e.t.mint, e.at);
       } else if (e.kind === 'robo') {
         const a = e.alerts[0];
         if (/não compensa|já tinha saído da carteira/.test(a.msg)) continue; // não vendida por valer pouco ou já vendida: só fica registrada, sem som nem aviso
