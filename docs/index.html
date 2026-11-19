@@ -2737,6 +2737,17 @@ function entrySignal(c, ctx = {}) {
   return { ...base, fase: 'zona', titulo: 'Na zona de compra', msg: !held ? `Está ${where}, mas ainda fazendo fundos mais baixos. Espere segurar.` : `Está ${where}. Espere uma vela verde fechar acima da anterior, com compra.`, boa: false };
 }
 
+// Pico já passou (19/11, pedido da Kerah): nas 63 compras feitas depois do pico da moeda (15 a 19/11), só 8 deram
+// lucro e elas somaram -0,57 SOL, quase todo o prejuízo da carteira. Trava a entrada se a moeda está abaixoPct ou mais
+// abaixo do maior preço dela e esse pico foi há minutos ou mais. Volta a liberar quando ela sobe de novo para perto do topo
+function peakPassed(px, ath, now, o = {}) {
+  if (!(px > 0) || !(ath?.px > 0) || !ath.at) return null;
+  const abaixo = (1 - px / ath.px) * 100, ha = (now - ath.at) / 60000;
+  if (abaixo < (o.abaixoPct ?? 30) || ha < (o.minutos ?? 30)) return null;
+  const quando = ha >= 120 ? `${Math.round(ha / 60)}h` : `${Math.round(ha)} min`;
+  return { abaixo, ha, msg: `O pico desta moeda foi há ${quando} e ela está ${abaixo.toFixed(0)}% abaixo dele. Nas compras depois do pico, só 13% deram lucro. O Faro só libera se ela voltar para menos de ${o.abaixoPct ?? 30}% do topo.` };
+}
+
 // Stop móvel: depois de subir ativarPct desde a compra, o stop sobe junto e nunca desce.
 // Fica no último fundo da subida (ou a distanciaPct abaixo do topo, o que for mais alto),
 // nunca colado demais no topo (memecoin oscila) e garantindo pelo menos minimoTravadoPct de lucro.
@@ -3057,6 +3068,16 @@ function fakeBuys(per = {}) {
     }
     const reent = !!(t.reentry && !t.held && Date.now() - t.reentry.at < (data?.config?.compra?.reentradaHoras ?? 3) * 3600000);
     if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reent || t.favorita) {
+      // Trava "pico já passou" (19/11, mesma regra do robô): 30%+ abaixo do maior preço, pico há 30 min ou mais
+      const PP = SG.picoPassou;
+      const trava = (r) => {
+        if (!PP?.ligado || !r?.boa) return r;
+        const top = Math.max(0, ...c.map((x) => x[2])), ti = c.findIndex((x) => x[2] === top);
+        const ath = t.ath?.px > top ? t.ath : top > 0 ? { px: top, at: c[ti][0] } : t.ath;
+        if (!(ath?.px > 0) || !(t.priceUsd > 0)) return r;
+        const pp = peakPassed(t.priceUsd, ath, Date.now(), PP);
+        return pp ? { ...r, boa: false, fase: 'pico-passou', titulo: 'Pico já passou', msg: pp.msg } : r;
+      };
       const z = entrySignal(c, ctx);
       // Subida saudável (mesma regra do robô): moeda segura subindo sem corrigir até a zona
       if (!z.boa && SG.tendencia?.ligado !== false) {
@@ -3064,13 +3085,13 @@ function fakeBuys(per = {}) {
         const secOk = !(t.safety?.alerts || []).some((a) => a.level === 'danger' || (SEC.has(a.id) && a.level === 'warn')) && (t.checks || []).every((k) => k.ok !== false);
         const qual = splitScore(t)?.qualidade ?? 0;
         const te = trendEntry(c, { ...ctx, score: qual, safety: secOk ? 'ok' : 'warn', notaTendencia: SG.tendencia?.qualidadeMinima ?? 70 });
-        if (te) return { tipo: 'entrada', reentrada: reent, ...te };
+        if (te) return trava({ tipo: 'entrada', reentrada: reent, ...te });
         if (secOk && SG.rompimentoBase?.ligado !== false && qual >= (SG.rompimentoBase?.qualidadeMinima ?? 70) && !['morta', 'reta'].includes(t.shape?.tipo)) {
           const bb = baseBreakout(c, { ...ctx, safety: 'ok' });
-          if (bb) return { tipo: 'entrada', reentrada: reent, ...bb };
+          if (bb) return trava({ tipo: 'entrada', reentrada: reent, ...bb });
         }
       }
-      return { tipo: 'entrada', reentrada: reent, ...z };
+      return trava({ tipo: 'entrada', reentrada: reent, ...z });
     }
     return null;
   }

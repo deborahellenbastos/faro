@@ -385,6 +385,16 @@
       "aconteceu": "Nas 19 vendas do robô de 16 a 18/11 em que a moeda passou de +30%, o pico médio foi +70% e a venda média saiu com +23%. A regra antiga travava o stop em +5% entre +30% e +60%: a Pussy foi de +36% a -19% e a QUIT de +81% a +5%. No teste com os gráficos de 1 min das 52 vendas, a regra A melhorou 8 de 13 vendas e piorou 4 (ex.: AC sairia com +52% em vez de +69%). O pavio sozinho como gatilho deu resultado misto.",
       "regra": "Aplicada direto no robô em 19/11 às 02:00, a pedido da Kerah (\"melhor perder um pico maior do que sair no prejuízo\"). config.json venda.stopMovel: ativarPct 20, seguirAPartirPct 20, distanciaPct 12, pico 'fechamento'. A vigia segue o maior fechamento de 1 min, não o pavio. Confirmação de 10 s abaixo do stop continua. No relatório diário: comparar as vendas por stop móvel com o pico de cada operação (quanto devolveu) e contar quantas a regra vendeu cedo demais (moeda subiu 30%+ depois).",
       "status": "em teste"
+    },
+    {
+      "data": "2026-11-19",
+      "titulo": "Comprar depois do pico quase nunca deu lucro: trava \"pico já passou\"",
+      "moedas": [
+        "FNDR (única do robô que deu lucro comprando depois do pico)"
+      ],
+      "aconteceu": "De 15 a 19/11 foram 111 operações (Kerah e robô). As 63 compras feitas depois do pico da moeda deram lucro só em 8 (13%) e somaram -0,569 SOL, quase todo o prejuízo da carteira. Em geral a compra foi uns 45 min depois do pico, com a moeda 45% abaixo dele, e em só 4 das 63 ela subiu 30%+ depois. As 48 compras antes do pico ficaram no zero a zero (-0,007 SOL); nas 16 em que a moeda subiu 30%+ com a posição aberta, 11 deram lucro (+0,099 SOL). Das 36 moedas boas do Radar (sem golpes), 19 já tinham feito o pico antes de entrar no Radar.",
+      "regra": "Ligada direto em 19/11 às 02:40, a pedido da Kerah. config.json sinais.picoPassou: não dá \"Boa entrada\" (nem compra real, nem simulação, nem sinal do agressivo, nem aviso no painel) se a moeda está 30%+ abaixo do maior preço dela desde o lançamento e esse pico foi há 30 min ou mais. O sinal vira \"Pico já passou\". O pico vem das velas de 15 min da Jupiter (uma vez por moeda) e das velas de 5 min da rodada. No relatório diário: contar quantos sinais a trava bloqueou e o que a moeda fez depois (subiu 30%+ ou continuou caindo).",
+      "status": "em teste"
     }
   ]
 }

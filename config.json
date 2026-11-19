@@ -126,6 +126,12 @@
     "tendencia": { "ligado": true, "qualidadeMinima": 70 },
     "rompimentoBase": { "ligado": true, "qualidadeMinima": 70 },
     "notaMinima": 60,
+    "picoPassou": {
+      "_comentario": "19/11 (pedido da Kerah): não compra se a moeda está 30% ou mais abaixo do maior preço dela e esse pico foi há 30 min ou mais. Nas 63 compras depois do pico de 15 a 19/11, só 8 deram lucro (-0,57 SOL)",
+      "ligado": true,
+      "abaixoPct": 30,
+      "minutos": 30
+    },
     "naoRepetirSeNaoSubiuPct": 10,
     "repeticaoJanelaHoras": 24
   },

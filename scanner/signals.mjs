@@ -70,6 +70,17 @@ export function entrySignal(c, ctx = {}) {
   return { ...base, fase: 'zona', titulo: 'Na zona de compra', msg: !held ? `Está ${where}, mas ainda fazendo fundos mais baixos. Espere segurar.` : `Está ${where}. Espere uma vela verde fechar acima da anterior, com compra.`, boa: false };
 }
 
+// Pico já passou (19/11, pedido da Kerah): nas 63 compras feitas depois do pico da moeda (15 a 19/11), só 8 deram
+// lucro e elas somaram -0,57 SOL, quase todo o prejuízo da carteira. Trava a entrada se a moeda está abaixoPct ou mais
+// abaixo do maior preço dela e esse pico foi há minutos ou mais. Volta a liberar quando ela sobe de novo para perto do topo
+export function peakPassed(px, ath, now, o = {}) {
+  if (!(px > 0) || !(ath?.px > 0) || !ath.at) return null;
+  const abaixo = (1 - px / ath.px) * 100, ha = (now - ath.at) / 60000;
+  if (abaixo < (o.abaixoPct ?? 30) || ha < (o.minutos ?? 30)) return null;
+  const quando = ha >= 120 ? `${Math.round(ha / 60)}h` : `${Math.round(ha)} min`;
+  return { abaixo, ha, msg: `O pico desta moeda foi há ${quando} e ela está ${abaixo.toFixed(0)}% abaixo dele. Nas compras depois do pico, só 13% deram lucro. O Faro só libera se ela voltar para menos de ${o.abaixoPct ?? 30}% do topo.` };
+}
+
 // Stop móvel: depois de subir ativarPct desde a compra, o stop sobe junto e nunca desce.
 // Fica no último fundo da subida (ou a distanciaPct abaixo do topo, o que for mais alto),
 // nunca colado demais no topo (memecoin oscila) e garantindo pelo menos minimoTravadoPct de lucro.

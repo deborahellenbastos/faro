@@ -2,7 +2,7 @@
 import { avisar } from './push.mjs';
 import { simStep, simCrazy, marketTide } from './sim.mjs';
 import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore, readFavs } from './autobuy.mjs';
-import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry, fakeBuys } from './signals.mjs';
+import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry, fakeBuys, peakPassed } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
 const RUG_CACHE_MIN = 30;   // reaproveita o relatório do RugCheck das novas por 30 min
@@ -474,6 +474,23 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (!sig.boa) {
         const z = entrySignal(t.candles, ctxA);
         ag = z.boa ? z : shallowEntry(t.candles, ctxA) || baseBreakout(t.candles, ctxA) || (t.romp && now - t.romp.at <= 10 * 60000 ? t.romp : null);
+      }
+      // Trava "pico já passou": vale para o sinal, a compra real e a simulação (normal e agressivo)
+      const PP = SG.picoPassou;
+      if (PP?.ligado && (sig.boa || sig.notaBaixa || ag?.boa)) {
+        const top = Math.max(0, ...t.candles.map((x) => x[2]));
+        const ti = t.candles.findIndex((x) => x[2] === top);
+        if (top > 0 && (!t.ath || top > t.ath.px)) t.ath = { ...(t.ath || {}), px: top, at: t.candles[ti][0] };
+        if (!t.ath?.full && api.getPeak) {
+          const pk = await api.getPeak(t.mint);
+          if (pk && (!t.ath || pk.px > t.ath.px)) t.ath = { px: pk.px, at: pk.at };
+          if (t.ath && pk) t.ath.full = true;
+        }
+        const pp = peakPassed(t.priceUsd, t.ath, now, PP);
+        if (pp) {
+          if (sig.boa || sig.notaBaixa) { if (t.sinal?.fase !== 'pico-passou') log(`PICO JÁ PASSOU: ${t.symbol} está ${pp.abaixo.toFixed(0)}% abaixo do topo (há ${Math.round(pp.ha)} min). Não compra.`); sig = { ...sig, boa: false, notaBaixa: false, fase: 'pico-passou', titulo: 'Pico já passou', msg: pp.msg }; }
+          if (ag?.boa) ag = null;
+        }
       }
       if (ag) {
         const pa = t.sinalAgr;

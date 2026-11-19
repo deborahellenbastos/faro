@@ -651,3 +651,17 @@ console.log('Teste da entrada por operação: ok');
   assert.match(src, /PR\.cpk = Math\.max\(PR\.cpk \|\| 0, PR\.last \|\| 0\)/, 'a vigia deve guardar o maior fechamento de 1 min');
   console.log('Teste da regra A do stop móvel: ok');
 }
+
+// Trava "pico já passou" (19/11)
+{
+  const { peakPassed } = await import('./signals.mjs');
+  const now = Date.now(), o = { abaixoPct: 30, minutos: 30 };
+  assert.ok(peakPassed(0.6, { px: 1, at: now - 45 * 60000 }, now, o), '40% abaixo do pico de 45 min atrás: trava');
+  assert.equal(peakPassed(0.8, { px: 1, at: now - 45 * 60000 }, now, o), null, '20% abaixo: libera');
+  assert.equal(peakPassed(0.5, { px: 1, at: now - 10 * 60000 }, now, o), null, 'pico de 10 min atrás: ainda é a correção da alta');
+  const cfgP = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
+  assert.equal(cfgP.sinais.picoPassou.ligado, true);
+  const src = await readFile(new URL('./run.mjs', import.meta.url), 'utf8');
+  assert.match(src, /fase: 'pico-passou'/, 'a rodada deve travar o sinal');
+  console.log('Teste da trava pico já passou: ok');
+}

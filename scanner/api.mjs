@@ -367,6 +367,17 @@ export async function getCandlesFor(mint, pairAddress) {
   return pairAddress ? getCandles(pairAddress) : [];
 }
 
+// Maior preço da moeda desde o lançamento (velas de 15 min, até ~5 dias). Usado pela trava "pico já passou"
+export async function getPeak(mint) {
+  try {
+    const r = await fetch(`https://datapi.jup.ag/v2/charts/${mint}?interval=15_MINUTE&to=${Date.now()}&candles=500&type=price&quote=usd`, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return null;
+    let best = null;
+    for (const c of (await r.json())?.candles || []) { const h = +c.high; if (Number.isFinite(h) && h > 0 && (!best || h > best.px)) best = { px: h, at: c.time * 1000 }; }
+    return best;
+  } catch { return null; }
+}
+
 export async function getCandles(pairAddress) {
   const url = `https://api.geckoterminal.com/api/v2/networks/solana/pools/${pairAddress}/ohlcv/minute?aggregate=5&limit=72&currency=usd`;
   const j = await getJson(url, { headers: { accept: 'application/json;version=20230302' }, retries: 1 });
