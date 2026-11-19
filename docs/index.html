@@ -1468,6 +1468,23 @@
   .favbtn .fav-dot[hidden] { display: none; }
   /* Título da Carteira: mesma fonte do nome das moedas e dos KPIs, maior e sem caixa alta */
   #list-title.page-title { font-size: 20px !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: -.01em !important; color: var(--text) !important; }
+
+  /* Menu lateral em telas mais baixas (18/11): o cartão do Robô cortava no fim.
+     Em vez de encolher tudo, aperta só os espaços e mostra uma barra de rolagem discreta quando ainda não couber. */
+  @media (min-width: 1100px) and (max-height: 900px) {
+    .sidebar { gap: var(--sp-3); padding-top: var(--sp-5); padding-bottom: var(--sp-4); }
+    .nav-label { padding-top: var(--sp-3); }
+    .side-foot { margin-top: var(--sp-3); }
+  }
+  @media (min-width: 1100px) and (max-height: 780px) {
+    .nav-item { height: 42px; }
+    .side-foot { padding: var(--sp-3); gap: var(--sp-2); }
+  }
+  .sidebar { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  .sidebar:hover { scrollbar-color: rgba(255,255,255,.14) transparent; }
+  .sidebar::-webkit-scrollbar { display: block; width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+  .sidebar:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); }
 </style>
 </head>
 <body>
