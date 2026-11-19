@@ -91,7 +91,37 @@ export async function getSolanaCandidates(log) {
       if (e.rateLimited) break;
     }
   }
-  return [...found.values()];
+  // Rankings da Jupiter (19/11): em alta (5 min e 1h), mais negociadas e maior "organic score" (volume de gente de
+  // verdade, não de robô). Precisa da chave da Jupiter; sem ela, pula. Só moedas com o primeiro pool de até 24h
+  // (as grandes antigas do ranking, como SOL e JUP, nem entram). As que já vieram de outra fonte ganham só a nota orgânica.
+  const jupKey = (process.env.JUPITER_API_KEY || '').trim();
+  const jup = new Map();
+  if (jupKey) {
+    for (const [label, cat] of [['em alta (5min)', 'toptrending/5m'], ['em alta (1h)', 'toptrending/1h'], ['mais negociadas (1h)', 'toptraded/1h'], ['organic score (1h)', 'toporganicscore/1h']]) {
+      try {
+        const list = await getJson(`https://api.jup.ag/tokens/v2/${cat}?limit=100`, { headers: { 'x-api-key': jupKey }, retries: 1 });
+        let n = 0;
+        for (const tk of Array.isArray(list) ? list : []) {
+          const mint = tk?.id; if (!mint || SKIP.has(mint)) continue;
+          const born = Date.parse(tk.firstPool?.createdAt || tk.createdAt || 0);
+          if (!born || Date.now() - born > 24 * 3600000) continue;
+          const j = jup.get(mint) || { organic: tk.organicScore ?? null, organicLabel: tk.organicScoreLabel || null, listas: [], holders: tk.holderCount ?? null, verificada: !!tk.isVerified };
+          if (!j.listas.includes(label)) j.listas.push(label);
+          jup.set(mint, j);
+          if (!found.has(mint)) { found.set(mint, { mint, source: 'em alta (Jupiter)', icon: tk.icon || null, description: '', links: [], soJupiter: true }); n++; }
+        }
+        log(`Jupiter ${label}: ${n} moedas novas`);
+      } catch (e) {
+        log(`Falha em Jupiter ${label}: ${e.message}`, true);
+        if (e.rateLimited) break;
+      }
+    }
+  }
+  for (const [mint, j] of jup) { const c = found.get(mint); if (c) c.jup = j; }
+  // Moedas já conhecidas que estão nos rankings da Jupiter também recebem a nota orgânica (a rodada atualiza)
+  const out = [...found.values()];
+  out.jupiter = jup;
+  return out;
 }
 
 // Dados de mercado de até 30 moedas por consulta

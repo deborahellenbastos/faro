@@ -8,7 +8,11 @@
     "poucaLiquidezUsd": 20000,
     "idadeMaximaHoras": 24,
     "maxRugcheckPorRodada": 25,
-    "diasAcompanhando": 3
+    "diasAcompanhando": 3,
+    "jupiter": {
+      "_comentario": "Rankings da Jupiter (em alta, mais negociadas, organic score). false = moedas que só vieram por eles entram no Radar e na simulação, mas o robô não compra de verdade.",
+      "compraReal": false
+    }
   },
   "filtros": {
     "liquidezMinimaUsd": 10000,

@@ -41,8 +41,16 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   const candidates = await api.getSolanaCandidates(log);
   for (const c of candidates) {
     const t = tokens[c.mint];
-    if (!t) tokens[c.mint] = { mint: c.mint, firstSeen: now, status: 'nova', source: c.source, icon: c.icon, description: c.description, links: c.links };
+    if (!t) tokens[c.mint] = { mint: c.mint, firstSeen: now, status: 'nova', source: c.source, icon: c.icon, description: c.description, links: c.links, ...(c.soJupiter ? { soJupiter: true } : {}) };
     else if (!t.icon && c.icon) t.icon = c.icon;
+  }
+  // Rankings da Jupiter: guarda em quais listas a moeda apareceu e a nota orgânica (0 a 100). Só registra, não muda a nota do Faro
+  for (const [mint, j] of candidates.jupiter || []) {
+    const t = tokens[mint]; if (!t) continue;
+    const prev = t.jup || {};
+    t.jup = { organic: j.organic, organicLabel: j.organicLabel, holders: j.holders, verificada: j.verificada, at: now,
+      listas: [...new Set([...(prev.listas || []), ...j.listas])], primeiraVez: prev.primeiraVez || now,
+      organicMax: Math.max(prev.organicMax ?? 0, j.organic ?? 0) };
   }
 
   // 2. Sua carteira (só o endereço PÚBLICO, ninguém consegue mexer nela com isso)
@@ -597,7 +605,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   const cfgAgr = profileCfg(cfg, 'agressivo');
   const agrList = entryCandidates(tokens, cfgAgr, now, { agr: true });
   const buyList = entryCandidates(tokens, cfg, now);
-  const realList = perfil === 'agressivo' ? agrList : buyList;
+  // Moedas que só vieram pelos rankings da Jupiter: por enquanto só Radar e simulação (config busca.jupiter.compraReal)
+  const realList = (perfil === 'agressivo' ? agrList : buyList).filter((t) => !t.soJupiter || cfg.busca?.jupiter?.compraReal === true);
   const realCfg = perfil === 'agressivo' ? cfgAgr : cfg;
   // Teste (só simulação): nota da aprovação em vez da de agora, para sinais que a correção derrubou abaixo de 70
   const notaList = cfg.simulacao?.notaAprovacao?.ligado === false ? [] : entryCandidates(tokens, cfg, now, { byApproval: true }).filter((t) => !buyList.includes(t)).map((t) => ({ ...t, _notaAprov: true }));
