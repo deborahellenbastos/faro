@@ -2386,7 +2386,10 @@
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-rord]'); if (b) { store.set('faro-radar-ord', b.dataset.rord); ui.page = 1; render(); } });
   // Análise e Reprovadas: trocar o dia no calendário filtra a lista por esse dia (vazio volta para hoje)
-  $('an-date').addEventListener('change', (e) => { ui.anDate = e.target.value || ''; ui.page = 1; render(); });
+  $('an-date').addEventListener('change', (e) => { ui.anDate = e.target.value || ''; ui.anDateEscolhida = !!e.target.value && e.target.value !== new Date().toLocaleDateString('sv'); ui.page = 1; render(); });
+  // 19/11: abre o calendário clicando em qualquer parte do campo (antes só no ícone)
+  $('an-date').addEventListener('click', (e) => { try { e.target.showPicker?.(); } catch {} });
+  $('an-date').addEventListener('input', (e) => { ui.anDate = e.target.value || ''; ui.anDateEscolhida = !!e.target.value && e.target.value !== new Date().toLocaleDateString('sv'); ui.page = 1; render(); });
   // Folha da moeda (celular): sobe de baixo; fecha no X, tocando fora ou arrastando a alça para baixo
   function openSheet() { const d = $('detail'); document.body.style.removeProperty('--sheet-drag'); document.body.classList.add('show-detail'); if (d) d.scrollTop = 0; }
   function closeSheet() { document.body.classList.remove('show-detail'); document.body.style.removeProperty('--sheet-drag'); setTimeout(render, 330); }
@@ -5126,7 +5129,10 @@ function fakeBuys(per = {}) {
     requestAnimationFrame(moveTabPill);
     document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === ui.tab));
     const unseenN = lists.aprovada.filter(isUnseen).length;
-    document.querySelectorAll('[data-count]').forEach((e) => { e.textContent = (e.dataset.count === 'minhas' ? mine.length : lists[e.dataset.count].length) || ''; e.classList.toggle('has-new', e.dataset.count === 'aprovada' && unseenN > 0); e.title = e.dataset.count === 'aprovada' && unseenN ? `${unseenN} nova${unseenN > 1 ? 's' : ''} que você ainda não abriu` : ''; });
+    // 19/11: Análise e Reprovadas contam só as do dia escolhido no calendário (hoje por padrão), igual à lista
+    const dia0 = (() => { const [y, mo, dd] = (ui.anDate || '').split('-').map(Number); const x = y ? new Date(y, mo - 1, dd) : new Date(); x.setHours(0, 0, 0, 0); return x.getTime(); })();
+    const doDia = (k) => lists[k].filter((t) => { const at = (k === 'reprovada' ? t.rejectedAt || t.firstSeen : t.firstSeen) || 0; return at >= dia0 && at < dia0 + 86400000; }).length;
+    document.querySelectorAll('[data-count]').forEach((e) => { e.textContent = (e.dataset.count === 'minhas' ? mine.length : e.dataset.count === 'aguardando' || e.dataset.count === 'reprovada' ? doDia(e.dataset.count) : lists[e.dataset.count].length) || ''; e.classList.toggle('has-new', e.dataset.count === 'aprovada' && unseenN > 0); e.title = e.dataset.count === 'aprovada' && unseenN ? `${unseenN} nova${unseenN > 1 ? 's' : ''} que você ainda não abriu` : ''; });
     document.querySelectorAll('[data-dot]').forEach((e) => { e.hidden = !danger; });
     document.title = (unread ? `(${unread}) ` : '') + (danger ? `⚠ ${danger} em perigo - Faro` : 'Faro');
     $('page-title').textContent = TITLES[ui.tab][0];
@@ -5220,7 +5226,7 @@ function fakeBuys(per = {}) {
     { const w = $('an-date-wrap'), inp = $('an-date'), byDay = ui.tab === 'aguardando' || ui.tab === 'reprovada'; w.hidden = !byDay || !!q;
       if (byDay) {
         const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const today = ymd(new Date()); if (!ui.anDate) ui.anDate = today;
+        const today = ymd(new Date()); if (!ui.anDate || !ui.anDateEscolhida) ui.anDate = today; // sem escolha dela, vira o dia à meia-noite
         if (inp.value !== ui.anDate) inp.value = ui.anDate; inp.max = today;
         if (!q) { const [y, mo, d] = ui.anDate.split('-').map(Number); const a = new Date(y, mo - 1, d).getTime(), b = a + 86400000;
           items = items.filter((t) => { const at = (ui.tab === 'reprovada' ? t.rejectedAt || t.firstSeen : t.firstSeen) || 0; return at >= a && at < b; }); }
