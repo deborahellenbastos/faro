@@ -2366,7 +2366,7 @@
   };
   // Em análise: filtrar por quantos critérios faltam e pelo motivo (qualquer um dos motivos da moeda, não só o primeiro)
   const anLeft = (t) => t.pending ?? (t.reasons || []).length;
-  const AN_FALTA = { todas: ['Todas', () => true], 1: ['Falta 1', (t) => anLeft(t) === 1], 2: ['Faltam 2', (t) => anLeft(t) === 2], 3: ['Faltam 3+', (t) => anLeft(t) >= 3] };
+  const AN_FALTA = { todas: ['Todas', () => true], f1: ['Falta 1', (t) => anLeft(t) === 1], f2: ['Faltam 2', (t) => anLeft(t) === 2], f3: ['Faltam 3+', (t) => anLeft(t) >= 3] }; // chaves com letra: número viraria o 1º da fila
   const AN_MOTIVO = {
     todos: ['Todos os motivos', null],
     holders: ['Holders', /holders|insider|carteiras ligadas/i],
