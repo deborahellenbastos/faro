@@ -2380,7 +2380,7 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.classList.remove('undo'), 250); }, 5000);
   }
   function manReprovar(m) {
-    const sym = data?.tokens?.[m]?.symbol || 'Moeda';
+    const sym = data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda';
     MANREP.set(m, Date.now()); saveManRep();
     if (ui.sel[ui.tab] === m) { ui.sel[ui.tab] = null; if (document.body.classList.contains('show-detail')) closeSheet(); }
     render();
@@ -2416,7 +2416,7 @@
     list.addEventListener('pointerup', end); list.addEventListener('pointercancel', end);
     list.addEventListener('click', (e) => { if (blockClick) { e.stopPropagation(); e.preventDefault(); } }, true);
   })();
-  function manDesfazer(m) { MANREP.delete(m); saveManRep(); render(); toast(`${data?.tokens?.[m]?.symbol || 'Moeda'} voltou para Em análise`); }
+  function manDesfazer(m) { MANREP.delete(m); saveManRep(); render(); toast(`${data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda'} voltou para Em análise`); }
   const FAVS = new Set(store.get('faro-favs', []));
   const isFav = (t) => FAVS.has(t.mint);
   const radarFilt = () => store.get('faro-radar-filt', 'todas');
