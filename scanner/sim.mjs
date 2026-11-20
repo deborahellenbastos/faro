@@ -5,6 +5,7 @@
 // Saída: as mesmas regras do robô de verdade: stop do sinal, stop móvel, +100%, perigo na moeda ou tempo máximo.
 
 import { trailStop } from './signals.mjs';
+import { jupOk } from './autobuy.mjs';
 
 const pct = (a, b) => (b ? (a / b - 1) * 100 : 0);
 
@@ -209,6 +210,7 @@ export function simCrazy({ state, tokens, cfg, now, log, solUsd }) {
     for (const t of Object.values(tokens)) {
       if (sim.open.length >= (L.maxAbertas ?? 4) || todayOpened + sim.open.filter((x) => x.at === now).length >= (L.maxComprasPorDia ?? 15)) break;
       if (sim.done[t.mint] || sim.open.some((x) => x.mint === t.mint)) continue;
+      if (!jupOk(t, cfg)) continue; // organic score baixo da Jupiter (20/11)
       const g = crazyEntry(t, now, L);
       if (!g) continue;
       sim.done[t.mint] = now;

@@ -61,6 +61,26 @@ export function splitScore(t) {
   const sum = (ps) => { const max = ps.reduce((a, p) => a + (p.max || 0), 0); return max ? Math.round((ps.reduce((a, p) => a + (p.pts || 0), 0) / max) * 100) : null; };
   return { qualidade: sum(parts.filter((p) => QUAL_RE.test(p.label))), movimento: sum(parts.filter((p) => !QUAL_RE.test(p.label))) };
 }
+// 20/11: moeda que só veio pelos rankings da Jupiter precisa de organic score mínimo (busca.jupiter.organicMin) para entrar
+// na simulação e na compra. Em 19/11, abaixo de 50, 87 de 115 viraram golpe; com 50 ou mais, 9 de 47.
+export function jupOk(t, cfg) {
+  if (!t.soJupiter) return true;
+  const min = cfg.busca?.jupiter?.organicMin ?? 0;
+  return (t.jup?.organicMax ?? t.jup?.organic ?? 0) >= min;
+}
+// 20/11 (caso GTE 19/11): antes da compra automática, um relatório NOVO do RugCheck (sem cache). O aviso de criador com
+// histórico de golpes e as 31 moedas do dev só apareceram depois da compra. Devolve o motivo para não comprar, ou null.
+export function preBuyBlock(r, cfg) {
+  if (!r) return null; // sem relatório agora: segue com o que já foi checado na aprovação
+  const f = cfg.filtros || {};
+  const risks = (r.risks || []).map((x) => `${x.name || ''} ${x.description || ''}`).join(' | ');
+  if (r.rugged) return 'RugCheck marca a moeda como golpe';
+  if (/creator history of rugged/i.test(risks)) return 'criador com histórico de golpes (RugCheck)';
+  const n = Array.isArray(r.creatorTokens) ? r.creatorTokens.length : null;
+  if (n != null && n > (f.devMaxTokensAnteriores ?? 5)) return `dev já criou ${n} moedas (máx ${f.devMaxTokensAnteriores ?? 5})`;
+  if (r.score_normalised != null && r.score_normalised > (f.rugcheckScoreMax ?? 50)) return `risco no RugCheck ${r.score_normalised}/100 (máx ${f.rugcheckScoreMax ?? 50})`;
+  return null;
+}
 export const isReentry = (t, cfg, now) => !!(t.reentry && !t.held && now - t.reentry.at < (cfg.compra?.reentradaHoras ?? 3) * 3600000);
 
 // Moedas com sinal de boa entrada que acabou de aparecer, dentro das regras
@@ -107,6 +127,7 @@ function filterCandidates(list, cfg, now, scoreOk, byApproval) {
     .filter((t) => !t.held && t.safety?.level !== 'danger' && scoreOk(t))
     .filter((t) => !fakeBuys(t.periods) && !(t.compraFalsa && now - t.compraFalsa.at <= 30 * 60000)) // compras falsas de robô com o preço caindo (caso LUCIA); vale por 30 min
     .filter((t) => !byApproval || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)
+    .filter((t) => jupOk(t, cfg))
     .filter((t) => t.dexId !== 'pumpfun') // compra de verdade nunca na curva da pump.fun (modo curva é só simulação)
     // Tempo mínimo no Radar (16/11: os 3 rugs comprados entraram 2 a 9 min depois da aprovação). Reentrada já passou por isso
     .filter((t) => isReentry(t, cfg, now) || t.favorita || now - (t.approvedAt || t.firstSeen || now) >= (c.minutosNoRadarMin ?? 0) * 60000)

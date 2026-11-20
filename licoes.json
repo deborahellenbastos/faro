@@ -127,7 +127,7 @@
         "GTA"
       ],
       "aconteceu": "Ficou 4 horas presa numa faixa, rompeu o teto e subiu 45%. Nenhum sinal reconhecia esse padrão.",
-      "regra": "Sinal de rompimento de base (1h ou mais numa faixa, fecha acima do teto com volume e compra). Vale no perfil Agressivo e na simulação. Simulação até 17/11 (Agressivo): 2 entradas. LEOSTAR (base, 09:29) saiu no stop com -20%. BLACKX (rompimento, 10:30) segue aberta com +38% às 21:38. Poucas operações para decidir. Atualização 18/11: a BLACKX (rompimento de 17/11, que estava +38% às 21:38) fechou às 02:49 com -6,1%. Nenhum rompimento novo no dia. Acumulado: 2 entradas, 2 perdas. Simulação 19/11 (Agressivo): nenhum rompimento de base longa, mas 4 entradas no rompimento curto ('pausa perto do topo e rompeu a máxima'): LUNO 03:15 (-20%), LUNO 06:03 (-18%), ANT 10:01 (-28%) e JETSKI 13:23 (-25%), as 4 no stop, somando -0,044 SOL. Acumulado dos rompimentos: 6 entradas, 6 perdas.",
+      "regra": "Sinal de rompimento de base (1h ou mais numa faixa, fecha acima do teto com volume e compra). Vale no perfil Agressivo e na simulação. Simulação até 17/11 (Agressivo): 2 entradas. LEOSTAR (base, 09:29) saiu no stop com -20%. BLACKX (rompimento, 10:30) segue aberta com +38% às 21:38. Poucas operações para decidir. Atualização 18/11: a BLACKX (rompimento de 17/11, que estava +38% às 21:38) fechou às 02:49 com -6,1%. Nenhum rompimento novo no dia. Acumulado: 2 entradas, 2 perdas. Simulação 19/11 (Agressivo): nenhum rompimento de base longa, mas 4 entradas no rompimento curto ('pausa perto do topo e rompeu a máxima'): LUNO 03:15 (-20%), LUNO 06:03 (-18%), ANT 10:01 (-28%) e JETSKI 13:23 (-25%), as 4 no stop, somando -0,044 SOL. Acumulado dos rompimentos: 6 entradas, 6 perdas. Em 20/11, a pedido da Kerah, o rompimento curto foi desligado no Agressivo (sinais.rompimentoCurto.ligado = false). O rompimento de base longa segue em teste.",
       "status": "em teste",
       "tipo": "sinal"
     },
@@ -138,8 +138,8 @@
         "LEOSTAR"
       ],
       "aconteceu": "Corrigiu só até perto da 38,2% e voltou a subir. A zona de entrada (50% a 61,8%) nunca foi tocada.",
-      "regra": "Entrada rasa na 38,2% quando a tendência é forte (gráfico orgânico, compra 55%+ na hora) e reage com compra. Vale no perfil Agressivo e na simulação. Simulação até 17/11 (Agressivo): 2 entradas na 38,2%, as duas no stop (LEOSTAR -34%, GTA -19%), somando -0,026 SOL. O único sinal novo do dia (CSI, 17:40) não foi aberto pelo Agressivo e a CSI caiu 58% depois. Até aqui a entrada rasa não pagou. Simulação 18/11 (Agressivo): mais 3 entradas na 38,2%, as três perdendo: GETAJOB 04:26 (-31,5%), GETAJOB 04:58 (-30,5%) e JALU 08:59 (-6,1%), somando -0,032 SOL. Acumulado: 5 entradas na 38,2%, 5 perdas. A JALU virou rug às 09:33. Simulação 19/11 (Agressivo): nenhuma entrada nova na 38,2%. Acumulado segue com 5 entradas e 5 perdas.",
-      "status": "em teste",
+      "regra": "Entrada rasa na 38,2% quando a tendência é forte (gráfico orgânico, compra 55%+ na hora) e reage com compra. Vale no perfil Agressivo e na simulação. Simulação até 17/11 (Agressivo): 2 entradas na 38,2%, as duas no stop (LEOSTAR -34%, GTA -19%), somando -0,026 SOL. O único sinal novo do dia (CSI, 17:40) não foi aberto pelo Agressivo e a CSI caiu 58% depois. Até aqui a entrada rasa não pagou. Simulação 18/11 (Agressivo): mais 3 entradas na 38,2%, as três perdendo: GETAJOB 04:26 (-31,5%), GETAJOB 04:58 (-30,5%) e JALU 08:59 (-6,1%), somando -0,032 SOL. Acumulado: 5 entradas na 38,2%, 5 perdas. A JALU virou rug às 09:33. Simulação 19/11 (Agressivo): nenhuma entrada nova na 38,2%. Acumulado segue com 5 entradas e 5 perdas. Desligada em 20/11, a pedido da Kerah (sinais.entradaRasa.ligado = false), depois de 5 entradas e 5 perdas. Para religar, trocar para true.",
+      "status": "aplicada",
       "tipo": "sinal"
     },
     {
@@ -201,7 +201,7 @@
         "LUCIA (3HPU5agEYMrecTnrunbDWAKkPy5Z4CMyt4GnTDe9pump)"
       ],
       "aconteceu": "Às ~20:30 a LUCIA mostrava 10.400 compras x 1.387 vendas na última hora (88% compras, cerca de US$ 22 por transação) e mesmo assim o preço caía. A Kerah comprou às 20:29 e segundos depois veio o golpe: às 20:33 já tinha caído 95%. Ela percebeu o padrão olhando o gráfico.",
-      "regra": "Contagem de compras não é força: robôs fazem milhares de compras pequenas para parecer alta enquanto poucas vendas grandes derrubam o preço. Se 80% ou mais das transações são compras (mín. 40 em 5 min ou 200 em 1h) e o preço caiu 10% ou mais na mesma janela, a moeda vira Perigo no painel e o robô não compra. Até 17/11 a regra ainda não aparece nas estatísticas da simulação (stats.regras). Na última leitura do dia, ela marcaria CSI (81% compras e -47% na hora, logo depois do sinal de entrada das 17:40, que no Crazy perdeu 28% em 2 min), Rex (84%, -58%) e Lucia the Baddie (93% em 5 min, -52%): as três desabaram. Quase pegou a JALU às 21:38 (79% compras, -10% na hora), que seguiu viva com US$ 62 mil de liquidez: baixar o limite para 75% criaria esse alarme falso. Até 18/11 ainda não há contador em stats.regras. Na última leitura do dia, 8 moedas estavam marcadas: DCTYCAT (96% compras, -44% em 5 min), Buncoin, vicestream, DCTY, LUCIA, e três que já estavam mortas (GTA6, Democat, NEX Ai, sem liquidez). Nenhuma foi operada. Ainda sem como medir acerto e alarme falso: o robô guarda só a última marcação. Até 19/11 ainda não há contador em stats.regras. Na última leitura do dia, 9 moedas marcadas (entre 21:11 e 21:37): 7 já estavam sem liquidez (\\nu, Cowboy Cat, vensa, AMD, FNDR falsa, FINOAWIF, JUMP COIN), a COOKIE (8SbC) acertou (marcada às 21:37, desde 21:15, liquidez de US$ 20 mil para 1,4 mil) e a Max (US$ 111 mil de liquidez) ficou de lado (-1%), possível alarme falso. A Kerah não operou nenhuma. A marcação em moeda já morta não ajuda: vale marcar só com liquidez acima de US$ 5 mil.",
+      "regra": "Contagem de compras não é força: robôs fazem milhares de compras pequenas para parecer alta enquanto poucas vendas grandes derrubam o preço. Se 80% ou mais das transações são compras (mín. 40 em 5 min ou 200 em 1h) e o preço caiu 10% ou mais na mesma janela, a moeda vira Perigo no painel e o robô não compra. Até 17/11 a regra ainda não aparece nas estatísticas da simulação (stats.regras). Na última leitura do dia, ela marcaria CSI (81% compras e -47% na hora, logo depois do sinal de entrada das 17:40, que no Crazy perdeu 28% em 2 min), Rex (84%, -58%) e Lucia the Baddie (93% em 5 min, -52%): as três desabaram. Quase pegou a JALU às 21:38 (79% compras, -10% na hora), que seguiu viva com US$ 62 mil de liquidez: baixar o limite para 75% criaria esse alarme falso. Até 18/11 ainda não há contador em stats.regras. Na última leitura do dia, 8 moedas estavam marcadas: DCTYCAT (96% compras, -44% em 5 min), Buncoin, vicestream, DCTY, LUCIA, e três que já estavam mortas (GTA6, Democat, NEX Ai, sem liquidez). Nenhuma foi operada. Ainda sem como medir acerto e alarme falso: o robô guarda só a última marcação. Até 19/11 ainda não há contador em stats.regras. Na última leitura do dia, 9 moedas marcadas (entre 21:11 e 21:37): 7 já estavam sem liquidez (\\nu, Cowboy Cat, vensa, AMD, FNDR falsa, FINOAWIF, JUMP COIN), a COOKIE (8SbC) acertou (marcada às 21:37, desde 21:15, liquidez de US$ 20 mil para 1,4 mil) e a Max (US$ 111 mil de liquidez) ficou de lado (-1%), possível alarme falso. A Kerah não operou nenhuma. A marcação em moeda já morta não ajuda: vale marcar só com liquidez acima de US$ 5 mil. Em 20/11, a pedido da Kerah: só marca moeda com liquidez de US$ 5 mil ou mais (regrasEmTeste.compraFalsa.liquidezMinUsd), e cada marcação nova fica em compraFalsaLog (preço, liquidez e status da hora) para a análise medir acertos e alarmes falsos.",
       "status": "em teste",
       "tipo": "golpe"
     },
@@ -260,8 +260,8 @@
         "QWENPAW"
       ],
       "aconteceu": "Das 26 moedas aprovadas no dia, 15 viraram rug ou caíram mais de 90%. Entre as aprovadas com o par de até 15 min de vida, 13 de 18 viraram rug (72%). Com o par mais velho que 15 min, 2 de 8 (25%). Com par de até 15 min e liquidez abaixo de US$ 20 mil, 10 de 12 (83%). Nesse grupo só a ACRUX, a maior alta do dia, e a GrokChan ficaram de pé.",
-      "regra": "Proposta: quando a liquidez for menor que US$ 20 mil, aprovar só com o par de 20 min ou mais (hoje busca.idadeMinimaMinutos = 5). Antes de ligar, rodar alguns dias só na simulação para ver quantas boas como a ACRUX ficariam de fora.",
-      "status": "sugerida",
+      "regra": "Proposta: quando a liquidez for menor que US$ 20 mil, aprovar só com o par de 20 min ou mais (hoje busca.idadeMinimaMinutos = 5). Antes de ligar, rodar alguns dias só na simulação para ver quantas boas como a ACRUX ficariam de fora. Aplicada em 20/11, a pedido da Kerah: busca.idadeMinimaMinutos de 5 para 30, para todas as moedas. Base: em 17, 18 e 19/11, 24 de 31 aprovadas com o par muito novo viraram golpe, contra 3 de 18 com o par mais velho.",
+      "status": "aplicada",
       "tipo": "filtro"
     },
     {
@@ -368,8 +368,8 @@
         "Christmas"
       ],
       "aconteceu": "A venda da Christmas às 08:15 saiu por outro caminho: os tokens saíram, o pagamento entrou como 1,85 CASH e virou 0,0247 SOL às 08:16. O Faro registrou a operação como -106% (-US$ 2,12), quando o resultado real foi cerca de -US$ 0,28.",
-      "regra": "Proposta: quando a carteira recebe CASH ou SOL até 2 min depois de uma saída de tokens sem SOL, o robô liga essa entrada à venda daquela moeda.",
-      "status": "sugerida",
+      "regra": "Proposta: quando a carteira recebe CASH ou SOL até 2 min depois de uma saída de tokens sem SOL, o robô liga essa entrada à venda daquela moeda. Aplicada em 20/11, a pedido da Kerah: a ligação da venda com o pagamento que chega depois aceita a venda com até -0,003 SOL (aluguel da conta de CASH, caso GTA6IRL) e o pagamento até 60 min depois (OGTA: 53 min). Para não confundir com depósito, o pagamento tem de ser no máximo 5x o SOL gasto nas compras da moeda. As vendas antigas são corrigidas na próxima rodada.",
+      "status": "aplicada",
       "tipo": "painel"
     },
     {
@@ -404,7 +404,7 @@
         "COOKIE (4F5Bi9)"
       ],
       "aconteceu": "A JENSEN foi comprada a US$ 0,0000693 e o stop móvel estava em US$ 0,0000849 ('garantindo +27%'), mas a venda das 20:05 saiu a US$ 0,0000574 (-17%). A COOKIE foi comprada a US$ 0,0000525 com stop em US$ 0,0000693 ('garantindo +34%') e a venda das 21:13 saiu a US$ 0,0000510 (-3%). Nos dois casos a venda saiu cerca de 30% abaixo do stop. Eram pares com 20 e 6 min de vida, em despejo. O aviso fez parecer lucro garantido.",
-      "regra": "Proposta: em par com menos de 30 min ou liquidez abaixo de US$ 25 mil, o stop móvel vende no primeiro preço abaixo do stop (sem os 10 s de confirmação). O aviso 'garantindo +X%' passa a usar o preço da compra real e mostra depois o resultado da venda de verdade.",
+      "regra": "Proposta: em par com menos de 30 min ou liquidez abaixo de US$ 25 mil, o stop móvel vende no primeiro preço abaixo do stop (sem os 10 s de confirmação). O aviso 'garantindo +X%' passa a usar o preço da compra real e mostra depois o resultado da venda de verdade. Não aplicada em 20/11: a vigia já vende sem esperar quando o preço passa 5% abaixo do stop (vendaDiretaAbaixoPct). Nos dois casos a perda veio da velocidade do despejo entre a leitura e a venda, e a idade mínima de 30 min tira esses pares do Radar.",
       "status": "sugerida",
       "tipo": "venda"
     },
@@ -415,8 +415,8 @@
         "GTE (7nqA5P)"
       ],
       "aconteceu": "O robô comprou a GTE às 15:04 (0,0479 SOL, US$ 3,54) no sinal da parte funda da zona. O par tinha 59 min. Às 15:21 a liquidez sumiu (-97%) e a posição ficou com US$ 0,01, sem chance de venda. Só às 15:23 o RugCheck avisou 'Creator history of rugged tokens' e o risco subiu para 76/100. Hoje o Faro mostra também 'dev já criou 31 moedas' e um bundle de 19 carteiras com 54%. Foi a maior perda do dia (-US$ 3,50).",
-      "regra": "Proposta: antes de cada compra automática, consultar o RugCheck de novo (sem cache) e conferir quantas moedas o criador já fez. Não comprar se aparecer 'Creator history of rugged tokens', criador com mais de 5 moedas ou bundle acima do limite.",
-      "status": "sugerida",
+      "regra": "Proposta: antes de cada compra automática, consultar o RugCheck de novo (sem cache) e conferir quantas moedas o criador já fez. Não comprar se aparecer 'Creator history of rugged tokens', criador com mais de 5 moedas ou bundle acima do limite. Aplicada em 20/11, a pedido da Kerah: antes da compra automática o robô pede um relatório novo ao RugCheck e cancela a compra se aparecer 'Creator history of rugged tokens', dev com mais de devMaxTokensAnteriores moedas, risco acima de rugcheckScoreMax ou golpe marcado (log 'COMPRA CANCELADA' e alerta 'pre-compra' no painel).",
+      "status": "aplicada",
       "tipo": "protecao"
     },
     {
@@ -426,8 +426,8 @@
         "moedas dos rankings da Jupiter em 19/11"
       ],
       "aconteceu": "Das 162 moedas que apareceram nos rankings da Jupiter no dia, 115 tinham organic score abaixo de 50, e 87 delas (76%) viraram golpe ou perderam a liquidez. Só 2 subiram. Com organic de 50 ou mais foram 47 moedas, com 9 golpes (19%) e 7 altas. As que só vieram pela Jupiter e eram boas (JETSKI +133%, ONI +64%, AI 8Sac +55%, COOKIE 7q3j +384%) tinham organic de 53 a 66.",
-      "regra": "Proposta: quando a compra real das moedas da Jupiter for ligada, exigir organic score de 50 ou mais (organicMax). Abaixo disso, a moeda entra no Radar só como observação, e não na simulação.",
-      "status": "sugerida",
+      "regra": "Proposta: quando a compra real das moedas da Jupiter for ligada, exigir organic score de 50 ou mais (organicMax). Abaixo disso, a moeda entra no Radar só como observação, e não na simulação. Aplicada em 20/11, a pedido da Kerah: busca.jupiter.organicMin = 50. Moeda que só veio pela Jupiter com organic abaixo disso não entra na simulação (Conservador, Agressivo e Crazy) nem na compra. A compra real das moedas da Jupiter continua desligada.",
+      "status": "aplicada",
       "tipo": "busca"
     },
     {
@@ -443,8 +443,8 @@
         "AI"
       ],
       "aconteceu": "Em 19/11 o Crazy fez 14 operações. As 8 que entraram numa correção de 35% ou mais (BUNC, After, ㅤㅤㅤ, Rockstar, PIPI, ANTGENT, AI e OGTA) foram todas para o stop (-28%). Os 4 acertos vieram de correções rasas, de 16% a 29% (jingyu, DCTY, DCTC e SWJ no zero). No acumulado de 39 operações: correção até 30% deu 5 acertos em 19 (-0,081 SOL), e acima de 30% deu 3 em 20 (-0,154 SOL).",
-      "regra": "Proposta para testar só na simulação: o Crazy entra só se a primeira correção for de no máximo 30% do topo.",
-      "status": "sugerida",
+      "regra": "Proposta para testar só na simulação: o Crazy entra só se a primeira correção for de no máximo 30% do topo. Aplicada em 20/11 na simulação, a pedido da Kerah: perfis.enlouquecido.correcaoMaxPct de 45 para 30.",
+      "status": "aplicada",
       "tipo": "compra"
     }
   ]

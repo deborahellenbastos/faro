@@ -329,13 +329,17 @@ export function parseIncoming(tx, owner, sig) {
 
 // Liga a venda que saiu com ~0 SOL ao dinheiro que chegou depois (até 15 min), de outra carteira.
 // Entradas e saídas da mesma carteira no mesmo minuto que se anulam (empréstimo de taxa) não contam.
+// 20/11: a venda pode sair com um pouco de SOL negativo (aluguel da conta de CASH aberta na hora, caso GTA6IRL: -0,0015)
+// e o pagamento pode chegar até ~1h depois (OGTA: 53 min). Para não confundir com depósito (0,203 SOL às 23:59 de 18/11,
+// pela mesma carteira de pagamento), o valor tem de ser no máximo 5x o SOL gasto nas compras dessa moeda.
 export function linkDelayedProceeds(ops, ins) {
   const real = (ins || []).filter((r) => !r.self && r.sol > 0 && !(ins || []).some((x) => x !== r && x.by === r.by && Math.abs(x.at - r.at) < 90000 && Math.abs(x.sol + r.sol) < 0.004));
   const used = new Set((ops || []).filter((o) => o.linkSig).map((o) => o.linkSig));
   let n = 0;
   for (const o of [...(ops || [])].sort((a, b) => a.at - b.at)) {
-    if (!(o.tokens < 0) || o.linkSig || Math.abs(o.sol) > 0.0005) continue;
-    const r = real.filter((x) => !used.has(x.sig) && x.at >= o.at && x.at - o.at <= 15 * 60000).sort((a, b) => a.at - b.at)[0];
+    if (!(o.tokens < 0) || o.linkSig || o.sol > 0.0005 || o.sol < -0.003) continue;
+    const spent = (ops || []).filter((x) => x.mint === o.mint && x.tokens > 0 && x.at <= o.at && o.at - x.at < 2 * 86400000).reduce((a, x) => a - Math.min(0, x.sol), 0);
+    const r = real.filter((x) => !used.has(x.sig) && x.at >= o.at && x.at - o.at <= 60 * 60000 && (!(spent > 0) || x.sol <= spent * 5)).sort((a, b) => a.at - b.at)[0];
     if (!r) continue;
     o.sol = r.sol; o.linkSig = r.sig; used.add(r.sig); n++;
   }

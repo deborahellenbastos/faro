@@ -1,7 +1,7 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { avisar } from './push.mjs';
 import { simStep, simCrazy, marketTide } from './sim.mjs';
-import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore, readFavs } from './autobuy.mjs';
+import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore, readFavs, preBuyBlock } from './autobuy.mjs';
 import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry, fakeBuys, peakPassed } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
@@ -415,7 +415,13 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // quando a conta fica em cima do limite de 80%, caso JALU 17/11)
   for (const t of Object.values(tokens)) {
     const f = fakeBuys(t.periods);
-    if (f) t.compraFalsa = { at: now, msg: f.msg, desde: t.compraFalsa?.desde || now };
+    // 20/11: em moeda já sem liquidez a marcação não ajuda (7 de 9 em 19/11). Mínimo em regrasEmTeste.compraFalsa.liquidezMinUsd
+    const liqMin = cfg.regrasEmTeste?.compraFalsa?.liquidezMinUsd ?? 0;
+    if (f && (t.liquidityUsd || 0) >= liqMin) {
+      // registro de cada marcação nova (preço e liquidez da hora) para a análise medir acertos e alarmes falsos
+      if (!t.compraFalsa) state.compraFalsaLog = [...(state.compraFalsaLog || []), { mint: t.mint, symbol: t.symbol, at: now, px: t.priceUsd, liq: t.liquidityUsd, status: t.status, held: !!t.held }].filter((x) => now - x.at < 7 * 86400000).slice(-300);
+      t.compraFalsa = { at: now, msg: f.msg, desde: t.compraFalsa?.desde || now };
+    }
     else if (t.compraFalsa && now - t.compraFalsa.at > 30 * 60000) delete t.compraFalsa;
   }
   // 5d. Sinais de entrada (radar) e de saída (suas posições), com as lições dos vídeos
@@ -473,7 +479,10 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       let ag = null;
       if (!sig.boa) {
         const z = entrySignal(t.candles, ctxA);
-        ag = z.boa ? z : shallowEntry(t.candles, ctxA) || baseBreakout(t.candles, ctxA) || (t.romp && now - t.romp.at <= 10 * 60000 ? t.romp : null);
+        // 20/11: entrada rasa (38,2%) e rompimento curto desligáveis (sinais.entradaRasa / sinais.rompimentoCurto). Até 19/11:
+        // 38,2% com 5 entradas e 5 perdas, rompimentos com 6 e 6 no Agressivo
+        const rasaOn = SG.entradaRasa?.ligado !== false, rompCurtoOn = SG.rompimentoCurto?.ligado !== false;
+        ag = z.boa ? z : (rasaOn && shallowEntry(t.candles, ctxA)) || baseBreakout(t.candles, ctxA) || (rompCurtoOn && t.romp && now - t.romp.at <= 10 * 60000 ? t.romp : null);
       }
       // Trava "pico já passou": vale para o sinal, a compra real e a simulação (normal e agressivo)
       const PP = SG.picoPassou;
@@ -655,7 +664,25 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   if (trader?.canBuy && state.autoCompra?.on && realList.length) {
     try {
       const limits = buyLimits(state, tokens, realCfg, now);
-      const trades = await trader.maybeBuy(realList, state, realCfg, log, limits);
+      // 20/11 (GTE): RugCheck novo, sem cache, nas primeiras candidatas, antes de gastar SOL
+      let okList = realList;
+      if (api.getRugReport && limits.room > 0 && !limits.stopped) {
+        okList = [];
+        for (const t of realList.filter((x) => !limits.bought.has(x.mint) || limits.reentryOk?.has(x.mint)).slice(0, limits.room + 2)) {
+          let r = null;
+          try { r = await api.getRugReport(t.mint); } catch (e) { log(`RugCheck antes da compra falhou em ${t.symbol}: ${e.message}`, true); }
+          const why = preBuyBlock(r, realCfg);
+          if (why) {
+            log(`COMPRA CANCELADA: ${t.symbol} - ${why}`);
+            const tt = tokens[t.mint] || t; // a lista do agressivo é de cópias
+            tt.safety = tt.safety || { level: 'ok', alerts: [] };
+            tt.safety.alerts = [...(tt.safety.alerts || []).filter((a) => a.id !== 'pre-compra'), { id: 'pre-compra', level: 'danger', at: now, msg: `Compra automática cancelada: ${why}` }];
+            tt.safety.level = 'danger';
+          } else okList.push(t);
+          if (okList.length >= limits.room) break;
+        }
+      }
+      const trades = okList.length ? await trader.maybeBuy(okList, state, realCfg, log, limits) : [];
       state.trades.push(...trades);
       for (const x of trades.filter((y) => y.ok && y.sig)) await avisar({ titulo: `Robô comprou: ${x.symbol}`, texto: `Compra automática de ${(x.sol || 0).toFixed(4)} SOL no sinal de boa entrada. A vigia e os stops já estão protegendo.`, mint: x.mint, chave: `compra-${x.sig}` });
       // Compra feita agora: já entra na carteira desta rodada, com entrada e posição (antes só aparecia na rodada seguinte, 5 min depois)

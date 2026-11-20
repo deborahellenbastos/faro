@@ -674,3 +674,31 @@ console.log('Teste da entrada por operação: ok');
   assert.match(run, /NA ZONA SEM ENTRADA/, 'a rodada deve anotar o motivo');
   console.log('Teste do motivo sem entrada: ok');
 }
+
+// 20/11: ajustes da análise de 19/11
+{
+  const { preBuyBlock, jupOk } = await import('./autobuy.mjs');
+  const { linkDelayedProceeds } = await import('./api.mjs');
+  const cfgB = { filtros: { devMaxTokensAnteriores: 5, rugcheckScoreMax: 50 }, busca: { jupiter: { organicMin: 50 } } };
+  // RugCheck novo antes da compra (caso GTE)
+  assert.match(preBuyBlock({ risks: [{ name: 'Creator history of rugged tokens' }] }, cfgB), /histórico de golpes/);
+  assert.match(preBuyBlock({ creatorTokens: new Array(31).fill({}) }, cfgB), /já criou 31/);
+  assert.match(preBuyBlock({ score_normalised: 76 }, cfgB), /76\/100/);
+  assert.equal(preBuyBlock({ creatorTokens: [{}], score_normalised: 20, risks: [{ name: 'Low Liquidity' }] }, cfgB), null);
+  assert.equal(preBuyBlock(null, cfgB), null, 'sem relatório segue');
+  // organic score mínimo só para quem veio só pela Jupiter
+  assert.equal(jupOk({ soJupiter: true, jup: { organicMax: 43 } }, cfgB), false);
+  assert.equal(jupOk({ soJupiter: true, jup: { organicMax: 61 } }, cfgB), true);
+  assert.equal(jupOk({ jup: { organicMax: 10 } }, cfgB), true);
+  // venda paga em CASH: aluguel negativo na venda e pagamento 53 min depois (GTA6IRL, OGTA)
+  const t0 = 2_000_000;
+  const ops = [{ sig: 'b1', at: t0 - 180000, mint: 'G', tokens: 100, sol: -0.0273 }, { sig: 's1', at: t0, mint: 'G', tokens: -100, sol: -0.0015 },
+    { sig: 'b2', at: t0 + 3600000, mint: 'O', tokens: 50, sol: -0.0138 }, { sig: 's2', at: t0 + 5000000, mint: 'O', tokens: -50, sol: 0 }];
+  const ins = [{ sig: 'p1', at: t0 + 660000, sol: 0.0201, by: 'PAY', self: false }, { sig: 'p2', at: t0 + 5000000 + 53 * 60000, sol: 0.0132, by: 'PAY', self: false }];
+  assert.equal(linkDelayedProceeds(ops, ins), 2);
+  assert.equal(ops[1].sol, 0.0201); assert.equal(ops[3].sol, 0.0132);
+  // depósito grande da mesma carteira não vira pagamento de venda pequena
+  const ops2 = [{ sig: 'b', at: t0 - 60000, mint: 'X', tokens: 10, sol: -0.027 }, { sig: 's', at: t0, mint: 'X', tokens: -10, sol: 0 }];
+  assert.equal(linkDelayedProceeds(ops2, [{ sig: 'dep', at: t0 + 600000, sol: 0.203, by: 'PAY', self: false }]), 0);
+}
+console.log('Teste dos ajustes de 20/11 (RugCheck antes da compra, organic da Jupiter, CASH): ok');

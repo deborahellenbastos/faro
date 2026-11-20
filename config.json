@@ -3,7 +3,7 @@
     "enderecoPublico": ""
   },
   "busca": {
-    "idadeMinimaMinutos": 5,
+    "idadeMinimaMinutos": 30,
     "idadePoucaLiquidezMin": 20,
     "poucaLiquidezUsd": 20000,
     "idadeMaximaHoras": 24,
@@ -11,7 +11,8 @@
     "diasAcompanhando": 3,
     "jupiter": {
       "_comentario": "Rankings da Jupiter (em alta, mais negociadas, organic score). false = moedas que só vieram por eles entram no Radar e na simulação, mas o robô não compra de verdade.",
-      "compraReal": false
+      "compraReal": false,
+      "organicMin": 50
     }
   },
   "filtros": {
@@ -132,6 +133,14 @@
       "abaixoPct": 30,
       "minutos": 30
     },
+    "entradaRasa": {
+      "_comentario": "20/11: desligada (entrada na 38,2% do Agressivo). Até 19/11: 5 entradas e 5 perdas na simulação",
+      "ligado": false
+    },
+    "rompimentoCurto": {
+      "_comentario": "20/11: desligado no Agressivo ('pausa perto do topo e rompeu a máxima'). Em 19/11: 4 entradas e 4 stops (-0,044 SOL)",
+      "ligado": false
+    },
     "naoRepetirSeNaoSubiuPct": 10,
     "repeticaoJanelaHoras": 24
   },
@@ -185,7 +194,7 @@
       "valorUsd": 3,
       "notaMin": 50,
       "correcaoMinPct": 15,
-      "correcaoMaxPct": 45,
+      "correcaoMaxPct": 30,
       "alvoPct": 50,
       "alvoMaxPct": 80,
       "forteCompraPct": 60,
@@ -205,6 +214,10 @@
     "cetico": {
       "stopsSeguidos": 2,
       "pausaMin": 45
+    },
+    "compraFalsa": {
+      "_comentario": "20/11: só marca moeda com liquidez de US$ 5 mil ou mais (em 19/11, 7 de 9 marcações eram em moedas já mortas). Cada marcação nova fica em compraFalsaLog para medir acerto e alarme falso",
+      "liquidezMinUsd": 5000
     }
   }
 }
