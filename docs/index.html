@@ -2274,6 +2274,35 @@
     Object.assign(st, { side: side === 'sell' ? 'sell' : 'buy', mode: 'market', unit: unit === 'usd' ? 'usd' : 'sol', amt, slip: slip === 'auto' ? 'auto' : Number(slip) || 'auto', quote: null, msg: null });
     setTimeout(() => onTradeGo(START_MINT), 400);
   }
+  let swDone = false;
+  function runStartSwitch() {
+    if (swDone) return; const raw = new URLSearchParams(location.search).get('sw'); if (!raw) { swDone = true; return; }
+    if (!getPhantom()) return; // a Phantom ainda não injetou: tenta de novo na próxima atualização
+    swDone = true;
+    const i = raw.lastIndexOf('~'), text = raw.slice(0, i), ts = Number(raw.slice(i + 1));
+    const u = new URL(location.href); u.searchParams.delete('sw'); history.replaceState(null, '', u.toString());
+    let done = {}; try { done = JSON.parse(localStorage.getItem('faro-sw-feitos') || '{}'); } catch {}
+    if (!SW_OK.test(text) || !(Date.now() - ts < 10 * 60000) || done[raw]) return;
+    done[raw] = Date.now(); try { localStorage.setItem('faro-sw-feitos', JSON.stringify(Object.fromEntries(Object.entries(done).slice(-30)))); } catch {}
+    const [, k, v] = text.match(/^faro:(\w+)=(\w+)$/);
+    const label = k === 'compra' ? `${v === 'on' ? 'Ligar' : 'Desligar'} a compra automática` : k === 'venda' ? `${v === 'on' ? 'Ligar' : 'Desligar'} a venda automática` : `Trocar o perfil para ${v === 'agressivo' ? 'Agressivo' : 'Conservador'}`;
+    const m = $('ntm');
+    m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>${label}</b><button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <p>Você pediu isso no app do Faro. Toque abaixo e assine na Phantom: é só um aviso para o robô (menos de US$ 0,01 de taxa, não movimenta dinheiro). Vale na próxima rodada, em até 5 min.</p>
+      <button class="btn-rep sw-sign" data-swsign style="height:48px;width:100%;border-radius:14px;border:0;background:#22c55e;color:#04140a;font:inherit;font-weight:800;font-size:16px;margin-top:8px">Assinar na Phantom</button></div>`;
+    m.hidden = false;
+    m.querySelector('[data-swsign]').onclick = async (e) => {
+      const b = e.currentTarget; b.disabled = true; b.textContent = 'Assine na Phantom...';
+      try {
+        const sig = await sendMemo(text);
+        if (k === 'compra') store.set('faro-auto-pend', { on: v === 'on', sig, at: Date.now() });
+        if (k === 'venda') store.set('faro-venda-pend', { on: v === 'on', sig, at: Date.now() });
+        if (k === 'perfil') store.set('faro-perfil-pend', { name: v, sig, at: Date.now() });
+        m.hidden = true; toast(`${label}: pedido enviado. O robô aplica na próxima rodada.`); play('boa');
+      } catch (err) { b.disabled = false; b.textContent = 'Assinar na Phantom'; toast(err?.message?.includes('User rejected') ? 'Cancelado na Phantom' : `Não deu: ${err.message}`); }
+      try { updateLivePill(); } catch {}
+    };
+  }
   // No celular a busca desce para baixo do resumo (o topo fica só com logo, Robô e notificações)
   const MQ = window.matchMedia('(max-width: 700px)');
   function placeSearch() {
@@ -2310,6 +2339,7 @@
       setTimeout(() => { try { const u = new URL(location.href); u.searchParams.delete('m'); u.searchParams.delete('t'); if (u.searchParams.get('op') === '1') u.searchParams.delete('op'); history.replaceState(null, '', u.toString()); } catch {} }, 1500);
     }
     try { runOpMode(); } catch {}
+    try { runStartSwitch(); } catch {}
     if (!data?.tokens || isDemo()) return;
     let entrada = false, ruim = false, bom = false;
     for (const t of Object.values(data.tokens)) {
@@ -2514,6 +2544,10 @@
     document.addEventListener('touchend', () => { if (y0 == null) return; y0 = null; document.body.classList.remove('sheet-dragging'); if (dy > 110) closeSheet(); else document.body.style.removeProperty('--sheet-drag'); dy = 0; });
   }
   // Celular sem a Phantom (Safari ou app da tela inicial): botão que abre esta mesma moeda dentro do navegador da Phantom
+  // 20/11: fora da Phantom (app na tela inicial, Safari) os interruptores abrem o Faro dentro da Phantom com o pedido (?sw=)
+  const SW_OK = /^faro:(compra|venda)=(on|off)$|^faro:perfil=(agressivo|conservador)$/;
+  const phantomMemoLink = (text) => { const u = new URL(location.href); u.hash = ''; ['go', 'm', 't'].forEach((k) => u.searchParams.delete(k)); u.searchParams.set('sw', `${text}~${Date.now()}`); return `https://phantom.app/ul/browse/${encodeURIComponent(u.toString())}?ref=${encodeURIComponent(location.origin)}`; };
+  const isPhone = () => /iPhone|iPad|Android/i.test(navigator.userAgent);
   const phantomLink = (go) => { const u = new URL(location.href); u.hash = ''; u.searchParams.delete('go'); if (ui?.sel?.[ui.tab]) u.searchParams.set('m', ui.sel[ui.tab]); u.searchParams.set('t', Date.now()); if (go) { u.searchParams.set('m', go.mint); u.searchParams.set('go', [go.side, go.amt, go.slip, Date.now(), go.unit || 'sol'].join('~')); } return `https://phantom.app/ul/browse/${encodeURIComponent(u.toString())}?ref=${encodeURIComponent(location.origin)}`; };
   function phantomHelp() {
     const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
@@ -4617,18 +4651,10 @@ function fakeBuys(per = {}) {
       r.querySelector('[data-sellstate]').textContent = S.pend ? (S.pend.on ? 'ligando... (até 5 min)' : 'desligando... (até 5 min)') : S.on ? 'ligada: stops, lucro e golpe' : 'desligada: o robô não vende nada sozinho';
     });
   }
-  async function sendMemo(text) {
-    const ph = getPhantom(); if (!ph) throw new Error('Phantom não encontrada neste navegador');
-    const { publicKey } = await ph.connect();
-    if (data.wallet?.address && publicKey.toString() !== data.wallet.address) throw new Error('A Phantom está em outra carteira. Troque para a carteira do Faro.');
-    const W = await loadWeb3(); const conn = new W.Connection(RPC_URL, 'confirmed'); const { blockhash } = await conn.getLatestBlockhash();
-    const ix = new W.TransactionInstruction({ keys: [{ pubkey: publicKey, isSigner: true, isWritable: false }], programId: new W.PublicKey(MEMO_PROGRAM), data: new TextEncoder().encode(text) });
-    const msg = new W.TransactionMessage({ payerKey: publicKey, recentBlockhash: blockhash, instructions: [ix] }).compileToV0Message();
-    return (await ph.signAndSendTransaction(new W.VersionedTransaction(msg))).signature;
-  }
   document.addEventListener('click', async (e) => {
     const go = e.target.closest('[data-sellsw]'); if (!go || go.disabled) return;
     const on = !sellState().on;
+    if (!getPhantom() && isPhone()) { location.href = phantomMemoLink(`faro:venda=${on ? 'on' : 'off'}`); return; }
     if (!on && !window.confirm('Desligar a venda automática?\n\nO robô para de vender sozinho: stop de perda, stop móvel, escada, lucro, vigia e golpe. Você vende à mão até ligar de novo.')) return;
     go.disabled = true; const stEl = go.closest('[data-sellrow]')?.querySelector('[data-sellstate]'); if (stEl) stEl.textContent = 'assine na Phantom...';
     try {
@@ -4734,6 +4760,7 @@ function fakeBuys(per = {}) {
     const b = e.target.closest('[data-pf]'); if (!b || b.disabled) return;
     const name = b.dataset.pf, P = perfilState();
     if ((P.pend ? P.pend.name : P.name) === name) return;
+    if (!getPhantom() && isPhone()) { location.href = phantomMemoLink(`faro:perfil=${name}`); return; }
     const row = b.closest('[data-pfrow]'); row.querySelectorAll('[data-pf]').forEach((x) => (x.disabled = true));
     row.querySelector('[data-pfstate]').textContent = 'assine na Phantom...';
     try {
@@ -4761,6 +4788,7 @@ function fakeBuys(per = {}) {
     const go = e.target.closest('[data-autosw]');
     if (go && !go.disabled) {
       const on = !autoState().on;
+      if (!getPhantom() && isPhone()) { location.href = phantomMemoLink(`faro:compra=${on ? 'on' : 'off'}`); return; }
       go.disabled = true; const stEl = go.closest('[data-autorow]')?.querySelector('[data-autostate]'); if (stEl) stEl.textContent = 'assine na Phantom...';
       try {
         const sig = await sendAutoSwitch(on);
