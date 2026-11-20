@@ -459,8 +459,8 @@ console.log(JSON.stringify(state.lastRun.counts));
 {
   const cfgT = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
   const A = profileCfg(cfgT, 'agressivo');
-  assert.equal(A.compra.scoreMinimo, 60); assert.equal(A.simulacao.maxAbertas, 3); assert.equal(A.simulacao.riscoRetornoMin, 1.5);
-  assert.equal(cfgT.compra.scoreMinimo, 70); assert.equal(cfgT.simulacao.maxAbertas, 2);
+  assert.equal(A.compra.scoreMinimo, 60); assert.equal(A.simulacao.riscoRetornoMin, 1.5); assert.equal(A.compra.maxComprasPorDia, cfgT.perfis.agressivo.compra.maxComprasPorDia);
+  assert.equal(cfgT.compra.scoreMinimo, 70); assert.equal(cfgT.simulacao.riscoRetornoMin, 2); // a base não muda
   assert.equal(A.filtros.bundlePctMin, cfgT.filtros.bundlePctMin); // travas de golpe iguais
   const memos = [{ sig: 'b', memo: 'faro:perfil=agressivo' }, { sig: 'a', memo: 'faro:perfil=conservador' }];
   assert.equal((await readProfile(memos, async () => true)).name, 'agressivo');

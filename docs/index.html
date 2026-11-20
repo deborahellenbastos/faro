@@ -4565,8 +4565,8 @@ function fakeBuys(per = {}) {
     const m = $('ntm');
     m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Compra automática</b><button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <p>Quando aparecer uma <b>Boa entrada</b> (ou <b>Boa reentrada</b> depois de um stop), o robô compra sozinho, sem a Phantom. As proteções de venda continuam valendo.</p>
-      <h5>Travas</h5><ul class="ntm-list"><li>${per} por compra (a faixa da sua banca)</li><li>Até ${S.maxAbertas ?? 2} abertas e ${c.maxComprasPorDia ?? 5} compras por dia</li>
-        <li>Para no dia se perder ${S.perdaMaxDiaVezesBase ?? 3}x o valor por compra</li><li>Só nota ${c.scoreMinimo ?? 70}+, risco/retorno 1:${S.riscoRetornoMin ?? 2}+ e sem perigo</li></ul>
+      <h5>Travas</h5><ul class="ntm-list"><li>${per} por compra (a faixa da sua banca)</li><li>${(c.maxComprasPorDia ?? 5) >= 99 ? 'Sem limite de compras por dia nem de posições abertas: compra enquanto tiver saldo (guarda 0,01 SOL para as taxas)' : `Até ${S.maxAbertas ?? 2} abertas e ${c.maxComprasPorDia ?? 5} compras por dia`}</li>
+        ${(S.perdaMaxDiaVezesBase ?? 3) >= 99 ? '' : `<li>Para no dia se perder ${S.perdaMaxDiaVezesBase ?? 3}x o valor por compra</li>`}<li>Só nota ${c.scoreMinimo ?? 70}+, risco/retorno 1:${S.riscoRetornoMin ?? 2}+ e sem perigo</li></ul>
       <h5>Como ligar e desligar</h5><p>Pelo switch. A Phantom abre para você assinar um aviso para o robô (menos de US$ 0,01 de taxa, não movimenta dinheiro) e ele passa a valer na próxima rodada, em até 5 min.</p>
       ${A.canBuy ? '' : '<p class="ap-warn">Falta a variável <b>AUTO_BUY = true</b> no GitHub (Settings > Secrets and variables > Actions > Variables). Ela só vale a partir da próxima rodada de trabalho do robô.</p>'}
       <h5>Simulação até agora</h5><p><b>${st?.ops || 0} operações</b>${st?.ops ? `, ${Math.round(st.winRate)}% de acerto, ${(st.pnlSol >= 0 ? '+' : '') + solFmt(st.pnlSol, 4)}` : ''}.</p></div>`;
@@ -4647,6 +4647,7 @@ function fakeBuys(per = {}) {
   function openPerfilInfo() {
     const A = data.config?.perfis?.agressivo || {}, c = data.config?.compra || {}, S = data.config?.simulacao || {};
     const row = (l, a, b) => `<tr><td>${l}</td><td>${a}</td><td>${b}</td></tr>`;
+    const lim = (v, suf = '') => (v >= 99 ? 'sem limite' : `${v}${suf}`);
     const m = $('ntm');
     m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Perfil de operação</b><button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
       <p>O perfil decide quando o robô <b>compra</b>. As travas contra golpe, a curva da pump.fun (nunca compra), os stops e a vigia são iguais nos dois.</p>
@@ -4654,9 +4655,9 @@ function fakeBuys(per = {}) {
         ${row('Nota mínima', c.scoreMinimo ?? 70, `${A.compra?.scoreMinimo ?? 60} (ou a da aprovação)`)}
         ${row('Entradas', 'zona de 50% a 61,8%', 'também 38,2% em tendência forte e rompimentos')}
         ${row('Risco/retorno mínimo', `1:${S.riscoRetornoMin ?? 2}`, `1:${String(A.simulacao?.riscoRetornoMin ?? 1.5).replace('.', ',')}`)}
-        ${row('Abertas ao mesmo tempo', S.maxAbertas ?? 2, A.simulacao?.maxAbertas ?? 3)}
-        ${row('Compras por dia', c.maxComprasPorDia ?? 5, A.compra?.maxComprasPorDia ?? 8)}
-        ${row('Perda máxima no dia', `${S.perdaMaxDiaVezesBase ?? 3}x uma operação`, `${A.simulacao?.perdaMaxDiaVezesBase ?? 4}x uma operação`)}
+        ${row('Abertas ao mesmo tempo', lim(S.maxAbertas ?? 2), lim(A.simulacao?.maxAbertas ?? 3))}
+        ${row('Compras por dia', lim(c.maxComprasPorDia ?? 5), lim(A.compra?.maxComprasPorDia ?? 8))}
+        ${row('Perda máxima no dia', lim(S.perdaMaxDiaVezesBase ?? 3, 'x uma operação'), lim(A.simulacao?.perdaMaxDiaVezesBase ?? 4, 'x uma operação'))}
       </tbody></table>
       <p class="sp-note">Os dois perfis rodam o tempo todo na simulação (gaveta do Robô, aba Simulação). A troca é assinada pela sua carteira (menos de US$ 0,01 de taxa, não movimenta dinheiro) e vale na próxima rodada do robô.</p></div>`;
     m.hidden = false;

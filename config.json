@@ -39,7 +39,8 @@
     "sinalValidoMin": 10,
     "minutosNoRadarMin": 15,
     "solPorCompra": 0.05,
-    "maxComprasPorDia": 5,
+    "maxComprasPorDia": 999,
+    "_travas": "20/11 (pedido da Kerah: 'se tem saldo, deixa o garoto ser feliz'): sem limite de compras por dia, de posições abertas nem de perda do dia. Antes: 5 compras, 2 abertas, perda de 3x o valor da compra. Continua: reserva de 0,01 SOL para as taxas das vendas, uma compra por moeda (reentrada só depois de stop) e todas as checagens de segurança",
     "scoreMinimo": 70,
     "slippagePct": 10,
     "impactoPrecoMaxPct": 5,
@@ -165,8 +166,8 @@
       "ligado": true,
       "solidaMin": 30
     },
-    "maxAbertas": 2,
-    "perdaMaxDiaVezesBase": 3,
+    "maxAbertas": 99,
+    "perdaMaxDiaVezesBase": 999,
     "riscoRetornoMin": 2,
     "stopPadraoPct": 15,
     "alvoPadraoPct": 100,
@@ -180,12 +181,12 @@
     "agressivo": {
       "compra": {
         "scoreMinimo": 60,
-        "maxComprasPorDia": 8
+        "maxComprasPorDia": 999
       },
       "simulacao": {
         "riscoRetornoMin": 1.5,
-        "maxAbertas": 3,
-        "perdaMaxDiaVezesBase": 4
+        "maxAbertas": 99,
+        "perdaMaxDiaVezesBase": 999
       }
     },
     "enlouquecido": {
