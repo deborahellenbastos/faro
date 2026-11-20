@@ -55,5 +55,23 @@ else {
   }
 }
 
+// 4. RPC (opcional): se SOLANA_RPC_URL estiver preenchido (ex.: Helius), pede o saldo da carteira, sem mostrar o endereço do RPC
+const rpc = env('SOLANA_RPC_URL');
+if (!rpc) ok('SOLANA_RPC_URL vazio: usando o RPC público (mais lento)');
+else if (!/^https:\/\//.test(rpc)) ruim('SOLANA_RPC_URL precisa começar com https:// (copie a URL inteira do painel da Helius, com o ?api-key=...)');
+else {
+  try {
+    const t0 = Date.now();
+    const r = await fetch(rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [wallet || '11111111111111111111111111111111'] }) });
+    const j = await r.json().catch(() => null);
+    const host = (() => { try { return new URL(rpc).hostname; } catch { return '?'; } })();
+    if (r.ok && j?.result) ok(`SOLANA_RPC_URL responde (${host}, ${Date.now() - t0} ms${wallet ? `, saldo ${(j.result.value / 1e9).toFixed(4)} SOL` : ''})`);
+    else ruim(`SOLANA_RPC_URL recusado (${host}, HTTP ${r.status}${r.status === 401 ? ': chave errada ou incompleta' : ''}). Deixe vazio para voltar ao público.`);
+  } catch {
+    ruim('Não consegui falar com o SOLANA_RPC_URL agora. Confira a URL ou deixe vazio para voltar ao público.');
+  }
+}
+
 console.log(falhas ? `\n${falhas} problema(s). Corrija antes de virar o robô para o servidor.` : '\nTudo certo. O robô pode comprar e vender com esses segredos.');
 process.exit(falhas ? 1 : 0);
