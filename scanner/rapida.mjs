@@ -98,5 +98,6 @@ export function rapidStats(closed, open) {
   const avg = (a, k) => (a.length ? a.reduce((s, x) => s + x[k], 0) / a.length : 0);
   return { ops: closed.length, open: open.length, winRate: closed.length ? (w.length / closed.length) * 100 : 0,
     pnlSol: closed.reduce((s, x) => s + x.pnlSol, 0), avgWin: avg(w, 'pnlPct'), avgLoss: avg(l, 'pnlPct'),
-    avgMin: closed.length ? closed.reduce((s, x) => s + (x.exitAt - x.at), 0) / closed.length / MIN : 0 };
+    avgMin: closed.length ? closed.reduce((s, x) => s + (x.exitAt - x.at), 0) / closed.length / MIN : 0,
+    regras: { tendBaixa: (() => { const x = closed.filter((o) => o.tendBaixa); return { ops: x.length, pnlSol: x.reduce((a, o) => a + o.pnlSol, 0), wins: x.filter((o) => o.pnlPct > 0).length }; })() } };
 }

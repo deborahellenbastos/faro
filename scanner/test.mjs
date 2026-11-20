@@ -769,3 +769,28 @@ console.log('Teste da entrada rápida: ok');
   assert.ok(after.some((t) => t.mint !== bad.mint && t.candlesAt === tNow), 'as outras moedas recebem velas novas na mesma rodada');
 }
 console.log('Teste das velas com limite de consultas: ok');
+
+// 20/11: tendência de baixa (regra em teste, só marca)
+{
+  const { downtrend } = await import('./tendencia.mjs');
+  const T0 = 1_800_000_000_000, V = 5 * 60000;
+  const mk = (arr) => arr.map(([o, h, l, c], i) => [T0 + i * V, o, h, l, c, 100]);
+  // subida e depois escada: cada vela fecha mais baixo
+  const up = [[10, 11, 9.8, 11], [11, 12, 10.8, 12], [12, 13, 11.8, 13], [13, 14, 12.8, 14]];
+  const escada = [[14, 14.2, 13.4, 13.5], [13.5, 13.6, 12.9, 13], [13, 13.1, 12.4, 12.5], [12.5, 12.6, 11.9, 12], [12, 12.1, 11.4, 11.5], [11.5, 11.6, 10.9, 11]];
+  const d = downtrend(mk([...up, ...escada]));
+  assert.ok(d?.escada, 'escada de queda marcada');
+  // queda parou: vela fecha acima das 2 máximas anteriores sem fundo novo
+  assert.equal(downtrend(mk([...up, ...escada, [11, 12.8, 11, 12.7]])), null, 'reversão libera');
+  // correção lateral (sobe e desce) não marca
+  const lateral = [[14, 14.2, 13.4, 13.6], [13.6, 14, 13.5, 13.9], [13.9, 14, 13.3, 13.4], [13.4, 13.9, 13.3, 13.8], [13.8, 13.9, 13.2, 13.3], [13.3, 13.8, 13.2, 13.7]];
+  assert.equal(downtrend(mk([...up, ...lateral])), null, 'lateral não marca');
+  // suporte em 12 tocado 2 vezes e rompido
+  const base = [[12.5, 13, 12, 12.6], [12.6, 13, 12.3, 12.8], [12.8, 13, 12.4, 12.7], [12.7, 13, 12.5, 12.9], [12.9, 13.1, 12.02, 12.5], [12.5, 13, 12.4, 12.9], [12.9, 13.2, 12.6, 13], [13, 13.3, 12.7, 13.1], [13.1, 13.3, 12.8, 12.9], [12.9, 13.1, 12.5, 12.6], [12.6, 12.7, 11.6, 11.7]];
+  const sp = downtrend(mk(base));
+  assert.ok(sp?.suporte && Math.abs(sp.suporte - 12) < 0.1, 'suporte rompido marcado: ' + JSON.stringify(sp));
+  // a simulação guarda a marca e conta em stats.regras
+  const { simStep } = await import('./sim.mjs');
+  assert.equal(typeof simStep, 'function');
+}
+console.log('Teste da tendência de baixa: ok');

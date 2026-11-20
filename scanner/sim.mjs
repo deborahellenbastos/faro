@@ -6,6 +6,7 @@
 
 import { trailStop } from './signals.mjs';
 import { jupOk } from './autobuy.mjs';
+import { downtrend } from './tendencia.mjs';
 
 const pct = (a, b) => (b ? (a / b - 1) * 100 : 0);
 
@@ -21,7 +22,9 @@ export function skepticOn(closed, now, o = {}) {
   const last = (closed || []).slice(0, o.stopsSeguidos ?? 2);
   return last.length >= (o.stopsSeguidos ?? 2) && last.every((x) => /stop/.test(x.why || '') && !/móvel/.test(x.why || '')) && now - last[0].exitAt < (o.pausaMin ?? 45) * 60000;
 }
-const ruleTags = (state, sim, now) => ({ ...(state.mare?.vermelha ? { mare: true } : {}), ...(skepticOn(sim.closed, now) ? { cetico: true } : {}) });
+// 20/11: tendência de baixa (velas fechando cada vez mais baixo ou suporte rompido) também só marca, para medir
+const ruleTags = (state, sim, now, t) => { const d = t ? downtrend(t.candles) : null;
+  return { ...(state.mare?.vermelha ? { mare: true } : {}), ...(skepticOn(sim.closed, now) ? { cetico: true } : {}), ...(d ? { tendBaixa: d.msg } : {}) }; };
 // Volume sumiu (regra de saída em teste): já no lucro (+10% ou mais) e o volume das 2 últimas velas de 5 min caiu 60% ou mais
 // em relação à vela de maior volume desde a entrada. Só anota o preço desse momento; a operação segue pelas regras normais.
 export function volumeFade(t, o, px, f = {}) {
@@ -38,7 +41,7 @@ const ruleStats = (c, cost = 0.03) => {
   const f = (k) => { const x = c.filter((o) => o[k]); return { ops: x.length, pnlSol: x.reduce((a, o) => a + o.pnlSol, 0), wins: x.filter((o) => o.pnlPct > 0).length }; };
   const vf = c.filter((o) => o.volFade?.px > 0);
   const ifExit = vf.reduce((a, o) => a + o.sol * ((o.volFade.px / o.entry) * (1 - cost) / (1 + cost) - 1), 0);
-  return { mare: f('mare'), cetico: f('cetico'), volume: { ops: vf.length, pnlSol: vf.reduce((a, o) => a + o.pnlSol, 0), pnlSeSaisse: ifExit } };
+  return { mare: f('mare'), cetico: f('cetico'), tendBaixa: f('tendBaixa'), volume: { ops: vf.length, pnlSol: vf.reduce((a, o) => a + o.pnlSol, 0), pnlSeSaisse: ifExit } };
 };
 
 // Stop no fundo recente (entre -8% e -40%) ou -25%; alvo no topo anterior (se 30%+ acima) ou +100%
@@ -119,7 +122,7 @@ export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, can
     const g = t.sinal, E = t.priceUsd;
     if (!(E > 0) || !(g.stop > 0 && g.stop < E)) continue;
     const tp = E * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);
-    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}), ...(t._romp ? { romp: true } : {}), ...(t._notaAprov ? { notaAprov: true, approvalScore: t.approvalScore } : {}), ...(t._agrTipo ? { tipo: t._agrTipo } : {}), ...ruleTags(state, sim, now) });
+    sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: E, stop: g.stop, tp, rr: g.rr, score: t.score, sol: base, sinal: g.msg, ...(t._simCurva && t.dexId === 'pumpfun' ? { curva: true } : {}), ...(t._romp ? { romp: true } : {}), ...(t._notaAprov ? { notaAprov: true, approvalScore: t.approvalScore } : {}), ...(t._agrTipo ? { tipo: t._agrTipo } : {}), ...ruleTags(state, sim, now, t) });
     logS(`SIMULAÇÃO: entrou em ${t.symbol} no sinal de ${t._romp ? 'rompimento' : 'boa entrada'}${t._notaAprov ? ` (pela nota da aprovação ${t.approvalScore}, agora ${t.score})` : ''} a ${E} (stop ${pct(g.stop, E).toFixed(0)}%, 1:${g.rr.toFixed(1)})`);
   }
 
@@ -214,7 +217,7 @@ export function simCrazy({ state, tokens, cfg, now, log, solUsd }) {
       const g = crazyEntry(t, now, L);
       if (!g) continue;
       sim.done[t.mint] = now;
-      sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: g.px, sol, usd, score: t.score, recuo: g.recuo, stop: g.px * (1 - (L.stopPct ?? 20) / 100), tp: g.px * (1 + (L.alvoPct ?? 50) / 100), rr: (L.alvoPct ?? 50) / (L.stopPct ?? 20), sinal: `Primeira correção (-${g.recuo.toFixed(0)}% do topo) com reação`, ...ruleTags(state, sim, now) });
+      sim.open.push({ mint: t.mint, symbol: t.symbol, at: now, entry: g.px, sol, usd, score: t.score, recuo: g.recuo, stop: g.px * (1 - (L.stopPct ?? 20) / 100), tp: g.px * (1 + (L.alvoPct ?? 50) / 100), rr: (L.alvoPct ?? 50) / (L.stopPct ?? 20), sinal: `Primeira correção (-${g.recuo.toFixed(0)}% do topo) com reação`, ...ruleTags(state, sim, now, t) });
       log(`SIMULAÇÃO CRAZY: entrou em ${t.symbol} na primeira correção (-${g.recuo.toFixed(0)}% do topo), US$ ${usd}`);
     }
   }

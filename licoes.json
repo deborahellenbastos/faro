@@ -460,6 +460,18 @@
       "regra": "Teste só na simulação desde 20/11, a pedido da Kerah: vigia de entrada (scanner/entrada.mjs, config entradaRapida). Ela olha as aprovadas a cada 10 s, monta velas de 1 min e entra quando a correção devolveu de 38,2% a 61,8% da subida, com vela verde fechando acima da máxima da anterior, fundo mais alto, liquidez de pé (caiu no máximo 10% em 10 min), compras dominando em 5 min, sem compras falsas e sem 'pico já passou'. Sai com stop -15%, stop móvel regra A, +100% ou liquidez -30% em 5 min. Resultado em state.simRapida (card 'Entrada rápida' na simulação do painel). Comparar com o Conservador por 2 a 3 dias antes de ligar na compra real.",
       "status": "em teste",
       "tipo": "compra"
+    },
+    {
+      "data": "2026-11-20",
+      "titulo": "Comprar com a tendência de baixa: velas fechando mais baixo e suporte rompido",
+      "moedas": [
+        "GTE",
+        "MAGACITY"
+      ],
+      "aconteceu": "A Kerah não compra quando as velas estão fechando cada vez mais baixo e quebrando zonas de suporte. O robô só olhava a última vela ('fundo ainda caindo' e uma vela verde acima da anterior). Uma vela verde no meio de uma escada de queda bastava para a 'Boa entrada'. Ele também não guardava os suportes horizontais.",
+      "regra": "Teste só na simulação desde 20/11, a pedido da Kerah (scanner/tendencia.mjs): marca a entrada como 'tendência de baixa' quando 4 das 5 últimas velas de 5 min fecharam mais baixo, ou 3 dos 5 passos tiveram topo e fundo mais baixos, ou o preço fechou 2%+ abaixo de um suporte tocado 2+ vezes antes. Libera quando uma vela fecha acima das máximas das 2 anteriores sem fazer fundo novo. Não bloqueia nada: só marca, nas simulações (Conservador, Agressivo, Crazy e Entrada rápida), e conta em stats.regras.tendBaixa. A análise da noite compara o resultado das entradas marcadas com o das outras para decidir se vira trava.",
+      "status": "em teste",
+      "tipo": "sinal"
     }
   ]
 }

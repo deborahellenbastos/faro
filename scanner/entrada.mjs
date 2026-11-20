@@ -9,6 +9,7 @@ import { decrypt } from './vault.mjs';
 import { getMarketData } from './api.mjs';
 import { summarizeMarket } from './analyze.mjs';
 import { addTick, addLiq, rapidSignal, rapidExit, rapidStats } from './rapida.mjs';
+import { downtrend } from './tendencia.mjs';
 
 export const MEM = process.env.FARO_ENTRADA_MEM || '/tmp/faro-entrada.json';
 const LOCK = MEM.replace(/\.json$/, '') + '.lock';
@@ -104,6 +105,7 @@ while (Date.now() < until) {
       const o = { mint: m, symbol: t.symbol, at: now, entry: g.px, sol, score: t.score, recuo: g.recuo, fundo: g.fundo, peakMove: g.peak,
         stop: g.px * (1 - (R.stopPct ?? 15) / 100), tp: g.px * (1 + (R.alvoPct ?? 100) / 100), rr: (R.alvoPct ?? 100) / (R.stopPct ?? 15),
         sinal: `Entrada rápida: correção de ${g.recuo.toFixed(0)}% da subida e reação no 1 min`, sinalRodada: t.sinal?.fase || null, liq: s.liquidityUsd, soJupiter: !!t.soJupiter };
+      { const d = downtrend(t.candles); if (d) o.tendBaixa = d.msg; } // regra em teste: só marca
       mem.open.push(o); today.push(o);
       log(`SIMULAÇÃO RÁPIDA: entrou em ${t.symbol} a US$ ${g.px.toPrecision(4)} (correção ${g.recuo.toFixed(0)}%, liquidez US$ ${Math.round(s.liquidityUsd)})`);
     }
