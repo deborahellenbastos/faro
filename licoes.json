@@ -313,8 +313,8 @@
         "MINNIE"
       ],
       "aconteceu": "RYANAIR: 5 entradas de 10:04 a 11:21, com 4 stops seguidos, -US$ 3,08. DCCN: 3 entradas, 2 stops, -US$ 2,44. KIM: 3 entradas, -US$ 2,19. MINNIE: 3 entradas, -US$ 2,19. As quatro somam -US$ 9,90, mais de um terço do prejuízo do dia, e todas viraram rug ou caíram mais de 60% depois.",
-      "regra": "Proposta: o Cético por moeda. Depois de 2 stops na mesma moeda no dia, o painel avisa e trava nova compra nela por 60 min.",
-      "status": "sugerida",
+      "regra": "Proposta: o Cético por moeda. Depois de 2 stops na mesma moeda no dia, o painel avisa e trava nova compra nela por 60 min. Aplicada em 20/11 no painel, a pedido da Kerah: depois de 2 operações fechadas no prejuízo na mesma moeda no dia, o botão Comprar vira 'Pausa nas compras', com o botão 'Quero comprar mesmo assim'.",
+      "status": "aplicada",
       "tipo": "compra"
     },
     {
@@ -326,8 +326,8 @@
         "DCTY"
       ],
       "aconteceu": "Três compras manuais em moedas que o Faro já tinha reprovado por carteiras ligadas: Christmas (92 carteiras, reprovada às 07:42, comprada às 08:11, rug com a liquidez zerada), controller (8 carteiras, reprovada às 04:58, comprada às 08:12, -15%) e DCTY (24 carteiras, reprovada às 13:53, comprada às 14:04, -38%). As três somaram -US$ 1,92.",
-      "regra": "Proposta: no botão Comprar, se a moeda estiver reprovada, o painel mostra o motivo da reprovação e pede uma segunda confirmação. Só avisa, não trava.",
-      "status": "sugerida",
+      "regra": "Proposta: no botão Comprar, se a moeda estiver reprovada, o painel mostra o motivo da reprovação e pede uma segunda confirmação. Só avisa, não trava. Conferido em 20/11: o painel já mostra 'Compra bloqueada' em moeda reprovada ou em perigo, com o botão 'Quero comprar mesmo assim'. Em 19/11 ela não comprou nenhuma reprovada por insiders.",
+      "status": "aplicada",
       "tipo": "painel"
     },
     {
@@ -344,8 +344,8 @@
         "DACT"
       ],
       "aconteceu": "53 compras em 28 moedas, 51 delas manuais, das 07:10 às 21:03. Só 5 dessas moedas estavam aprovadas no Radar na hora da compra. As operações do dia deram -US$ 12,58 (-9% de US$ 134,53 aplicados), 6 de 28 no lucro, e a banca foi de cerca de US$ 16,30 para US$ 1,06 (-94%). Desde as 15:02, a compra automática falhou 5 vezes por falta de SOL.",
-      "regra": "Proposta: trava de perda do dia também para a compra manual. Depois de perder 3x o valor base no dia (cerca de US$ 10,50), ou a partir da 10ª compra manual, o painel mostra o resultado do dia e a banca antes de cada compra e pede confirmação.",
-      "status": "sugerida",
+      "regra": "Proposta: trava de perda do dia também para a compra manual. Depois de perder 3x o valor base no dia (cerca de US$ 10,50), ou a partir da 10ª compra manual, o painel mostra o resultado do dia e a banca antes de cada compra e pede confirmação. Aplicada em 20/11 no painel, a pedido da Kerah: quando as operações fechadas do dia já perderam 30% do saldo do começo do dia (config compra.travaPerdaDiaManualPct), o botão Comprar vira 'Pausa nas compras', com o botão 'Quero comprar mesmo assim'.",
+      "status": "aplicada",
       "tipo": "compra"
     },
     {

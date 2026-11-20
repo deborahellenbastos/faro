@@ -43,6 +43,7 @@
     "scoreMinimo": 70,
     "slippagePct": 10,
     "impactoPrecoMaxPct": 5,
+    "travaPerdaDiaManualPct": 30,
     "faixas": [
       {
         "bancaMinUsd": 0,

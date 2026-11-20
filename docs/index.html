@@ -3690,6 +3690,21 @@ function fakeBuys(per = {}) {
   const tradeState = (mint) => (ui.trade[mint] = ui.trade[mint] || { side: 'buy', mode: 'market', unit: store.get('faro-unit', 'sol'), amt: '', slip: 'auto', quote: null, msg: null, busy: false, lTrigger: '', lTp: '', lSl: '', lDays: 7 });
   const pctPrice = (t, p) => (t.priceUsd ? pxFmt(t.priceUsd * (1 + p / 100)) : '');
 
+  // 20/11: travas da compra manual (pedido da Kerah). Moeda com 2+ operações fechadas no prejuízo hoje, ou perda do dia
+  // já em 30% do saldo do começo do dia. Em 18/11 as recompras depois de stop somaram -US$ 7,50. Dá para passar por cima.
+  function manualLock(t) {
+    const d0 = new Date(); d0.setHours(0, 0, 0, 0); const since = d0.getTime();
+    const ops = (data.wallet?.ops || []).filter((o) => o.at >= since && o.mint && o.tokens).sort((a, b) => a.at - b.at);
+    const trips = (list) => { let tok = 0, sol = 0, out = []; for (const o of list) { tok += o.tokens; sol += o.sol || 0; if (tok <= Math.abs(o.tokens) * 0.01 && o.tokens < 0) { out.push(sol); tok = 0; sol = 0; } } return out; };
+    const mine = trips(ops.filter((o) => o.mint === t.mint)).filter((x) => x < 0).length;
+    if (mine >= 2) return `Você já fechou ${mine} operações no prejuízo em ${esc(t.symbol)} hoje. Em 18/11, recomprar depois de stop somou -US$ 7,50 em 11 moedas.`;
+    const byMint = {}; for (const o of ops) (byMint[o.mint] = byMint[o.mint] || []).push(o);
+    const lossSol = Object.values(byMint).flatMap(trips).reduce((a, x) => a + x, 0);
+    const bal = data.wallet?.solBalance, start = bal != null ? bal - ops.reduce((a, o) => a + (o.sol || 0), 0) : null;
+    const lim = data.config?.compra?.travaPerdaDiaManualPct ?? 30;
+    if (start > 0 && lossSol < 0 && -lossSol >= start * lim / 100) return `As operações fechadas hoje já perderam ${solFmt(-lossSol, 4)} (${Math.round(-lossSol / start * 100)}% do saldo do começo do dia). Melhor parar por hoje.`;
+    return null;
+  }
   function tradeBlock(t) {
     const st = tradeState(t.mint);
     const risky = !t.held && (levelOf(t) === 'danger' || t.status === 'reprovada');
@@ -3697,6 +3712,12 @@ function fakeBuys(per = {}) {
       return `<section class="panel trade"><div class="tbody risk-lock">${ICON.warn}<b>Compra bloqueada</b>
         <span>${t.status === 'reprovada' ? 'Essa moeda foi reprovada nos filtros de segurança.' : 'Essa moeda virou perigo depois da aprovação.'} O Faro não deixa comprar por aqui para evitar um clique sem querer.</span>
         <button class="linkbtn" data-tunlock="${esc(t.mint)}">Quero comprar mesmo assim</button></div></section>`;
+    }
+    const lock = !t.held && !st.unlockLock && manualLock(t);
+    if (lock) {
+      return `<section class="panel trade"><div class="tbody risk-lock">${ICON.warn}<b>Pausa nas compras</b>
+        <span>${lock}</span>
+        <button class="linkbtn" data-tunlock2="${esc(t.mint)}">Quero comprar mesmo assim</button></div></section>`;
     }
     if (!t.held && st.side === 'sell') st.side = 'buy';
     const buy = st.side === 'buy';
@@ -5811,6 +5832,8 @@ function fakeBuys(per = {}) {
   document.addEventListener('click', (e) => {
     const ul = e.target.closest('[data-tunlock]');
     if (ul) { tradeState(ul.dataset.tunlock).unlockRisk = true; return render(); }
+    const ul2 = e.target.closest('[data-tunlock2]');
+    if (ul2) { tradeState(ul2.dataset.tunlock2).unlockLock = true; return render(); }
     const el = e.target.closest('[data-tside],[data-tunit],[data-tp],[data-tpct],[data-tslip],[data-tgo],[data-tcancel],[data-temerg]'); if (!el || el.disabled) return;
     const mint = el.dataset.tmint || el.dataset.tgo || el.dataset.tcancel || el.dataset.tunit || el.dataset.temerg;
     if (el.dataset.temerg) { onEmergency(mint); return; } const st = tradeState(mint); const t = data.tokens[mint];
