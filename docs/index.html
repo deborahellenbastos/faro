@@ -4989,11 +4989,13 @@ function fakeBuys(per = {}) {
   }
 
   // Troca o conteúdo do detalhe preservando a caixa do gráfico (senão o gráfico recarregaria a cada segundo)
-  // Moeda da carteira que virou perigo: botão de venda de emergência fixo embaixo, um toque só
+  // Botão flutuante de venda de emergência: desligado a pedido da Kerah (19/11). A venda de emergência
+  // continua no detalhe da moeda e no topo do gráfico. Para religar, troque EMERG_DOCK para true
+  const EMERG_DOCK = false;
   function updateEmergDock(t) {
     let d = $('emerg-dock');
     if (!d) { d = document.createElement('div'); d.id = 'emerg-dock'; d.hidden = true; document.body.appendChild(d); }
-    const on = !!(t && t.held && (t.heldAmount || 0) > 0 && levelOf(t) === 'danger' && !isLost(t));
+    const on = EMERG_DOCK && !!(t && t.held && (t.heldAmount || 0) > 0 && levelOf(t) === 'danger' && !isLost(t));
     d.hidden = !on; document.body.classList.toggle('has-emerg', on);
     if (!on) return;
     const st = tradeState(t.mint);
