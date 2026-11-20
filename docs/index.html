@@ -659,7 +659,7 @@
   .pf-table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0 12px; }
   .pf-table th, .pf-table td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
   .pf-table th { color: var(--muted); font-size: 13px; } .pf-table td:first-child { color: var(--muted); }
-  .pf-cmps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: var(--sp-4); }
+  .pf-cmps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: var(--sp-4); }
   .pf-cmp { text-align: left; padding: 9px 10px; min-width: 0; border-radius: var(--r-2); border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-family: inherit; color: var(--text); display: grid; gap: 2px; }
   .pf-cmp.on { border-color: var(--line-2); background: var(--panel-3); }
   .pf-cmp.inuse { box-shadow: inset 3px 0 0 var(--green); }
@@ -5447,13 +5447,15 @@ function fakeBuys(per = {}) {
   let simView = store.get('faro-simview', 'conservador');
   function renderSim() {
     const el = $('rt-sim'); if (!el) return;
-    const sim = simView === 'agressivo' ? data.simAgr : simView === 'enlouquecido' ? data.simLouco : data.sim, st = sim?.stats;
+    const sim = simView === 'agressivo' ? data.simAgr : simView === 'enlouquecido' ? data.simLouco : simView === 'rapida' ? data.simRapida : data.sim, st = sim?.stats;
     const cmpCard = (name, label, x) => { const s2 = x?.stats; return `<button class="pf-cmp ${simView === name ? 'on' : ''} ${name === perfilOf() ? 'inuse' : ''}" data-simview="${name}">
-        <span>${label}</span>${name === perfilOf() ? '<em class="pf-live">em uso</em>' : name === 'enlouquecido' ? '<em class="pf-sim">só simulação</em>' : ''}
+        <span>${label}</span>${name === perfilOf() ? '<em class="pf-live">em uso</em>' : ['enlouquecido', 'rapida'].includes(name) ? '<em class="pf-sim">só simulação</em>' : ''}
         <b class="num ${cls(s2?.pnlSol)}">${(s2?.pnlSol || 0) >= 0 ? '+' : ''}${solFmt(s2?.pnlSol || 0, 4)}</b>
         <small>${s2?.ops || 0} operações - ${Math.round(s2?.winRate || 0)}% de acerto${s2?.open ? ` - ${s2.open} abertas` : ''}</small></button>`; };
-    const cmp = `<div class="pf-cmps">${cmpCard('conservador', 'Conservador', data.sim)}${cmpCard('agressivo', 'Agressivo', data.simAgr)}${cmpCard('enlouquecido', 'Crazy', data.simLouco)}</div>
+    const cmp = `<div class="pf-cmps">${cmpCard('conservador', 'Conservador', data.sim)}${cmpCard('agressivo', 'Agressivo', data.simAgr)}${cmpCard('enlouquecido', 'Crazy', data.simLouco)}${cmpCard('rapida', 'Entrada rápida', data.simRapida)}</div>
       ${simView === 'enlouquecido' ? `<p class="note"><b>Crazy (só simulação):</b> entra na primeira correção depois que a moeda chega ao Radar, com US$ ${data.config?.perfis?.enlouquecido?.valorUsd ?? 3}, e vende em +50% (segura até +80% se a alta estiver muito forte). Stop -20% e no máximo 2h por operação.${st?.avgMin ? ` Tempo médio por operação: ${Math.round(st.avgMin)} min.` : ''}</p>` : ''}`;
+    const notaRap = simView === 'rapida' ? `<p class="note"><b>Entrada rápida (só simulação, teste de 20/11):</b> a vigia de entrada olha as moedas do Radar a cada ${data.config?.entradaRapida?.segundos ?? 10} s e entra quando a correção devolveu de 38,2% a 61,8% da subida e o gráfico de 1 min reage, com a liquidez de pé. Sai pelas mesmas regras do robô.${st?.avgMin ? ` Tempo médio por operação: ${Math.round(st.avgMin)} min.` : ''}</p>` : '';
+    if (simView === 'rapida' && !sim) { el.innerHTML = cmp + notaRap + '<p class="note">A entrada rápida começa nos próximos minutos, assim que a vigia do servidor juntar alguns minutos de velas de 1 min.</p>'; return; }
     if (simView === 'enlouquecido' && !sim) { el.innerHTML = cmp + '<p class="note">A simulação do Crazy começa na próxima rodada do robô.</p>'; return; }
     if (simView === 'agressivo' && !sim) { el.innerHTML = cmp + '<p class="note">A simulação do perfil Agressivo começa na próxima rodada do robô. Ela roda sempre, mesmo com o Conservador ativo, para você comparar.</p>'; return; }
     if (!sim) { el.innerHTML = '<p class="note">A simulação começa na próxima rodada do robô. A cada sinal de Boa entrada (nota 70+, risco/retorno 1:2 ou melhor), ele "entra" de mentira com o valor por operação e sai pelas mesmas regras do robô de verdade. Nenhum dinheiro é usado.</p>'; return; }
@@ -5463,7 +5465,7 @@ function fakeBuys(per = {}) {
     const per = 10, pages = Math.max(1, Math.ceil(ops.length / per)); simPage = Math.min(simPage, pages);
     const whyTxt = { alvo: 'bateu o +100%', stop: 'bateu o stop', 'stop móvel': 'stop móvel', perigo: 'virou perigo', tempo: 'tempo máximo', sumiu: 'saiu do radar' };
     const pass = st && st.ops >= 30 && st.pnlSol > 0;
-    el.innerHTML = cmp + `
+    el.innerHTML = cmp + notaRap + `
       <div class="sim-stats">
         <div><span>Operações</span><b class="num">${st?.ops || 0}</b><small>${st?.open || 0} abertas</small></div>
         <div><span>Acerto</span><b class="num">${(st?.winRate || 0).toFixed(0)}%</b><small>ganho médio ${pct(st?.avgWin || 0)} - perda média ${pct(st?.avgLoss || 0)}</small></div>

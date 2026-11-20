@@ -557,6 +557,11 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // 6c. O que a vigia rápida fez entre as rodadas
   let vig = null;
   try { vig = JSON.parse(await (await import('node:fs/promises')).readFile('/tmp/faro-vigia.json', 'utf8')); } catch {}
+  // 20/11: simulação da entrada rápida (vigia de entrada, só simulação) vai para os dados do painel
+  try {
+    const er = JSON.parse(await (await import('node:fs/promises')).readFile('/tmp/faro-entrada.json', 'utf8'));
+    if (er && Array.isArray(er.closed)) state.simRapida = { open: er.open || [], closed: (er.closed || []).slice(0, 300), stats: er.stats, startedAt: er.startedAt, updatedAt: er.updatedAt };
+  } catch {}
   for (const [mint, a] of Object.entries(vig?.sold || {})) {
     const t = tokens[mint]; if (!t || !a || t.watchSell?.at === a.at) continue;
     t.watchSell = a;

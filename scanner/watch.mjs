@@ -23,6 +23,15 @@ const log = (m, e) => (e ? console.error : console.log)(`[vigia ${new Date().toI
 async function idle() { const left = until - Date.now(); if (left > 0) await sleep(left); }
 
 const cfg = JSON.parse(await readFile(path.join(root, 'config.json'), 'utf8'));
+// 20/11: vigia de ENTRADA (só simulação) em outro processo, ao lado desta. Se ela falhar, esta segue normal.
+if (cfg.entradaRapida?.ligado && seconds > 0 && process.env.GITHUB_ACTIONS !== 'true') {
+  try {
+    const { spawn } = await import('node:child_process');
+    const ch = spawn(process.execPath, [path.join(root, 'scanner', 'entrada.mjs'), String(seconds)], { stdio: 'inherit', env: process.env });
+    ch.on('error', (e) => log(`vigia de entrada não iniciou: ${e.message}`, true));
+    ch.unref();
+  } catch (e) { log(`vigia de entrada não iniciou: ${e.message}`, true); }
+}
 const V = cfg.venda?.vigia || {};
 const password = process.env.FARO_SENHA || '';
 const wallet = (process.env.FARO_WALLET || '').trim();

@@ -702,3 +702,48 @@ console.log('Teste da entrada por operação: ok');
   assert.equal(linkDelayedProceeds(ops2, [{ sig: 'dep', at: t0 + 600000, sol: 0.203, by: 'PAY', self: false }]), 0);
 }
 console.log('Teste dos ajustes de 20/11 (RugCheck antes da compra, organic da Jupiter, CASH): ok');
+
+// 20/11: entrada rápida (vigia de entrada, só simulação)
+{
+  const { addTick, addLiq, rapidSignal, rapidExit, moveOf } = await import('./rapida.mjs');
+  const M = 60000, t0 = Math.floor(1_800_000_000_000 / M) * M;
+  // subida de 100 para 200 nas velas de 5 min depois da aprovação
+  const candles = [];
+  for (let i = 0; i < 8; i++) { const p = 100 + i * 14; candles.push([t0 + i * 5 * M, p, p + 14, p - 2, p + 14, 1000]); }
+  const tok = { mint: 'R', symbol: 'RAP', status: 'aprovada', score: 75, approvedAt: t0, candles, dexId: 'raydium' };
+  // depois correção até ~150 (fundo) e reação no 1 min
+  const base1 = t0 + 45 * M; const bars = [];
+  const seq = [[170, 172, 165, 166], [166, 167, 152, 153], [153, 156, 150, 155], [155, 162, 154, 161]];
+  seq.forEach((b, i) => bars.push([base1 + i * M, ...b]));
+  const liq = []; for (let i = 0; i < 8; i++) liq.push([base1 - 4 * M + i * 30000, 30000]);
+  const now = base1 + 4 * M + 5000;
+  const mkt = { priceUsd: 161, liquidityUsd: 30000, periods: { m5: { buys: 60, sells: 40, chg: 3 } } };
+  const mv = moveOf(tok, bars, now);
+  assert.ok(mv.peak >= 200 && mv.base <= 100, 'mede a subida');
+  const g = rapidSignal(tok, bars, liq, mkt, now, {}, {});
+  assert.ok(g.ok, 'entra na correção de ~50% com reação: ' + g.motivo);
+  assert.ok(g.recuo > 38 && g.recuo < 62);
+  // sem reação (última vela vermelha) não entra
+  const bars2 = bars.map((b) => [...b]); bars2[3] = [base1 + 3 * M, 155, 156, 151, 152];
+  assert.equal(rapidSignal(tok, bars2, liq, { ...mkt, priceUsd: 152 }, now, {}, {}).ok, false);
+  // liquidez saindo não entra
+  const liq2 = liq.map(([t, v], i) => [t, i < 4 ? 30000 : 24000]);
+  assert.match(rapidSignal(tok, bars, liq2, mkt, now, {}, {}).motivo, /liquidez caiu/);
+  // vendas dominando não entra
+  assert.match(rapidSignal(tok, bars, liq, { ...mkt, periods: { m5: { buys: 30, sells: 50, chg: 1 } } }, now, {}, {}).motivo, /vendas/);
+  // correção funda (fundo em 110) não entra
+  const bars3 = bars.map((b) => [...b]); bars3[1] = [base1 + M, 166, 167, 110, 120]; bars3[2] = [base1 + 2 * M, 120, 125, 118, 124]; bars3[3] = [base1 + 3 * M, 124, 132, 122, 131];
+  assert.match(rapidSignal(tok, bars3, liq, { ...mkt, priceUsd: 131 }, now, {}, {}).motivo, /funda/);
+  // saídas
+  const o = { entry: 100, at: now };
+  assert.equal(rapidExit({ ...o }, 84, [], liq, now + 60000, {}).why, 'stop');
+  assert.equal(rapidExit({ ...o }, 201, [], liq, now + 60000, {}).why, 'alvo');
+  const ob = { ...o }; const bb = [[Math.floor(now / M) * M + M, 100, 131, 100, 130]];
+  assert.equal(rapidExit(ob, 125, bb, liq, Math.floor(now / M) * M + 2 * M + 1000, { stopMovel: { ativarPct: 20, distanciaPct: 12 } }), null);
+  assert.equal(rapidExit(ob, 113, bb, liq, Math.floor(now / M) * M + 2 * M + 2000, { stopMovel: { ativarPct: 20, distanciaPct: 12 } }).why, 'stop móvel');
+  // velas de 1 min a partir dos preços
+  const b = []; addTick(b, 10, t0); addTick(b, 12, t0 + 20000); addTick(b, 9, t0 + 40000); addTick(b, 11, t0 + M + 1000);
+  assert.deepEqual(b[0], [t0, 10, 12, 9, 9]); assert.equal(b.length, 2);
+  assert.equal(addLiq([], 0, t0).length, 0);
+}
+console.log('Teste da entrada rápida: ok');

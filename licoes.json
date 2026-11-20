@@ -446,6 +446,20 @@
       "regra": "Proposta para testar só na simulação: o Crazy entra só se a primeira correção for de no máximo 30% do topo. Aplicada em 20/11 na simulação, a pedido da Kerah: perfis.enlouquecido.correcaoMaxPct de 45 para 30.",
       "status": "aplicada",
       "tipo": "compra"
+    },
+    {
+      "data": "2026-11-20",
+      "titulo": "Entrada atrasada e sem confirmação no gráfico de 1 min",
+      "moedas": [
+        "GTE",
+        "MAGACITY",
+        "AI",
+        "GTA6"
+      ],
+      "aconteceu": "O sinal de entrada sai das velas de 5 min, e só na rodada (a cada ~2 min, mais ~70 s de rodada). Entre a reação no gráfico e a compra passavam de 3 a 7 min. Das 5 compras reais do robô em 18 e 19/11, só a FNDR deu lucro. Na simulação do Conservador, o ganho médio era de +23% e a perda média de -42% (11 operações, 36% de acerto).",
+      "regra": "Teste só na simulação desde 20/11, a pedido da Kerah: vigia de entrada (scanner/entrada.mjs, config entradaRapida). Ela olha as aprovadas a cada 10 s, monta velas de 1 min e entra quando a correção devolveu de 38,2% a 61,8% da subida, com vela verde fechando acima da máxima da anterior, fundo mais alto, liquidez de pé (caiu no máximo 10% em 10 min), compras dominando em 5 min, sem compras falsas e sem 'pico já passou'. Sai com stop -15%, stop móvel regra A, +100% ou liquidez -30% em 5 min. Resultado em state.simRapida (card 'Entrada rápida' na simulação do painel). Comparar com o Conservador por 2 a 3 dias antes de ligar na compra real.",
+      "status": "em teste",
+      "tipo": "compra"
     }
   ]
 }

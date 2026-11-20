@@ -205,6 +205,28 @@
       "perdaMaxDiaVezes": 5
     }
   },
+  "entradaRapida": {
+    "_comentario": "20/11 (pedido da Kerah): vigia de entrada, SÓ SIMULAÇÃO. Olha as aprovadas a cada 10 s, monta velas de 1 min e entra quando a correção devolveu de 38,2% a 61,8% da subida, com reação no 1 min (vela verde fechando acima da anterior e fundo mais alto), liquidez de pé e compras dominando. Sai com stop -15%, stop móvel regra A, +100% ou liquidez saindo. Para desligar: ligado false",
+    "ligado": true,
+    "somenteSimulacao": true,
+    "segundos": 10,
+    "maxMoedas": 25,
+    "notaMin": 70,
+    "subidaMinPct": 20,
+    "recuoMinPct": 38.2,
+    "recuoMaxPct": 61.8,
+    "janelaLiquidezMin": 10,
+    "liquidezQuedaMaxPct": 10,
+    "stopPct": 15,
+    "alvoPct": 100,
+    "stopMovel": { "ativarPct": 20, "distanciaPct": 12 },
+    "quedaLiquidezSaidaPct": 30,
+    "horasMax": 24,
+    "maxAbertas": 2,
+    "maxComprasPorDia": 8,
+    "perdaMaxDiaVezesBase": 4,
+    "reentradaHoras": 6
+  },
   "regrasEmTeste": {
     "_comentario": "Só marcam as entradas da simulação e medem o que teriam evitado. Não bloqueiam nada ainda.",
     "mare": {
