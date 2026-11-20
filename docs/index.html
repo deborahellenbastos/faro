@@ -2385,6 +2385,8 @@
     return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline fill="none" stroke="${c}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" points="${xy.map((p) => p.map((n) => n.toFixed(1)).join(',')).join(' ')}"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.2" fill="${c}"/></svg>`;
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-rord]'); if (b) { store.set('faro-radar-ord', b.dataset.rord); ui.page = 1; render(); } });
+  // Análise e Reprovadas: trocar o dia no calendário filtra a lista por esse dia (vazio volta para hoje)
+  $('an-date').addEventListener('change', (e) => { ui.anDate = e.target.value || ''; ui.page = 1; render(); });
   // Folha da moeda (celular): sobe de baixo; fecha no X, tocando fora ou arrastando a alça para baixo
   function openSheet() { const d = $('detail'); document.body.style.removeProperty('--sheet-drag'); document.body.classList.add('show-detail'); if (d) d.scrollTop = 0; }
   function closeSheet() { document.body.classList.remove('show-detail'); document.body.style.removeProperty('--sheet-drag'); setTimeout(render, 330); }
