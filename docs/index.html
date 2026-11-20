@@ -1087,12 +1087,12 @@
   .app, .main, .workspace, .list-panel, .rows { min-width: 0; max-width: 100%; }
   /* Navegador da Phantom: a barra dela fica embaixo. 20/11: a Phantom já conta a barra no safe-area (~71px),
      então somar mais 92px deixava um vão. Fica 10px acima da barra, com mínimo de 84px se ela não contar */
-  body.in-phantom { --ph-bottom: max(calc(env(safe-area-inset-bottom) + 10px), 84px); }
+  body.in-phantom.ph-overlay { --ph-bottom: max(calc(env(safe-area-inset-bottom) + 10px), 84px); }
   @media (max-width: 1099px) {
-    body.in-phantom .tabbar { bottom: var(--ph-bottom) !important; }
-    body.in-phantom .main { padding-bottom: calc(var(--ph-bottom) + 96px); }
-    body.in-phantom .detail { bottom: 84px; border-radius: 28px; }
-    body.in-phantom .toast { bottom: calc(var(--ph-bottom) + 86px); }
+    body.in-phantom.ph-overlay .tabbar { bottom: var(--ph-bottom) !important; }
+    body.in-phantom.ph-overlay .main { padding-bottom: calc(var(--ph-bottom) + 96px); }
+    body.in-phantom.ph-overlay .detail { bottom: 84px; border-radius: 28px; }
+    body.in-phantom.ph-overlay .toast { bottom: calc(var(--ph-bottom) + 86px); }
   }
 
   /* Celular: bordas mais justas (topo e barra de baixo mais perto da borda da tela) */
@@ -1102,10 +1102,10 @@
     body::after { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: calc(max(8px, env(safe-area-inset-bottom) - 14px) + 46px); background: linear-gradient(rgba(6,7,9,0), var(--bg) 70%); z-index: 29; pointer-events: none; }
     body.show-detail::after { display: none; }
     .toast { bottom: calc(max(8px, env(safe-area-inset-bottom) - 14px) + 96px) !important; }
-    body.in-phantom .tabbar { bottom: var(--ph-bottom) !important; }
-    body.in-phantom .main { padding-bottom: calc(var(--ph-bottom) + 96px) !important; }
-    body.in-phantom::after { height: calc(var(--ph-bottom) + 46px); }
-    body.in-phantom .toast { bottom: calc(var(--ph-bottom) + 86px) !important; }
+    body.in-phantom.ph-overlay .tabbar { bottom: var(--ph-bottom) !important; }
+    body.in-phantom.ph-overlay .main { padding-bottom: calc(var(--ph-bottom) + 96px) !important; }
+    body.in-phantom.ph-overlay::after { height: calc(var(--ph-bottom) + 46px); }
+    body.in-phantom.ph-overlay .toast { bottom: calc(var(--ph-bottom) + 86px) !important; }
   }
 
   /* Folha da moeda: cabeçalho alinhado ao topo e mesmo respiro em cima e nas laterais */
@@ -1152,7 +1152,7 @@
     #inbox .drawer-head { padding-top: 2px; touch-action: none; }
     #inbox .drawer-body { overflow: hidden; display: grid; align-content: start; gap: 8px; margin-top: 14px; }
     #inbox .drawer-foot { margin-top: auto; }
-    body.in-phantom #inbox .drawer-panel { padding-bottom: 96px; }
+    body.in-phantom.ph-overlay #inbox .drawer-panel { padding-bottom: 96px; }
   }
 
   /* KPIs: rótulos em cinza; mesmo respiro entre os selos e o bloco de saldo em todas as abas */
@@ -1242,7 +1242,7 @@
     #inbox .inbox-grip { position: relative !important; top: 0 !important; height: 24px !important; margin: 0 -16px !important; display: grid !important; place-items: center; }
     #inbox .drawer-head { padding-top: 0 !important; }
     #inbox .drawer-foot { padding-top: 10px !important; margin-top: 8px !important; }
-    body.in-phantom #inbox .drawer-panel { padding-bottom: 92px !important; }
+    body.in-phantom.ph-overlay #inbox .drawer-panel { padding-bottom: 92px !important; }
   }
   /* Notificações: card inteiro com borda em degradê sutil; alça visível na folha */
   #inbox-list { display: grid; gap: 8px; align-content: start; }
@@ -2511,6 +2511,10 @@
   }
   // Dentro do app da Phantom no celular: a barra de endereço dela fica por cima da parte de baixo da tela
   if (/iPhone|iPad|Android/i.test(navigator.userAgent) && (window.phantom?.solana?.isPhantom || window.solana?.isPhantom)) document.body.classList.add('in-phantom');
+  // 20/11: a barra de baixo da Phantom às vezes fica FORA da área do site (a página termina em cima dela) e às vezes por cima.
+  // Só sobe a barra do Faro quando a página vai até o fim da tela (barra por cima); senão ficava um vão
+  function phOverlay() { if (!document.body.classList.contains('in-phantom')) return; const portrait = window.innerHeight > window.innerWidth; const full = Math.max(screen.height, screen.width); document.body.classList.toggle('ph-overlay', portrait && full - window.innerHeight < 40); }
+  phOverlay(); window.addEventListener('resize', phOverlay); window.visualViewport?.addEventListener('resize', phOverlay);
   const TAB_ORDER = ['minhas', 'aprovada', 'aguardando', 'reprovada'];
   // Barra de baixo: o fundo do item ativo desliza de um item para o outro
   function moveTabPill() {
