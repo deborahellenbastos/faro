@@ -713,6 +713,21 @@
   /* Toast: canto inferior direito, 40px das bordas */
   .toast { position: fixed; right: var(--sp-8); bottom: calc(var(--sp-8) + env(safe-area-inset-bottom)); max-width: calc(100vw - 2 * var(--sp-8)); background: var(--text); color: var(--bg); padding: 11px 16px; border-radius: var(--r-2); font-size: 14px; font-weight: 700; box-shadow: var(--shadow); opacity: 0; transform: translateY(8px); transition: .2s; pointer-events: none; z-index: 50; }
   .toast.show { opacity: 1; transform: none; }
+  .toast.undo { display: flex; align-items: center; gap: 14px; pointer-events: auto; }
+  .toast.undo button { border: 0; background: transparent; color: #2563eb; font: inherit; font-weight: 800; padding: 6px 4px; cursor: pointer; }
+  /* Em análise: arrastar a moeda para a esquerda reprova (celular e computador) */
+  #list.swipe-ok { overflow-x: hidden; }
+  #list.swipe-ok .row { position: relative; touch-action: pan-y; }
+  #list .row.swiping { transition: none !important; }
+  #list .row.swipe-back { transition: transform .2s ease !important; }
+  #list.swipe-ok .row::after { content: 'Reprovar'; position: absolute; top: 0; bottom: 0; left: calc(100% + 10px); width: 140px; display: grid; place-items: center; border-radius: 18px; background: rgba(255,91,91,.18); color: #ff6b6b; font-weight: 800; font-size: 15px; opacity: 0; transition: opacity .12s, background .12s; pointer-events: none; }
+  #list.swipe-ok .row.swiping::after { opacity: 1; }
+  #list.swipe-ok .row.swipe-armed::after { background: linear-gradient(180deg, #ff5b5b, #d93d3d); color: #fff; }
+  #list .row.swipe-gone { transition: transform .22s ease, opacity .22s ease !important; opacity: 0; }
+  .manrep { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .manrep .btn-rep { height: 40px; padding: 0 18px; border-radius: 12px; border: 1px solid rgba(255,91,91,.4); background: rgba(255,91,91,.1); color: #ff6b6b; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
+  .manrep .btn-rep.undo { border-color: var(--line); background: rgba(255,255,255,.06); color: var(--text); }
+  .manrep small { color: var(--muted); }
 
   /* Tela de senha */
   .lock-screen { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; padding: var(--sp-5); background: radial-gradient(600px 400px at 50% 30%, rgba(16,210,127,.10), transparent 70%), var(--bg); }
@@ -1739,7 +1754,7 @@
   };
 
   let toastTimer;
-  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2400); }
+  function toast(msg) { const t = $('toast'); t.classList.remove('undo'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2400); }
 
   // ---------- Sons (gerados no navegador, sem arquivo) ----------
   // Cada som tem um significado:
@@ -2355,6 +2370,53 @@
   const isUnseen = (t) => t.status === 'aprovada' && !SEEN.has(t.mint) && !isMine(t);
   const radarOrd = () => 'nota'; // ordem fixa: melhor nota primeiro (os filtros em pílula fazem o resto)
   // Favoritas (coração) e filtro do Radar
+  // Reprovadas por você (só neste aparelho; o robô não fica sabendo): mint -> quando
+  const MANREP = new Map(Object.entries(store.get('faro-reprov', {})));
+  const saveManRep = () => store.set('faro-reprov', Object.fromEntries(MANREP));
+  function undoToast(msg, fn) {
+    const el = $('toast'); el.innerHTML = ''; el.classList.add('undo', 'show');
+    const sp = document.createElement('span'); sp.textContent = msg; const b = document.createElement('button'); b.textContent = 'Desfazer';
+    b.onclick = () => { fn(); el.classList.remove('show'); }; el.append(sp, b);
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.classList.remove('undo'), 250); }, 5000);
+  }
+  function manReprovar(m) {
+    const sym = data?.tokens?.[m]?.symbol || 'Moeda';
+    MANREP.set(m, Date.now()); saveManRep();
+    if (ui.sel[ui.tab] === m) { ui.sel[ui.tab] = null; if (document.body.classList.contains('show-detail')) closeSheet(); }
+    render();
+    undoToast(`${sym} reprovada`, () => { MANREP.delete(m); saveManRep(); render(); });
+  }
+  // Em análise: arrastar a moeda para a esquerda reprova (dedo no celular, mouse no computador)
+  (() => {
+    const list = $('list'); let sw = null, blockClick = false;
+    list.addEventListener('pointerdown', (e) => {
+      if (ui.tab !== 'aguardando' || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      const row = e.target.closest('.row[data-sel]'); if (!row) return;
+      sw = { row, x: e.clientX, y: e.clientY, dx: 0, on: false, id: e.pointerId };
+    });
+    list.addEventListener('pointermove', (e) => {
+      if (!sw || e.pointerId !== sw.id) return;
+      const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+      if (!sw.on) {
+        if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; } // é rolagem
+        if (dx > -12) return;
+        sw.on = true; sw.row.classList.add('swiping'); try { sw.row.setPointerCapture(e.pointerId); } catch {}
+      }
+      sw.dx = Math.min(0, dx); sw.row.style.transform = `translateX(${sw.dx}px)`;
+      sw.row.classList.toggle('swipe-armed', -sw.dx > Math.min(140, sw.row.offsetWidth * 0.35));
+      e.preventDefault();
+    });
+    const end = (e) => {
+      if (!sw || e.pointerId !== sw.id) return; const s0 = sw; sw = null; if (!s0.on) return;
+      blockClick = true; setTimeout(() => (blockClick = false), 350);
+      const row = s0.row; row.classList.remove('swiping');
+      if (e.type === 'pointerup' && row.classList.contains('swipe-armed')) { row.classList.add('swipe-gone'); row.style.transform = 'translateX(-110%)'; setTimeout(() => manReprovar(row.dataset.sel), 200); }
+      else { row.classList.remove('swipe-armed'); row.classList.add('swipe-back'); row.style.transform = ''; setTimeout(() => row.classList.remove('swipe-back'), 220); }
+    };
+    list.addEventListener('pointerup', end); list.addEventListener('pointercancel', end);
+    list.addEventListener('click', (e) => { if (blockClick) { e.stopPropagation(); e.preventDefault(); } }, true);
+  })();
+  function manDesfazer(m) { MANREP.delete(m); saveManRep(); render(); toast(`${data?.tokens?.[m]?.symbol || 'Moeda'} voltou para Em análise`); }
   const FAVS = new Set(store.get('faro-favs', []));
   const isFav = (t) => FAVS.has(t.mint);
   const radarFilt = () => store.get('faro-radar-filt', 'todas');
@@ -2383,6 +2445,8 @@
   const AN_LP = { todas: ['Liquidez: todas', () => true], travada: ['Travada 90%+', (t) => (anLp(t) ?? -1) >= 90], parcial: ['Travada abaixo de 90%', (t) => anLp(t) != null && anLp(t) < 90], naoconf: ['Ainda não conferida', (t) => anLp(t) == null] };
   const anMotivoOk = (t, k) => !AN_MOTIVO[k]?.[1] || (t.reasons || []).some((r) => AN_MOTIVO[k][1].test(r));
   document.addEventListener('click', (e) => {
+    const mr = e.target.closest('[data-manrep]'); if (mr) { manReprovar(mr.dataset.manrep); return; }
+    const mu = e.target.closest('[data-manundo]'); if (mu) { manDesfazer(mu.dataset.manundo); return; }
     const af = e.target.closest('[data-anfalta]'); if (af) { store.set('faro-an-falta', af.dataset.anfalta); ui.page = 1; render(); return; }
     const al = e.target.closest('[data-anlp]'); if (al) { store.set('faro-an-lp', al.dataset.anlp); ui.page = 1; render(); return; }
     const am = e.target.closest('[data-anmotivo]'); if (am) { store.set('faro-an-motivo', am.dataset.anmotivo); ui.page = 1; render(); return; }
@@ -3704,6 +3768,7 @@ function fakeBuys(per = {}) {
       </div>
       <div class="tbody">
         ${t.status === 'aguardando' && !t.held ? `<div class="obs-note">${ICON.warn}<span><b>Ainda em observação</b> (nota ${t.score}). ${(t.pending ?? (t.reasons || []).length) ? `Falta${(t.pending ?? t.reasons.length) > 1 ? 'm' : ''} ${t.pending ?? t.reasons.length} critério${(t.pending ?? t.reasons.length) > 1 ? 's' : ''}: ${esc((t.reasons || [])[0] || '')}` : 'Ainda na fila de checagem.'}</span></div>` : ''}
+        ${t.status === 'aguardando' && !t.held ? (MANREP.has(t.mint) ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
         ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
         <div class="tbal"><span>Saldo</span><span class="num">${bal}</span></div>
@@ -3743,7 +3808,7 @@ function fakeBuys(per = {}) {
       main = `<b>${esc(dispName(t))}</b><small>${left ? `${left === 1 ? 'Falta 1 critério' : `Faltam ${left} critérios`} - ${esc(rz)}` : esc((t.reasons || [])[0] || 'Na fila de checagem')}</small>`;
       side = `<div style="display:flex;align-items:center;gap:10px"><small class="num" style="color:var(--muted)">${t.mcapUsd ? `MC ${usd(t.mcapUsd)}` : ''}</small>${t.score != null ? scoreBadge(t.score, true, true) : ''}</div>`;
     } else {
-      const why = t.status === 'aprovada' ? `Virou perigo: ${(t.safety?.alerts || []).find((x) => x.level === 'danger')?.msg || ''}` : (t.reasons || [])[0] || '';
+      const why = MANREP.has(t.mint) && t.status === 'aguardando' ? `Reprovada por você${(t.reasons || [])[0] ? ` - ${t.reasons[0]}` : ''}` : t.status === 'aprovada' ? `Virou perigo: ${(t.safety?.alerts || []).find((x) => x.level === 'danger')?.msg || ''}` : (t.reasons || [])[0] || '';
       main = `<b>${esc(dispName(t))}</b><small>${esc(why)}</small>`;
       side = t.mcapUsd ? `<b class="num" style="font-size:13px">${usd(t.mcapUsd)}</b><small class="num" style="color:var(--muted)">liq ${usd(t.liquidityUsd)}</small>` : '';
     }
@@ -5139,7 +5204,7 @@ function fakeBuys(per = {}) {
     const danger = mine.filter((t) => levelOf(t) === 'danger').length;
     // Aprovada que virou perigo não fica no radar: vai para as reprovadas na hora (o robô confirma na rodada)
     const fell = (t) => t.status === 'aprovada' && levelOf(t) === 'danger';
-    const lists = { minhas: [...mine, ...dead, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t)), aguardando: by('aguardando'), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => fell(t) && !isSold(t))] };
+    const lists = { minhas: [...mine, ...dead, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t)), aguardando: by('aguardando').filter((t) => !MANREP.has(t.mint)), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => fell(t) && !isSold(t)), ...by('aguardando').filter((t) => MANREP.has(t.mint))] };
 
     // Moeda aberta que você acabou de comprar: o Faro vai junto com ela para a Carteira
     const opened = ui.sel[ui.tab];
@@ -5233,7 +5298,7 @@ function fakeBuys(per = {}) {
       // Mais perto de ser aprovada primeiro: nota prévia, depois quem tem menos critérios faltando
       items = [...items].sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || (a.pending ?? 9) - (b.pending ?? 9) || (b.volumeH1 || 0) - (a.volumeH1 || 0));
     }
-    else if (ui.tab === 'reprovada') items = [...items].sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));
+    else if (ui.tab === 'reprovada') items = [...items].sort((a, b) => (MANREP.get(b.mint) || b.rejectedAt || 0) - (MANREP.get(a.mint) || a.rejectedAt || 0));
     // ---- 4. Medalhas: as 3 melhores notas do Radar (antes do filtro, para a medalha não mudar de dono)
     const MEDAL = new Map(ui.tab === 'aprovada' ? [...lists.aprovada].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3).filter((t) => (t.score || 0) > 0).map((t, i) => [t.mint, i + 1]) : []);
     window.__faroMedal = MEDAL;
@@ -5255,9 +5320,10 @@ function fakeBuys(per = {}) {
         const today = ymd(new Date()); if (!ui.anDate || !ui.anDateEscolhida) ui.anDate = today; // sem escolha dela, vira o dia à meia-noite
         if (inp.value !== ui.anDate) inp.value = ui.anDate; inp.max = today;
         if (!q) { const [y, mo, d] = ui.anDate.split('-').map(Number); const a = new Date(y, mo - 1, d).getTime(), b = a + 86400000;
-          items = items.filter((t) => { const at = (ui.tab === 'reprovada' ? t.rejectedAt || t.firstSeen : t.firstSeen) || 0; return at >= a && at < b; }); }
+          items = items.filter((t) => { const at = (ui.tab === 'reprovada' ? MANREP.get(t.mint) || t.rejectedAt || t.firstSeen : t.firstSeen) || 0; return at >= a && at < b; }); }
       } }
     // Em análise: pílulas de "quantos faltam" e de motivo. As contagens seguem o dia e o outro filtro escolhido
+    $('list').classList.toggle('swipe-ok', ui.tab === 'aguardando');
     { const fEl = $('an-falta'), mEl = $('an-motivo'), lEl = $('an-lp'), on = ui.tab === 'aguardando';
       fEl.hidden = mEl.hidden = lEl.hidden = !on;
       if (on) {
