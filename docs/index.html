@@ -1547,6 +1547,7 @@
       <div class="sw-row"><div><span>Gráfico da Dex<i class="info-btn tip" title="Desligado, o painel fica mais leve: não carrega os gráficos da DexScreener e mostra só o gráfico do Faro (com um link para abrir a Dex em outra aba)"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></i></span></div><button class="switch" id="t-dex" role="switch" aria-checked="true" aria-label="Gráfico da Dex"></button></div>
       <div class="sw-row"><span>Moedas mortas</span><button class="switch" id="t-mortas" role="switch" aria-checked="true" aria-label="Mostrar moedas mortas na Carteira"></button></div>
       <div class="sw-row autorow" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
+      <div class="sw-row autorow sellrow" data-sellrow hidden><div><span>Venda automática</span><small data-sellstate>ligada</small></div><button class="switch" data-sellsw role="switch" aria-checked="true" aria-label="Venda automática"></button></div>
       <div class="sw-row pfrow" data-pfrow hidden><div><span>Perfil<button class="info-btn" data-pfinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-pfstate>protege o saldo</small></div><div class="pf-seg"><button data-pf="conservador">Conservador</button><button data-pf="agressivo">Agressivo</button></div></div>
       <div class="side-sep" data-lock-sep hidden></div><button class="lock-btn" data-lock hidden title="Esquece a senha neste navegador e fecha o painel. Para entrar de novo, pede a senha. O robô continua rodando."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sair do painel</button>
     </div>
@@ -1638,6 +1639,7 @@
       <div class="drawer-body">
         <div id="rt-config">
         <div class="sw-row autorow in-drawer" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
+      <div class="sw-row autorow sellrow" data-sellrow hidden><div><span>Venda automática</span><small data-sellstate>ligada</small></div><button class="switch" data-sellsw role="switch" aria-checked="true" aria-label="Venda automática"></button></div>
         <div class="sw-row pfrow in-drawer" data-pfrow hidden><div><span>Perfil<button class="info-btn" data-pfinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-pfstate>protege o saldo</small></div><div class="pf-seg"><button data-pf="conservador">Conservador</button><button data-pf="agressivo">Agressivo</button></div></div>
         <div class="m-set" id="m-set">
           <div class="sw-row"><span>Sons</span><button class="switch" data-proxy="t-sound" role="switch" aria-checked="false" aria-label="Sons"></button></div>
@@ -4596,6 +4598,47 @@ function fakeBuys(per = {}) {
       <h5>Simulação até agora</h5><p><b>${st?.ops || 0} operações</b>${st?.ops ? `, ${Math.round(st.winRate)}% de acerto, ${(st.pnlSol >= 0 ? '+' : '') + solFmt(st.pnlSol, 4)}` : ''}.</p></div>`;
     m.hidden = false;
   }
+  // ---------- Venda automática: interruptor manual (20/11), memo "faro:venda=on/off" assinado na Phantom ----------
+  // Desligada: o robô não vende nada sozinho (stops, stop móvel, escada, lucro, vigia e golpe). Sem memo, fica ligada
+  function sellState() {
+    const robot = data?.lastRun?.autoVenda || null;
+    let pend = store.get('faro-venda-pend', null);
+    if (pend && robot && robot.at >= pend.at - 120000 && robot.on === pend.on) { store.set('faro-venda-pend', null); pend = null; }
+    if (pend && Date.now() - pend.at > 20 * 60000) { store.set('faro-venda-pend', null); pend = null; }
+    return { on: robot?.on !== false, pend, can: !!data?.lastRun?.autoSell || !!data?.lastRun?.watch };
+  }
+  function updateSellRows() {
+    const rows = document.querySelectorAll('[data-sellrow]'); if (!rows.length) return;
+    const show = !!data && !isDemo(); const S = show ? sellState() : null;
+    rows.forEach((r) => {
+      r.hidden = !show; if (!show) return;
+      r.classList.toggle('on', S.on && !S.pend); r.classList.toggle('pend', !!S.pend);
+      const sw = r.querySelector('[data-sellsw]'); sw.setAttribute('aria-checked', String(S.pend ? S.pend.on : S.on)); sw.disabled = !!S.pend;
+      r.querySelector('[data-sellstate]').textContent = S.pend ? (S.pend.on ? 'ligando... (até 5 min)' : 'desligando... (até 5 min)') : S.on ? 'ligada: stops, lucro e golpe' : 'desligada: o robô não vende nada sozinho';
+    });
+  }
+  async function sendMemo(text) {
+    const ph = getPhantom(); if (!ph) throw new Error('Phantom não encontrada neste navegador');
+    const { publicKey } = await ph.connect();
+    if (data.wallet?.address && publicKey.toString() !== data.wallet.address) throw new Error('A Phantom está em outra carteira. Troque para a carteira do Faro.');
+    const W = await loadWeb3(); const conn = new W.Connection(RPC_URL, 'confirmed'); const { blockhash } = await conn.getLatestBlockhash();
+    const ix = new W.TransactionInstruction({ keys: [{ pubkey: publicKey, isSigner: true, isWritable: false }], programId: new W.PublicKey(MEMO_PROGRAM), data: new TextEncoder().encode(text) });
+    const msg = new W.TransactionMessage({ payerKey: publicKey, recentBlockhash: blockhash, instructions: [ix] }).compileToV0Message();
+    return (await ph.signAndSendTransaction(new W.VersionedTransaction(msg))).signature;
+  }
+  document.addEventListener('click', async (e) => {
+    const go = e.target.closest('[data-sellsw]'); if (!go || go.disabled) return;
+    const on = !sellState().on;
+    if (!on && !window.confirm('Desligar a venda automática?\n\nO robô para de vender sozinho: stop de perda, stop móvel, escada, lucro, vigia e golpe. Você vende à mão até ligar de novo.')) return;
+    go.disabled = true; const stEl = go.closest('[data-sellrow]')?.querySelector('[data-sellstate]'); if (stEl) stEl.textContent = 'assine na Phantom...';
+    try {
+      const sig = await sendMemo(`faro:venda=${on ? 'on' : 'off'}`);
+      store.set('faro-venda-pend', { on, sig, at: Date.now() });
+      toast(on ? 'Pedido para ligar a venda enviado. O robô liga na próxima rodada.' : 'Pedido para desligar a venda enviado. O robô desliga na próxima rodada.');
+      play('boa');
+    } catch (err) { toast(err?.message?.includes('User rejected') ? 'Cancelado na Phantom' : `Não deu: ${err.message}`); }
+    go.disabled = false; updateSellRows(); try { updateLivePill(); } catch {}
+  });
   // ---------- Perfil de operação (Conservador / Agressivo): memo assinado pela carteira, o robô troca na próxima rodada ----------
   function perfilState() {
     const robot = data?.lastRun?.perfil || null;
@@ -4733,16 +4776,16 @@ function fakeBuys(per = {}) {
   function updateMBadges(fresh) {
     const el = $('m-badges'); if (!el) return;
     if (!data || isDemo()) { el.innerHTML = ''; return; }
-    const A = autoState(), sell = !!data.lastRun?.autoSell;
+    const A = autoState(), SV = sellState(), sell = !!(data.lastRun?.autoSell || data.lastRun?.watch) && SV.on && !SV.pend;
     const buy = A.pend ? null : !!(A.on && A.canBuy);
     const ml = $('m-live'); if (ml) { ml.className = 'live m-live ' + (fresh ? 'on' : ''); ml.querySelector('span').textContent = fresh ? 'Ao vivo' : 'Conectando...'; }
     const ico = (on) => on ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2h2v8H3zM7 2h2v8H7z" fill="currentColor"/></svg>';
     el.innerHTML = `<button class="live auto ${buy ? 'on' : ''}" data-open-robot title="Compra automática nos sinais">${ico(buy)}<span>Compra auto${A.pend ? (A.pend.on ? ' (ligando...)' : ' (desligando...)') : ''}</span></button>
-      <button class="live auto ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática">${ico(sell)}<span>Venda auto</span></button>
+      <button class="live auto ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática">${ico(sell)}<span>Venda auto${SV.pend ? (SV.pend.on ? ' (ligando...)' : ' (desligando...)') : SV.on ? '' : ' desligada'}</span></button>
       <button class="live pf ${perfilOf() === 'agressivo' ? 'agr' : ''}" data-open-robot title="Perfil de operação"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>${perfilOf() === 'agressivo' ? 'Agressivo' : 'Conservador'}</span></button>`;
   }
   function updateLivePill() {
-    updateSolBal(); updateAutoPill(); updatePerfilRows();
+    updateSolBal(); updateAutoPill(); updateSellRows(); updatePerfilRows();
     const el = $('live'); if (!el) return;
     const fresh = LIVE.ok && Date.now() - LIVE.at < 15000;
     try { updateMBadges(fresh); } catch {}

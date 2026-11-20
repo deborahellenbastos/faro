@@ -2,6 +2,18 @@
 // e o interruptor que liga/desliga a compra real, mandado pelo painel como um memo assinado pela carteira.
 
 export const SWITCH_RE = /faro:compra=(on|off)/;
+// 20/11: interruptor manual da VENDA automática (memo "faro:venda=on/off" assinado pela carteira). Desligado = o robô não vende
+// nada sozinho (stops, stop móvel, escada, lucro, vigia e golpe). Sem memo nenhum, fica como hoje (ligada)
+export const SELL_SWITCH_RE = /faro:venda=(on|off)/;
+export async function readSellSwitch(memos, verify) {
+  for (const m of memos || []) {
+    if (m.err || !m.memo) continue;
+    const r = SELL_SWITCH_RE.exec(m.memo); if (!r) continue;
+    if (!(await verify(m.sig))) continue;
+    return { on: r[1] === 'on', at: m.at, sig: m.sig };
+  }
+  return null;
+}
 import { fakeBuys } from './signals.mjs';
 export const PROFILE_RE = /faro:perfil=(agressivo|conservador)/;
 

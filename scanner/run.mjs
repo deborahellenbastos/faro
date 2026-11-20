@@ -1,7 +1,7 @@
 // Uma rodada do robô: busca, analisa, vigia as aprovadas e as da sua carteira e (se ligado) compra.
 import { avisar } from './push.mjs';
 import { simStep, simCrazy, marketTide } from './sim.mjs';
-import { entryCandidates, readSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore, readFavs, preBuyBlock } from './autobuy.mjs';
+import { entryCandidates, readSwitch, readSellSwitch, buyLimits, readProfile, profileCfg, securityOk, splitScore, readFavs, preBuyBlock } from './autobuy.mjs';
 import { entrySignal, exitSignal, trailStop, breakoutSignal, shallowEntry, baseBreakout, trendEntry, fakeBuys, peakPassed } from './signals.mjs';
 import { summarizeMarket, prefilter, analyze, scoreToken, scoreParts, chartShape, scamSignals, isLpSignal, summarizeRug, runChecks, baselineFrom, marketAlerts, rugAlerts, mergeSafety, positionFrom } from './analyze.mjs';
 
@@ -35,6 +35,19 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   }
   { const e = Object.entries(state.badDevs); if (e.length > 500) state.badDevs = Object.fromEntries(e.sort((a, b) => b[1].at - a[1].at).slice(0, 500)); }
   cfg.__badDevs = state.badDevs;
+  // Interruptor manual da venda automática (painel): lido antes de qualquer venda da rodada
+  { const w = (cfg.carteira?.enderecoPublico || '').trim();
+    if (w && api.getMemos && api.txSigner) {
+      try {
+        const sv = await readSellSwitch(await api.getMemos(w), async (sig) => (await api.txSigner(sig)) === w);
+        if (sv && (!state.autoVenda || state.autoVenda.sig !== sv.sig)) log(`Venda automática ${sv.on ? 'LIGADA' : 'DESLIGADA'} pelo painel`);
+        if (sv) state.autoVenda = sv;
+      } catch (e) { log(`Não consegui ler o interruptor da venda automática: ${e.message}`, true); }
+    }
+    if (state.autoVenda?.on === false && trader) {
+      trader = { ...trader, canSell: false, canTakeProfit: false, canWatch: false, sellAll: async () => { throw new Error('venda automática desligada pelo painel'); } };
+    }
+  }
   const maxAgeMin = cfg.busca.idadeMaximaHoras * 60;
   const trackMs = cfg.busca.diasAcompanhando * 86400000;
 
@@ -774,6 +787,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     autoCompra: state.autoCompra ? { on: state.autoCompra.on, at: state.autoCompra.at } : null,
     perfil: { name: state.perfil?.name === 'agressivo' ? 'agressivo' : 'conservador', at: state.perfil?.at || null },
     autoSell: !!trader?.canSell,
+    autoVenda: state.autoVenda ? { on: state.autoVenda.on, at: state.autoVenda.at } : null,
     watch: trader?.canWatch ? { quedaDoPicoPct: cfg.venda.vigia.quedaDoPicoPct, quedaLiquidezPct: cfg.venda.vigia.quedaLiquidezPct } : null,
     takeProfit: trader?.canTakeProfit ? { alvoPct: cfg.venda.lucro.alvoPct, ateUsd: cfg.venda.lucro.ateUsd } : null,
     wallet: wallet ? `${wallet.slice(0, 4)}...${wallet.slice(-4)}` : null,

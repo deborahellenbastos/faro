@@ -259,6 +259,12 @@ assert.equal(scamSignals({ lpLockedPct: 0, devPct: 0 }, { lpLockedPct: 0, devPct
   assert.equal((await readSwitch(memos, async () => true)).on, true);
   assert.equal((await readSwitch(memos, async (s) => s !== 'x1')).on, false, 'memo de terceiro é ignorado');
   assert.equal(await readSwitch([{ sig: 'y', memo: 'oi', at: 1 }], async () => true), null);
+  // Interruptor da venda (20/11): só memo da própria carteira, o mais recente manda, e não confunde com o da compra
+  { const { readSellSwitch } = await import('./autobuy.mjs');
+    const mv = [{ sig: 'v1', memo: 'faro:compra=on', at: 4 }, { sig: 'v2', memo: 'faro:venda=off', at: 3 }, { sig: 'v3', memo: 'faro:venda=on', at: 2 }];
+    assert.equal((await readSellSwitch(mv, async () => true)).on, false);
+    assert.equal((await readSellSwitch(mv, async (s) => s !== 'v2')).on, true, 'memo de terceiro é ignorado');
+    assert.equal(await readSellSwitch([{ sig: 'z', memo: 'faro:compra=off', at: 1 }], async () => true), null); }
 
   // Travas: 2 abertas no máximo, perda do dia para tudo
   const now = Date.parse('2026-11-16T18:00:00Z');

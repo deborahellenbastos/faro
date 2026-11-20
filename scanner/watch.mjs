@@ -45,6 +45,8 @@ for (let i = 0; i < 4 && !state; i++) {
 }
 if (!state) { log('Não consegui abrir os dados; só esperando.', true); await idle(); process.exit(0); }
 
+// 20/11: venda automática desligada pelo painel (memo faro:venda=off, lido pela rodada): a vigia não vende nada
+if (state.autoVenda?.on === false) { log('venda automática desligada pelo painel: vigia parada'); await idle(); process.exit(0); }
 cfg.carteira = { enderecoPublico: wallet };
 const trader = await createTrader(cfg, log);
 if (!trader?.canWatch) { await idle(); process.exit(0); }
