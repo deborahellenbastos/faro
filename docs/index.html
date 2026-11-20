@@ -1566,6 +1566,7 @@
         <div class="radar-chips" id="radar-chips" hidden></div>
         <div class="radar-chips" id="an-falta" hidden></div>
         <div class="radar-chips" id="an-motivo" hidden></div>
+        <div class="radar-chips" id="an-lp" hidden></div>
         <div class="rows" id="list"></div>
         <div class="pager" id="pager" hidden>
           <button id="prev" aria-label="Página anterior">&larr;</button>
@@ -2377,9 +2378,13 @@
     nova: ['Muito nova', /muito nova|nova e com|aguardando \d+ min/i],
     par: ['Sem par', /sem par|sem data/i],
   };
+  // Liquidez travada (LP): o robô só confere no RugCheck quando a moeda passa dos filtros de mercado
+  const anLp = (t) => { const p = t.rug?.lpLockedPct; if (p != null) return p; const c = (t.checks || []).find((x) => x.id === 'lp'); return c ? (c.ok ? 100 : 0) : null; };
+  const AN_LP = { todas: ['Liquidez: todas', () => true], travada: ['Travada 90%+', (t) => (anLp(t) ?? -1) >= 90], parcial: ['Travada abaixo de 90%', (t) => anLp(t) != null && anLp(t) < 90], naoconf: ['Ainda não conferida', (t) => anLp(t) == null] };
   const anMotivoOk = (t, k) => !AN_MOTIVO[k]?.[1] || (t.reasons || []).some((r) => AN_MOTIVO[k][1].test(r));
   document.addEventListener('click', (e) => {
     const af = e.target.closest('[data-anfalta]'); if (af) { store.set('faro-an-falta', af.dataset.anfalta); ui.page = 1; render(); return; }
+    const al = e.target.closest('[data-anlp]'); if (al) { store.set('faro-an-lp', al.dataset.anlp); ui.page = 1; render(); return; }
     const am = e.target.closest('[data-anmotivo]'); if (am) { store.set('faro-an-motivo', am.dataset.anmotivo); ui.page = 1; render(); return; }
     const f = e.target.closest('[data-rfilt]'); if (f) { store.set('faro-radar-filt', f.dataset.rfilt); ui.page = 1; render(); return; }
     const h = e.target.closest('[data-fav]'); if (h) {
@@ -5251,15 +5256,18 @@ function fakeBuys(per = {}) {
           items = items.filter((t) => { const at = (ui.tab === 'reprovada' ? t.rejectedAt || t.firstSeen : t.firstSeen) || 0; return at >= a && at < b; }); }
       } }
     // Em análise: pílulas de "quantos faltam" e de motivo. As contagens seguem o dia e o outro filtro escolhido
-    { const fEl = $('an-falta'), mEl = $('an-motivo'), on = ui.tab === 'aguardando';
-      fEl.hidden = mEl.hidden = !on;
+    { const fEl = $('an-falta'), mEl = $('an-motivo'), lEl = $('an-lp'), on = ui.tab === 'aguardando';
+      fEl.hidden = mEl.hidden = lEl.hidden = !on;
       if (on) {
         const fk = AN_FALTA[store.get('faro-an-falta', 'todas')] ? store.get('faro-an-falta', 'todas') : 'todas';
         const mk = AN_MOTIVO[store.get('faro-an-motivo', 'todos')] ? store.get('faro-an-motivo', 'todos') : 'todos';
-        const byM = items.filter((t) => anMotivoOk(t, mk)), byF = items.filter(AN_FALTA[fk][1]);
+        const lk = AN_LP[store.get('faro-an-lp', 'todas')] ? store.get('faro-an-lp', 'todas') : 'todas';
+        const lpF = AN_LP[lk][1], fF = AN_FALTA[fk][1], mF = (t) => anMotivoOk(t, mk);
+        const byM = items.filter((t) => mF(t) && lpF(t)), byF = items.filter((t) => fF(t) && lpF(t)), byFM = items.filter((t) => fF(t) && mF(t));
+        lEl.innerHTML = Object.entries(AN_LP).map(([k, [l, fn]]) => { const n = byFM.filter(fn).length; return (n || k === lk || k === 'todas') ? `<button data-anlp="${k}" class="${lk === k ? 'on' : ''}">${l}<small>${n}</small></button>` : ''; }).join('');
         fEl.innerHTML = Object.entries(AN_FALTA).map(([k, [l, fn]]) => { const n = byM.filter(fn).length; return `<button data-anfalta="${k}" class="${fk === k ? 'on' : ''}">${l}<small>${n}</small></button>`; }).join('');
         mEl.innerHTML = Object.entries(AN_MOTIVO).map(([k, [l]]) => { const n = byF.filter((t) => anMotivoOk(t, k)).length; return (n || k === mk || k === 'todos') ? `<button data-anmotivo="${k}" class="${mk === k ? 'on' : ''}">${l}<small>${n}</small></button>` : ''; }).join('');
-        items = byF.filter((t) => anMotivoOk(t, mk));
+        items = byF.filter(mF);
       } }
     if (q) items = items.filter((t) => [t.symbol, t.name, t.mint].some((v) => String(v || '').toLowerCase().includes(q)));
 
