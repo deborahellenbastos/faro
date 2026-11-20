@@ -10,7 +10,8 @@ const RECHECK_MIN = 5;      // moedas da carteira: rechecagem de segurança toda
 const RECHECK_APPROVED_MIN = 30; // aprovadas que você não comprou: a cada 30 min
 const MAX_REJECTED_KEPT = 300;
 const MAX_PRICE_LOOKUPS = 6;         // preços históricos buscados por rodada (o resto fica para a próxima)
-const MAX_CANDLE_CALLS = 8;         // GeckoTerminal grátis aceita poucas consultas por minuto
+const MAX_CANDLE_CALLS = 20;        // 20/11: a Jupiter responde rápido; o GeckoTerminal (reserva) segue limitado abaixo
+const MAX_GECKO_CALLS = 6;          // GeckoTerminal grátis aceita poucas consultas por minuto
 const CANDLE_REFRESH_MIN = 5;       // radar e carteira: velas novas a cada rodada, para o sinal de entrada e saída sair na hora
 
 export async function runOnce({ api, cfg, state, now = Date.now(), trader = null }) {
@@ -376,21 +377,32 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     // e o radar ficava sem velas (17/11: AI pediu velas 7x numa hora e a JALU, +1900%, ficou "sem movimento para medir")
     const worthUsd = (t) => (t.heldAmount || 0) * (t.priceUsd || 0);
     const heldLive = (t) => t.held && worthUsd(t) >= 0.25;
+    // 20/11: resto sem valor na carteira vai para o fim da fila (antes contava como "aprovada" e passava na frente)
+    const rank = (t) => (heldLive(t) ? 3 : t.favorita ? 2 : t.held ? -1 : newlyApproved.includes(t) || t.status === 'aprovada' ? 1 : 0);
     const want = Object.values(tokens)
       .filter((t) => t.pairAddress && (monitored(t) || newlyApproved.includes(t) || (t.status === 'aguardando' && (t.score || 0) >= 75)))
       .filter((t) => !t.held || heldLive(t) || !t.candlesAt || now - t.candlesAt >= 60 * 60000)
       .filter((t) => heldLive(t) || t.favorita || simOpen.has(t.mint) || !t.candlesAt || now - t.candlesAt >= CANDLE_REFRESH_MIN * 60000)
-      .sort((a, b) => (heldLive(b) ? 3 : b.favorita ? 2 : newlyApproved.includes(b) || b.status === 'aprovada' ? 1 : 0) - (heldLive(a) ? 3 : a.favorita ? 2 : newlyApproved.includes(a) || a.status === 'aprovada' ? 1 : 0) || (a.candlesAt || 0) - (b.candlesAt || 0))
+      // moeda que deu "limite de consultas" espera 30 min (20/11: a ANGSTIPAN, morta, travava as velas de todas as outras)
+      .filter((t) => !t.candlesFailAt || now - t.candlesFailAt >= 30 * 60000)
+      .sort((a, b) => rank(b) - rank(a) || (a.candlesAt || 0) - (b.candlesAt || 0))
       .slice(0, MAX_CANDLE_CALLS);
+    let geckoCalls = 0, geckoBlocked = false;
     for (const t of want) {
+      // sem o GeckoTerminal nesta rodada (bloqueado ou no limite), só a Jupiter
+      const pair = geckoBlocked || geckoCalls >= MAX_GECKO_CALLS ? null : t.pairAddress;
+      let src = null;
       try {
-        const c = await (api.getCandlesFor ? api.getCandlesFor(t.mint, t.pairAddress) : api.getCandles(t.pairAddress));
-        if (c && c.length) { t.candles = c; t.candlesAt = now; delete t.candlesFromHist; }
+        const c = await (api.getCandlesFor ? api.getCandlesFor(t.mint, pair) : api.getCandles(t.pairAddress));
+        src = c?.src || (api.getCandlesFor ? null : 'gecko');
+        if (c && c.length) { t.candles = c; t.candlesAt = now; delete t.candlesFromHist; delete t.candlesFailAt; }
       } catch (e) {
+        src = 'gecko';
         log(`Velas de ${t.symbol} indisponíveis: ${e.message}`, true);
-        if (e.rateLimited) break;
+        if (e.rateLimited) { t.candlesFailAt = now; geckoBlocked = true; } // pula só esta moeda; as outras seguem pela Jupiter
       }
-      if (api.sleep) await api.sleep(6500); // respeita o limite do GeckoTerminal
+      if (src === 'gecko') geckoCalls++;
+      if (api.sleep) await api.sleep(src === 'gecko' ? 6500 : 300); // a pausa longa é só para o GeckoTerminal
     }
   }
   // Par sem velas no GeckoTerminal (ex.: contra uma ação tokenizada): monta velas de 5 min com os preços guardados a cada rodada

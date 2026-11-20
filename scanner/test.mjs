@@ -747,3 +747,25 @@ console.log('Teste dos ajustes de 20/11 (RugCheck antes da compra, organic da Ju
   assert.equal(addLiq([], 0, t0).length, 0);
 }
 console.log('Teste da entrada rápida: ok');
+
+// 20/11: uma moeda com "limite de consultas" no GeckoTerminal não pode travar as velas das outras (caso ANGSTIPAN)
+{
+  const tNow = now + 300 * min;
+  const st2 = JSON.parse(JSON.stringify(state));
+  const toks = Object.values(st2.tokens).filter((t) => t.pairAddress);
+  for (const t of toks) { t.status = 'aprovada'; t.candlesAt = tNow - 60 * min; t.held = false; }
+  const bad = toks.find((t) => t.symbol === 'BEBE'); // continua aprovada depois da análise da rodada
+  assert.ok(bad, 'moeda de teste BEBE');
+  bad.candlesAt = tNow - 120 * min; // a mais velha: primeira da fila
+  let calls = 0;
+  const api2 = { ...api, getCandlesFor: async (mint) => {
+    calls++;
+    if (mint === bad.mint) { const e = new Error('429 limite de consultas'); e.rateLimited = true; throw e; }
+    const c = await api.getCandles('x' + mint); c.src = 'jup'; return c;
+  } };
+  const out = await runOnce({ api: api2, cfg, state: st2, now: tNow });
+  const after = Object.values(out.tokens);
+  assert.ok(after.find((t) => t.mint === bad.mint)?.candlesFailAt === tNow, 'a moeda com 429 fica de castigo 30 min');
+  assert.ok(after.some((t) => t.mint !== bad.mint && t.candlesAt === tNow), 'as outras moedas recebem velas novas na mesma rodada');
+}
+console.log('Teste das velas com limite de consultas: ok');

@@ -365,10 +365,11 @@ export async function getCandlesFor(mint, pairAddress) {
     const r = await fetch(`https://datapi.jup.ag/v2/charts/${mint}?interval=5_MINUTE&to=${Date.now()}&candles=72&type=price&quote=usd`, { signal: AbortSignal.timeout(10000) });
     if (r.ok) {
       const list = ((await r.json())?.candles || []).map((c) => [c.time * 1000, +c.open, +c.high, +c.low, +c.close, Math.round(+c.volume || 0)]).filter((c) => c.every(Number.isFinite)).sort((a, b) => a[0] - b[0]);
-      if (list.length && Date.now() - list[list.length - 1][0] < 40 * 60000) return list;
+      if (list.length && Date.now() - list[list.length - 1][0] < 40 * 60000) { list.src = 'jup'; return list; }
     }
   } catch {}
-  return pairAddress ? getCandles(pairAddress) : [];
+  if (!pairAddress) return [];
+  const g = await getCandles(pairAddress); g.src = 'gecko'; return g; // só aqui vale a pausa do GeckoTerminal
 }
 
 // Maior preço da moeda desde o lançamento (velas de 15 min, até ~5 dias). Usado pela trava "pico já passou"
