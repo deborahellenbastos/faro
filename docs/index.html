@@ -1085,11 +1085,14 @@
   @supports (overflow-x: clip) { html, body { overflow-x: clip; } }
   .sidebar { align-self: start; }
   .app, .main, .workspace, .list-panel, .rows { min-width: 0; max-width: 100%; }
+  /* Navegador da Phantom: a barra dela fica embaixo. 20/11: a Phantom já conta a barra no safe-area (~71px),
+     então somar mais 92px deixava um vão. Fica 10px acima da barra, com mínimo de 84px se ela não contar */
+  body.in-phantom { --ph-bottom: max(calc(env(safe-area-inset-bottom) + 10px), 84px); }
   @media (max-width: 1099px) {
-    body.in-phantom .tabbar { bottom: calc(env(safe-area-inset-bottom) + 92px) !important; }
-    body.in-phantom .main { padding-bottom: calc(env(safe-area-inset-bottom) + 200px); }
+    body.in-phantom .tabbar { bottom: var(--ph-bottom) !important; }
+    body.in-phantom .main { padding-bottom: calc(var(--ph-bottom) + 96px); }
     body.in-phantom .detail { bottom: 84px; border-radius: 28px; }
-    body.in-phantom .toast { bottom: calc(196px + env(safe-area-inset-bottom)); }
+    body.in-phantom .toast { bottom: calc(var(--ph-bottom) + 86px); }
   }
 
   /* Celular: bordas mais justas (topo e barra de baixo mais perto da borda da tela) */
@@ -1099,9 +1102,10 @@
     body::after { content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: calc(max(8px, env(safe-area-inset-bottom) - 14px) + 46px); background: linear-gradient(rgba(6,7,9,0), var(--bg) 70%); z-index: 29; pointer-events: none; }
     body.show-detail::after { display: none; }
     .toast { bottom: calc(max(8px, env(safe-area-inset-bottom) - 14px) + 96px) !important; }
-    body.in-phantom .tabbar { bottom: calc(env(safe-area-inset-bottom) + 92px) !important; }
-    body.in-phantom .main { padding-bottom: calc(env(safe-area-inset-bottom) + 200px) !important; }
-    body.in-phantom::after { height: calc(env(safe-area-inset-bottom) + 170px); }
+    body.in-phantom .tabbar { bottom: var(--ph-bottom) !important; }
+    body.in-phantom .main { padding-bottom: calc(var(--ph-bottom) + 96px) !important; }
+    body.in-phantom::after { height: calc(var(--ph-bottom) + 46px); }
+    body.in-phantom .toast { bottom: calc(var(--ph-bottom) + 86px) !important; }
   }
 
   /* Folha da moeda: cabeçalho alinhado ao topo e mesmo respiro em cima e nas laterais */
