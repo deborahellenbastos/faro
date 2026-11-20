@@ -2218,7 +2218,17 @@
     if ((g.rr || 0) < rrMin) why.push(`risco/retorno abaixo de 1:${rrMin}`);
     return why.length ? `O robô não compra sozinho (${why.join(', ')}).` : 'O robô compra sozinho se ainda houver espaço nos limites do dia.';
   }
-  const START_MINT = new URLSearchParams(location.search).get('m');
+  // 20/11: a Phantom recarrega a aba com o endereço ORIGINAL do link (com ?m=), mesmo depois de tirarmos o ?m= do endereço.
+  // Por isso a moeda do link (OFFICIALGTA, antes a JALU) abria sozinha a cada recarga. Agora cada link abre a moeda uma vez só
+  const START_MINT = (() => {
+    const q = new URLSearchParams(location.search), m = q.get('m'); if (!m) return null;
+    const key = `${m}~${q.get('t') || q.get('go') || ''}`;
+    let done = {}; try { done = JSON.parse(localStorage.getItem('faro-links-abertos') || '{}'); } catch {}
+    const now = Date.now(); for (const k in done) if (now - done[k] > 3 * 86400000) delete done[k];
+    const seen = done[key] && (q.get('t') || q.get('go') || now - done[key] < 12 * 3600000);
+    done[key] = done[key] || now; try { localStorage.setItem('faro-links-abertos', JSON.stringify(done)); } catch {}
+    return seen ? null : m;
+  })();
   // Guia de operação: ?op=1 abre a moeda já expandida; ?op=mosaico abre o mosaico das compradas
   const OP_MODE = new URLSearchParams(location.search).get('op');
   function openOpTab(target) {
@@ -2295,7 +2305,7 @@
       startDone = true; setTimeout(() => { goTo(START_MINT); runStartOrder(); }, 0);
       // Tira a moeda do endereço depois de abrir: senão, toda vez que a página recarrega (a Phantom e o iPhone recarregam
       // sozinhos), ela volta para essa moeda (18/11: voltava sempre para a JALU, a do link da compra pela Phantom)
-      setTimeout(() => { try { const u = new URL(location.href); u.searchParams.delete('m'); if (u.searchParams.get('op') === '1') u.searchParams.delete('op'); history.replaceState(null, '', u.toString()); } catch {} }, 1500);
+      setTimeout(() => { try { const u = new URL(location.href); u.searchParams.delete('m'); u.searchParams.delete('t'); if (u.searchParams.get('op') === '1') u.searchParams.delete('op'); history.replaceState(null, '', u.toString()); } catch {} }, 1500);
     }
     try { runOpMode(); } catch {}
     if (!data?.tokens || isDemo()) return;
@@ -2502,7 +2512,7 @@
     document.addEventListener('touchend', () => { if (y0 == null) return; y0 = null; document.body.classList.remove('sheet-dragging'); if (dy > 110) closeSheet(); else document.body.style.removeProperty('--sheet-drag'); dy = 0; });
   }
   // Celular sem a Phantom (Safari ou app da tela inicial): botão que abre esta mesma moeda dentro do navegador da Phantom
-  const phantomLink = (go) => { const u = new URL(location.href); u.hash = ''; u.searchParams.delete('go'); if (ui?.sel?.[ui.tab]) u.searchParams.set('m', ui.sel[ui.tab]); if (go) { u.searchParams.set('m', go.mint); u.searchParams.set('go', [go.side, go.amt, go.slip, Date.now(), go.unit || 'sol'].join('~')); } return `https://phantom.app/ul/browse/${encodeURIComponent(u.toString())}?ref=${encodeURIComponent(location.origin)}`; };
+  const phantomLink = (go) => { const u = new URL(location.href); u.hash = ''; u.searchParams.delete('go'); if (ui?.sel?.[ui.tab]) u.searchParams.set('m', ui.sel[ui.tab]); u.searchParams.set('t', Date.now()); if (go) { u.searchParams.set('m', go.mint); u.searchParams.set('go', [go.side, go.amt, go.slip, Date.now(), go.unit || 'sol'].join('~')); } return `https://phantom.app/ul/browse/${encodeURIComponent(u.toString())}?ref=${encodeURIComponent(location.origin)}`; };
   function phantomHelp() {
     const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
     return mobile
