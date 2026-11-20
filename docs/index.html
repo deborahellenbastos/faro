@@ -2387,34 +2387,39 @@
     undoToast(`${sym} reprovada`, () => { MANREP.delete(m); saveManRep(); render(); });
   }
   // Em análise: arrastar a moeda para a esquerda reprova (dedo no celular, mouse no computador)
+  // 20/11: sem setPointerCapture (prendia os cliques seguintes numa moeda só) e o fim do gesto é ouvido na janela inteira
   (() => {
     const list = $('list'); let sw = null, blockClick = false;
+    const reset = (row) => { if (!row) return; row.classList.remove('swiping', 'swipe-armed'); row.classList.add('swipe-back'); row.style.transform = ''; setTimeout(() => row.classList.remove('swipe-back'), 220); };
     list.addEventListener('pointerdown', (e) => {
+      if (sw?.on) reset(sw.row); sw = null;
       if (ui.tab !== 'aguardando' || (e.pointerType === 'mouse' && e.button !== 0)) return;
       const row = e.target.closest('.row[data-sel]'); if (!row) return;
-      sw = { row, x: e.clientX, y: e.clientY, dx: 0, on: false, id: e.pointerId };
+      sw = { row, x: e.clientX, y: e.clientY, dx: 0, on: false, id: e.pointerId, mouse: e.pointerType === 'mouse' };
     });
-    list.addEventListener('pointermove', (e) => {
+    window.addEventListener('pointermove', (e) => {
       if (!sw || e.pointerId !== sw.id) return;
+      if (sw.mouse && !(e.buttons & 1)) { if (sw.on) reset(sw.row); sw = null; return; } // soltou fora da janela
+      if (!sw.row.isConnected) { sw = null; return; } // a lista foi redesenhada
       const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
       if (!sw.on) {
         if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; } // é rolagem
         if (dx > -12) return;
-        sw.on = true; sw.row.classList.add('swiping'); try { sw.row.setPointerCapture(e.pointerId); } catch {}
+        sw.on = true; sw.row.classList.add('swiping');
       }
       sw.dx = Math.min(0, dx); sw.row.style.transform = `translateX(${sw.dx}px)`;
       sw.row.classList.toggle('swipe-armed', -sw.dx > Math.min(140, sw.row.offsetWidth * 0.35));
-      e.preventDefault();
-    });
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
     const end = (e) => {
       if (!sw || e.pointerId !== sw.id) return; const s0 = sw; sw = null; if (!s0.on) return;
       blockClick = true; setTimeout(() => (blockClick = false), 350);
-      const row = s0.row; row.classList.remove('swiping');
-      if (e.type === 'pointerup' && row.classList.contains('swipe-armed')) { row.classList.add('swipe-gone'); row.style.transform = 'translateX(-110%)'; setTimeout(() => manReprovar(row.dataset.sel), 200); }
-      else { row.classList.remove('swipe-armed'); row.classList.add('swipe-back'); row.style.transform = ''; setTimeout(() => row.classList.remove('swipe-back'), 220); }
+      const row = s0.row;
+      if (e.type === 'pointerup' && row.isConnected && row.classList.contains('swipe-armed')) { row.classList.remove('swiping'); row.classList.add('swipe-gone'); row.style.transform = 'translateX(-110%)'; setTimeout(() => manReprovar(row.dataset.sel), 200); }
+      else reset(row);
     };
-    list.addEventListener('pointerup', end); list.addEventListener('pointercancel', end);
-    list.addEventListener('click', (e) => { if (blockClick) { e.stopPropagation(); e.preventDefault(); } }, true);
+    window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
+    list.addEventListener('click', (e) => { if (blockClick) { blockClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
   })();
   function manDesfazer(m) { MANREP.delete(m); saveManRep(); render(); toast(`${data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda'} voltou para Em análise`); }
   const FAVS = new Set(store.get('faro-favs', []));
