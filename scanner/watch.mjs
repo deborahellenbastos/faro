@@ -287,6 +287,14 @@ while (Date.now() < until) {
       const liqTop = Math.max(0, ...w.map((x) => x[1]));
       const fromPeak = (1 - px / mem.peak[t.mint]) * 100;
       const liqDrop = liqTop > 0 && liq > 0 ? (1 - liq / liqTop) * 100 : 0;
+      // 21/11: posição comprada no perfil Segurar: nada de stop, stop móvel, escada, golpe ou queda. Só vende em +alvoPct
+      if (t.segurar) {
+        const avgS = t.position?.avgPriceUsd > 0 && !t.staleCost ? t.position.avgPriceUsd : 0;
+        const gS = avgS ? (px / avgS - 1) * 100 : null;
+        if (!mem.segLog?.[t.mint]) { (mem.segLog = mem.segLog || {})[t.mint] = now; log(`${t.symbol}: perfil Segurar, só vende em +${t.segurar.alvoPct ?? 150}%`); }
+        if (gS != null && gS >= (t.segurar.alvoPct ?? 150)) await sell(t, `alvo do perfil Segurar: +${gS.toFixed(0)}% (alvo +${t.segurar.alvoPct ?? 150}%)`, 'alvo-segurar', px);
+        continue;
+      }
       // 1. Golpe no contrato  2. Queda forte  3. Lucro em posição pequena
       const cost = t.position?.known && !t.staleCost ? t.position.costOpenUsd : 0;
       const pxSol = /^W?SOL$/i.test(p?.quoteToken?.symbol || '') ? Number(p?.priceNative) : 0;

@@ -177,6 +177,11 @@
     "horasMaximas": 24
   },
   "perfis": {
+    "segurar": {
+      "_comentario": "21/11 (pedido da Kerah): entra nos mesmos sinais do Conservador e segura até +150%. Sem stop de perda, sem stop móvel, sem venda parcelada, sem venda por golpe ou queda. A regra vale para as compras do robô feitas com este perfil ligado (as suas compras manuais seguem as regras normais). Simulação sempre ao lado; lá a operação é encerrada em 72h só para medir.",
+      "segurar": { "ligado": true, "alvoPct": 150 },
+      "simulacao": { "horasMaximas": 72 }
+    },
     "_comentario": "Perfil ativo é trocado pelo painel (memo assinado pela carteira). Os dois rodam sempre na simulação. Travas de golpe, curva da pump.fun, stops e vigia são iguais nos dois.",
     "agressivo": {
       "compra": {

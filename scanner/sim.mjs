@@ -79,14 +79,21 @@ export function simStep({ state, key = 'sim', label = 'SIMULAÇÃO', tokens, can
     let exit = null, why = null;
     // stop móvel igual ao robô real (só sobe)
     const SM = cfg.venda?.stopMovel;
-    if (SM?.ligado && t?.candles?.length) {
+    const SEG = cfg.segurar?.ligado ? cfg.segurar : null; // perfil Segurar: só sai no alvo
+    if (!SEG && SM?.ligado && t?.candles?.length) {
       const hiT = SM.pico === 'fechamento' ? Math.max(px || 0, ...bars.map((x) => x[4])) : hi;
       const tr = trailStop(t.candles, { entryPx: o.entry, entryAt: o.at, peak: Math.max(o.peak || 0, hiT) }, SM, o.trail || 0);
       o.peak = Math.max(o.peak || 0, hiT);
       if (tr?.ativo) o.trail = tr.stop;
     }
     const lucroPx = o.entry * (1 + (cfg.venda?.lucro?.alvoPct ?? 100) / 100);
-    if (o.trail && lo <= o.trail) { exit = o.trail * (1 - (S.slippageStopPct ?? 5) / 100); why = 'stop móvel'; }
+    if (SEG) {
+      const alvo = o.entry * (1 + (SEG.alvoPct ?? 150) / 100);
+      if (hi >= alvo) { exit = alvo; why = `alvo +${SEG.alvoPct ?? 150}%`; }
+      else if (now - o.at > (S.horasMaximas ?? 72) * 3600000 && px) { exit = px; why = 'tempo (só na simulação, para medir)'; }
+      else if (!t) { exit = o.entry * 0.1; why = 'sumiu'; }
+    }
+    else if (o.trail && lo <= o.trail) { exit = o.trail * (1 - (S.slippageStopPct ?? 5) / 100); why = 'stop móvel'; }
     else if (lo <= o.stop) { exit = o.stop * (1 - (S.slippageStopPct ?? 5) / 100); why = 'stop'; }
     else if (hi >= lucroPx) { exit = lucroPx; why = 'alvo'; }
     else if (t?.safety?.level === 'danger' && px) { exit = px * 0.9; why = 'perigo'; }

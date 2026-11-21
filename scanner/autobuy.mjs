@@ -15,7 +15,7 @@ export async function readSellSwitch(memos, verify) {
   return null;
 }
 import { fakeBuys } from './signals.mjs';
-export const PROFILE_RE = /faro:perfil=(agressivo|conservador)/;
+export const PROFILE_RE = /faro:perfil=(agressivo|conservador|segurar)/;
 
 // Configuração de um perfil: a base + os ajustes do perfil (cópia, não mexe na base)
 export function profileCfg(cfg, name) {

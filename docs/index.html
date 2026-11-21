@@ -1559,7 +1559,7 @@
       <div class="sw-row"><span>Moedas mortas</span><button class="switch" id="t-mortas" role="switch" aria-checked="true" aria-label="Mostrar moedas mortas na Carteira"></button></div>
       <div class="sw-row autorow" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
       <div class="sw-row autorow sellrow" data-sellrow hidden><div><span>Venda automática</span><small data-sellstate>ligada</small></div><button class="switch" data-sellsw role="switch" aria-checked="true" aria-label="Venda automática"></button></div>
-      <div class="sw-row pfrow" data-pfrow hidden><div><span>Perfil<button class="info-btn" data-pfinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-pfstate>protege o saldo</small></div><div class="pf-seg"><button data-pf="conservador">Conservador</button><button data-pf="agressivo">Agressivo</button></div></div>
+      <div class="sw-row pfrow" data-pfrow hidden><div><span>Perfil<button class="info-btn" data-pfinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-pfstate>protege o saldo</small></div><div class="pf-seg"><button data-pf="conservador">Conservador</button><button data-pf="agressivo">Agressivo</button><button data-pf="segurar" title="Segura até +150%, sem stop">Segurar</button></div></div>
       <div class="side-sep" data-lock-sep hidden></div><button class="lock-btn" data-lock hidden title="Esquece a senha neste navegador e fecha o painel. Para entrar de novo, pede a senha. O robô continua rodando."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sair do painel</button>
     </div>
   </aside>
@@ -1651,7 +1651,7 @@
         <div id="rt-config">
         <div class="sw-row autorow in-drawer" data-autorow hidden><div><span>Compra automática<button class="info-btn" data-autoinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-autostate>desligada</small></div><button class="switch" data-autosw role="switch" aria-checked="false" aria-label="Compra automática"></button></div>
       <div class="sw-row autorow sellrow" data-sellrow hidden><div><span>Venda automática</span><small data-sellstate>ligada</small></div><button class="switch" data-sellsw role="switch" aria-checked="true" aria-label="Venda automática"></button></div>
-        <div class="sw-row pfrow in-drawer" data-pfrow hidden><div><span>Perfil<button class="info-btn" data-pfinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-pfstate>protege o saldo</small></div><div class="pf-seg"><button data-pf="conservador">Conservador</button><button data-pf="agressivo">Agressivo</button></div></div>
+        <div class="sw-row pfrow in-drawer" data-pfrow hidden><div><span>Perfil<button class="info-btn" data-pfinfo aria-label="Como funciona" title="Como funciona"><svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.2v3.8M8 4.9v.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></span><small data-pfstate>protege o saldo</small></div><div class="pf-seg"><button data-pf="conservador">Conservador</button><button data-pf="agressivo">Agressivo</button><button data-pf="segurar" title="Segura até +150%, sem stop">Segurar</button></div></div>
         <div class="m-set" id="m-set">
           <div class="sw-row"><span>Sons</span><button class="switch" data-proxy="t-sound" role="switch" aria-checked="false" aria-label="Sons"></button></div>
           <div class="sw-row"><span>Notificações</span><button class="switch" data-proxy="t-notif" role="switch" aria-checked="false" aria-label="Notificações"></button></div>
@@ -2296,7 +2296,7 @@
     if (!SW_OK.test(text) || !(Date.now() - ts < 10 * 60000) || done[raw]) return;
     done[raw] = Date.now(); try { localStorage.setItem('faro-sw-feitos', JSON.stringify(Object.fromEntries(Object.entries(done).slice(-30)))); } catch {}
     const [, k, v] = text.match(/^faro:(\w+)=(\w+)$/);
-    const label = k === 'compra' ? `${v === 'on' ? 'Ligar' : 'Desligar'} a compra automática` : k === 'venda' ? `${v === 'on' ? 'Ligar' : 'Desligar'} a venda automática` : `Trocar o perfil para ${v === 'agressivo' ? 'Agressivo' : 'Conservador'}`;
+    const label = k === 'compra' ? `${v === 'on' ? 'Ligar' : 'Desligar'} a compra automática` : k === 'venda' ? `${v === 'on' ? 'Ligar' : 'Desligar'} a venda automática` : `Trocar o perfil para ${PF_NOME[v] || 'Conservador'}`;
     const m = $('ntm');
     m.innerHTML = `<div class="ntm-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>${label}</b><button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <p>Você pediu isso no app do Faro. Toque abaixo e assine na Phantom: é só um aviso para o robô (menos de US$ 0,01 de taxa, não movimenta dinheiro). Vale na próxima rodada, em até 5 min.</p>
@@ -2559,7 +2559,7 @@
   }
   // Celular sem a Phantom (Safari ou app da tela inicial): botão que abre esta mesma moeda dentro do navegador da Phantom
   // 20/11: fora da Phantom (app na tela inicial, Safari) os interruptores abrem o Faro dentro da Phantom com o pedido (?sw=)
-  const SW_OK = /^faro:(compra|venda)=(on|off)$|^faro:perfil=(agressivo|conservador)$/;
+  const SW_OK = /^faro:(compra|venda)=(on|off)$|^faro:perfil=(agressivo|conservador|segurar)$/;
   const phantomMemoLink = (text) => { const u = new URL(location.href); u.hash = ''; ['go', 'm', 't'].forEach((k) => u.searchParams.delete(k)); u.searchParams.set('sw', `${text}~${Date.now()}`); return `https://phantom.app/ul/browse/${encodeURIComponent(u.toString())}?ref=${encodeURIComponent(location.origin)}`; };
   const isPhone = () => /iPhone|iPad|Android/i.test(navigator.userAgent);
   const phantomLink = (go) => { const u = new URL(location.href); u.hash = ''; u.searchParams.delete('go'); if (ui?.sel?.[ui.tab]) u.searchParams.set('m', ui.sel[ui.tab]); u.searchParams.set('t', Date.now()); if (go) { u.searchParams.set('m', go.mint); u.searchParams.set('go', [go.side, go.amt, go.slip, Date.now(), go.unit || 'sol'].join('~')); } return `https://phantom.app/ul/browse/${encodeURIComponent(u.toString())}?ref=${encodeURIComponent(location.origin)}`; };
@@ -3864,6 +3864,7 @@ function fakeBuys(per = {}) {
       <div class="tbody">
         ${t.status === 'aguardando' && !t.held ? `<div class="obs-note">${ICON.warn}<span><b>Ainda em observação</b> (nota ${t.score}). ${(t.pending ?? (t.reasons || []).length) ? `Falta${(t.pending ?? t.reasons.length) > 1 ? 'm' : ''} ${t.pending ?? t.reasons.length} critério${(t.pending ?? t.reasons.length) > 1 ? 's' : ''}: ${esc((t.reasons || [])[0] || '')}` : 'Ainda na fila de checagem.'}</span></div>` : ''}
         ${['aguardando', 'aprovada', 'reprovada'].includes(t.status) && !t.held && (t.status !== 'reprovada' || MANREP.has(t.mint) || t.reprovadaManual) ? (MANREP.has(t.mint) || t.reprovadaManual ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
+        ${t.held && t.segurar ? `<div class="obs-note">${ICON.warn}<span><b>Perfil Segurar:</b> o robô só vende esta moeda em +${t.segurar.alvoPct ?? 150}%. Sem stop: se cair, ela fica na carteira até você vender.</span></div>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
         <div class="tbal"><span>Saldo</span><span class="num">${bal}</span></div>
@@ -4680,12 +4681,14 @@ function fakeBuys(per = {}) {
     go.disabled = false; updateSellRows(); try { updateLivePill(); } catch {}
   });
   // ---------- Perfil de operação (Conservador / Agressivo): memo assinado pela carteira, o robô troca na próxima rodada ----------
+  // 21/11: terceiro perfil, Segurar (entra como o Conservador e só vende em +150%, sem stop)
+  const PF_NOME = { conservador: 'Conservador', agressivo: 'Agressivo', segurar: 'Segurar +150%' };
   function perfilState() {
     const robot = data?.lastRun?.perfil || null;
     let pend = store.get('faro-perfil-pend', null);
     if (pend && robot && robot.name === pend.name) { store.set('faro-perfil-pend', null); pend = null; }
     if (pend && Date.now() - pend.at > 20 * 60000) { store.set('faro-perfil-pend', null); pend = null; }
-    return { name: robot?.name === 'agressivo' ? 'agressivo' : 'conservador', pend };
+    return { name: ['agressivo', 'segurar'].includes(robot?.name) ? robot.name : 'conservador', pend };
   }
   const perfilOf = () => perfilState().name;
   async function sendMemo(text) {
@@ -4747,8 +4750,8 @@ function fakeBuys(per = {}) {
       r.hidden = !show; if (!show) return;
       const cur = P.pend ? P.pend.name : P.name;
       r.querySelectorAll('[data-pf]').forEach((b) => { b.classList.toggle('on', b.dataset.pf === cur); b.disabled = !!P.pend; });
-      r.classList.toggle('agr', cur === 'agressivo');
-      r.querySelector('[data-pfstate]').textContent = P.pend ? `trocando para ${P.pend.name === 'agressivo' ? 'Agressivo' : 'Conservador'}... (até 5 min)` : P.name === 'agressivo' ? 'entra mais vezes, arrisca mais' : 'protege o saldo';
+      r.classList.toggle('agr', cur === 'agressivo' || cur === 'segurar');
+      r.querySelector('[data-pfstate]').textContent = P.pend ? `trocando para ${PF_NOME[P.pend.name] || 'Conservador'}... (até 5 min)` : P.name === 'agressivo' ? 'entra mais vezes, arrisca mais' : P.name === 'segurar' ? 'só vende em +150%, sem stop' : 'protege o saldo';
     });
   }
   function openPerfilInfo() {
@@ -4766,7 +4769,8 @@ function fakeBuys(per = {}) {
         ${row('Compras por dia', lim(c.maxComprasPorDia ?? 5), lim(A.compra?.maxComprasPorDia ?? 8))}
         ${row('Perda máxima no dia', lim(S.perdaMaxDiaVezesBase ?? 3, 'x uma operação'), lim(A.simulacao?.perdaMaxDiaVezesBase ?? 4, 'x uma operação'))}
       </tbody></table>
-      <p class="sp-note">Os dois perfis rodam o tempo todo na simulação (gaveta do Robô, aba Simulação). A troca é assinada pela sua carteira (menos de US$ 0,01 de taxa, não movimenta dinheiro) e vale na próxima rodada do robô.</p></div>`;
+      <p><b>Segurar +150%:</b> entra nos mesmos sinais do Conservador e só vende quando a moeda chega a <b>+${data.config?.perfis?.segurar?.segurar?.alvoPct ?? 150}%</b>. Não tem stop de perda, stop móvel, venda parcelada nem venda por golpe: se a moeda cair, ela fica na carteira. Vale só para o que o robô comprar com esse perfil ligado. As suas compras manuais e as posições antigas seguem as regras normais.</p>
+      <p class="sp-note">Os três perfis rodam o tempo todo na simulação (gaveta do Robô, aba Simulação). A troca é assinada pela sua carteira (menos de US$ 0,01 de taxa, não movimenta dinheiro) e vale na próxima rodada do robô.</p></div>`;
     m.hidden = false;
   }
   document.addEventListener('click', async (e) => {
@@ -4780,7 +4784,7 @@ function fakeBuys(per = {}) {
     try {
       const sig = await sendMemo(`faro:perfil=${name}`);
       store.set('faro-perfil-pend', { name, sig, at: Date.now() });
-      toast(`Pedido enviado: perfil ${name === 'agressivo' ? 'Agressivo' : 'Conservador'} na próxima rodada do robô.`);
+      toast(`Pedido enviado: perfil ${PF_NOME[name] || 'Conservador'} na próxima rodada do robô.`);
       play('boa');
     } catch (err) { toast(err?.message?.includes('User rejected') ? 'Cancelado na Phantom' : `Não deu: ${err.message}`); }
     updatePerfilRows(); try { updateLivePill(); } catch {}
@@ -4824,7 +4828,7 @@ function fakeBuys(per = {}) {
     const ico = (on) => on ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.8v8.4L10 6z" fill="currentColor"/></svg>' : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 2h2v8H3zM7 2h2v8H7z" fill="currentColor"/></svg>';
     el.innerHTML = `<button class="live auto ${buy ? 'on' : ''}" data-open-robot title="Compra automática nos sinais">${ico(buy)}<span>Compra auto${A.pend ? (A.pend.on ? ' (ligando...)' : ' (desligando...)') : ''}</span></button>
       <button class="live auto ${sell ? 'on' : ''}" data-open-robot title="Vigia e venda automática">${ico(sell)}<span>Venda auto${SV.pend ? (SV.pend.on ? ' (ligando...)' : ' (desligando...)') : SV.on ? '' : ' desligada'}</span></button>
-      <button class="live pf ${perfilOf() === 'agressivo' ? 'agr' : ''}" data-open-robot title="Perfil de operação"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>${perfilOf() === 'agressivo' ? 'Agressivo' : 'Conservador'}</span></button>`;
+      <button class="live pf ${perfilOf() !== 'conservador' ? 'agr' : ''}" data-open-robot title="Perfil de operação"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>${PF_NOME[perfilOf()] || 'Conservador'}</span></button>`;
   }
   function updateLivePill() {
     updateSolBal(); updateAutoPill(); updateSellRows(); updatePerfilRows();
@@ -5578,16 +5582,17 @@ function fakeBuys(per = {}) {
   let simView = store.get('faro-simview', 'conservador');
   function renderSim() {
     const el = $('rt-sim'); if (!el) return;
-    const sim = simView === 'agressivo' ? data.simAgr : simView === 'enlouquecido' ? data.simLouco : simView === 'rapida' ? data.simRapida : data.sim, st = sim?.stats;
+    const sim = simView === 'agressivo' ? data.simAgr : simView === 'segurar' ? data.simSeg : simView === 'enlouquecido' ? data.simLouco : simView === 'rapida' ? data.simRapida : data.sim, st = sim?.stats;
     const cmpCard = (name, label, x) => { const s2 = x?.stats; return `<button class="pf-cmp ${simView === name ? 'on' : ''} ${name === perfilOf() ? 'inuse' : ''}" data-simview="${name}">
         <span>${label}</span>${name === perfilOf() ? '<em class="pf-live">em uso</em>' : ['enlouquecido', 'rapida'].includes(name) ? '<em class="pf-sim">só simulação</em>' : ''}
         <b class="num ${cls(s2?.pnlSol)}">${(s2?.pnlSol || 0) >= 0 ? '+' : ''}${solFmt(s2?.pnlSol || 0, 4)}</b>
         <small>${s2?.ops || 0} operações - ${Math.round(s2?.winRate || 0)}% de acerto${s2?.open ? ` - ${s2.open} abertas` : ''}</small></button>`; };
-    const cmp = `<div class="pf-cmps">${cmpCard('conservador', 'Conservador', data.sim)}${cmpCard('agressivo', 'Agressivo', data.simAgr)}${cmpCard('enlouquecido', 'Crazy', data.simLouco)}${cmpCard('rapida', 'Entrada rápida', data.simRapida)}</div>
+    const cmp = `<div class="pf-cmps">${cmpCard('conservador', 'Conservador', data.sim)}${cmpCard('agressivo', 'Agressivo', data.simAgr)}${cmpCard('segurar', 'Segurar +150%', data.simSeg)}${cmpCard('enlouquecido', 'Crazy', data.simLouco)}${cmpCard('rapida', 'Entrada rápida', data.simRapida)}</div>
       ${simView === 'enlouquecido' ? `<p class="note"><b>Crazy (só simulação):</b> entra na primeira correção depois que a moeda chega ao Radar, com US$ ${data.config?.perfis?.enlouquecido?.valorUsd ?? 3}, e vende em +50% (segura até +80% se a alta estiver muito forte). Stop -20% e no máximo 2h por operação.${st?.avgMin ? ` Tempo médio por operação: ${Math.round(st.avgMin)} min.` : ''}</p>` : ''}`;
     const notaRap = simView === 'rapida' ? `<p class="note"><b>Entrada rápida (só simulação, teste de 20/11):</b> a vigia de entrada olha as moedas do Radar a cada ${data.config?.entradaRapida?.segundos ?? 10} s e entra quando a correção devolveu de 38,2% a 61,8% da subida e o gráfico de 1 min reage, com a liquidez de pé. Sai pelas mesmas regras do robô.${st?.avgMin ? ` Tempo médio por operação: ${Math.round(st.avgMin)} min.` : ''}</p>` : '';
     if (simView === 'rapida' && !sim) { el.innerHTML = cmp + notaRap + '<p class="note">A entrada rápida começa nos próximos minutos, assim que a vigia do servidor juntar alguns minutos de velas de 1 min.</p>'; return; }
     if (simView === 'enlouquecido' && !sim) { el.innerHTML = cmp + '<p class="note">A simulação do Crazy começa na próxima rodada do robô.</p>'; return; }
+    if (simView === 'segurar' && !sim) { el.innerHTML = cmp + '<p class="note">A simulação do perfil Segurar começa na próxima rodada do robô: mesmas entradas do Conservador, saída só em +150%. Lá, para dar para medir, a operação é encerrada em 72h.</p>'; return; }
     if (simView === 'agressivo' && !sim) { el.innerHTML = cmp + '<p class="note">A simulação do perfil Agressivo começa na próxima rodada do robô. Ela roda sempre, mesmo com o Conservador ativo, para você comparar.</p>'; return; }
     if (!sim) { el.innerHTML = '<p class="note">A simulação começa na próxima rodada do robô. A cada sinal de Boa entrada (nota 70+, risco/retorno 1:2 ou melhor), ele "entra" de mentira com o valor por operação e sai pelas mesmas regras do robô de verdade. Nenhum dinheiro é usado.</p>'; return; }
     const solUsd = LIVE.solUsd || 0;

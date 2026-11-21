@@ -146,7 +146,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     }
   }
 
-  const simOpen = new Set([...(state.sim?.open || []), ...(state.simAgr?.open || []), ...(state.simLouco?.open || [])].map((o) => o.mint));
+  const simOpen = new Set([...(state.sim?.open || []), ...(state.simAgr?.open || []), ...(state.simLouco?.open || []), ...(state.simSeg?.open || [])].map((o) => o.mint));
   const REENTRY_MS = (cfg.compra?.reentradaHoras ?? 3) * 3600000;
   const reentryOpen = (t) => !!(t.reentry && !t.held && now - t.reentry.at < REENTRY_MS);
   const curveOn = (t) => !!(t.curva?.ok && now - t.curva.at < 3600000);
@@ -292,7 +292,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         if (!t.autoSell?.skipped) log(`GOLPE em ${t.symbol}, mas a operação é de só US$ ${worth.toFixed(2)} (mínimo US$ ${minUsd}). Não vendi.`);
         t.autoSell = { ok: false, skipped: true, at: now, why: scam.join('; '), worth };
       }
-      if (scam.length && trader?.canSell && !(t.autoSell?.ok) && worth >= minUsd && (t.autoSell?.tries || 0) < 3) {
+      if (scam.length && t.segurar) { if (!t.autoSell?.segurando) log(`${t.symbol}: sinal de golpe (${scam.join('; ')}), mas é do perfil Segurar. Não vende.`); t.autoSell = { ok: false, segurando: true, at: now, why: scam.join('; ') }; }
+      else if (scam.length && trader?.canSell && !(t.autoSell?.ok) && worth >= minUsd && (t.autoSell?.tries || 0) < 3) {
         const why = scam.join('; ');
         log(`GOLPE em ${t.symbol}: ${why}. Vendendo 100%...`, true);
         try {
@@ -567,7 +568,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     const L = cfg.venda.lucro;
     for (const t of Object.values(tokens)) {
       const p = t.position;
-      if (!t.held || !p?.known || t.takeProfit?.ok || (t.takeProfit?.tries || 0) >= 3) continue;
+      if (!t.held || t.segurar || !p?.known || t.takeProfit?.ok || (t.takeProfit?.tries || 0) >= 3) continue;
       if (!(p.costOpenUsd > 0) || !((t.heldAmount || 0) * (t.priceUsd || 0) >= (cfg.venda?.valorMinimoUsd ?? 1)) || p.costOpenUsd >= L.ateUsd || !(p.openPnlPct >= L.alvoPct)) continue;
       log(`LUCRO em ${t.symbol}: +${p.openPnlPct.toFixed(0)}% (investido US$ ${p.costOpenUsd.toFixed(2)}). Vendendo 100%...`);
       try {
@@ -677,13 +678,16 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   for (const t of Object.values(tokens)) if (t.favorita && (t.safety?.alerts || []).some((a) => a.level === 'danger' && ['rugged', 'mint', 'freeze', 'liq-sumiu'].includes(a.id))) {
     state.favsOut = [...new Set([...(state.favsOut || []), t.mint])]; delete t.favorita; log(`Favorita ${t.symbol} saiu da lista: golpe no contrato`);
   }
-  const perfil = state.perfil?.name === 'agressivo' ? 'agressivo' : 'conservador';
+  const perfil = ['agressivo', 'segurar'].includes(state.perfil?.name) ? state.perfil.name : 'conservador';
   const cfgAgr = profileCfg(cfg, 'agressivo');
+  // 21/11 (pedido da Kerah): perfil Segurar. Entra nos mesmos sinais do Conservador e segura até +alvoPct (150%):
+  // sem stop, sem stop móvel, sem venda parcelada, sem venda por golpe. Só vale para as compras do robô feitas com ele
+  const cfgSeg = profileCfg(cfg, 'segurar');
   const agrList = entryCandidates(tokens, cfgAgr, now, { agr: true });
   const buyList = entryCandidates(tokens, cfg, now);
   // Moedas que só vieram pelos rankings da Jupiter: por enquanto só Radar e simulação (config busca.jupiter.compraReal)
   const realList = (perfil === 'agressivo' ? agrList : buyList).filter((t) => !t.soJupiter || cfg.busca?.jupiter?.compraReal === true);
-  const realCfg = perfil === 'agressivo' ? cfgAgr : cfg;
+  const realCfg = perfil === 'agressivo' ? cfgAgr : perfil === 'segurar' ? cfgSeg : cfg;
   // Teste (só simulação): nota da aprovação em vez da de agora, para sinais que a correção derrubou abaixo de 70
   const notaList = cfg.simulacao?.notaAprovacao?.ligado === false ? [] : entryCandidates(tokens, cfg, now, { byApproval: true }).filter((t) => !buyList.includes(t)).map((t) => ({ ...t, _notaAprov: true }));
   // Simulação: os mesmos sinais da compra real + (modo curva) moedas na curva da pump.fun com boa entrada
@@ -701,6 +705,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   } catch (e) { log(`Simulação enlouquecida falhou: ${e.message}`, true); }
   // Simulação do perfil agressivo, sempre rodando ao lado (para comparar antes e depois de trocar)
   try { simStep({ state, key: 'simAgr', label: 'SIMULAÇÃO AGRESSIVO', tokens, candidates: agrList, rompidas: [], cfg: cfgAgr, now, log }); } catch (e) { log(`Simulação agressiva falhou: ${e.message}`, true); }
+  // Simulação do perfil Segurar, sempre rodando ao lado (mesmas entradas do Conservador, sai só em +150%)
+  if (cfgSeg.segurar?.ligado) { try { simStep({ state, key: 'simSeg', label: 'SIMULAÇÃO SEGURAR', tokens, candidates: buyList, rompidas: [], cfg: cfgSeg, now, log }); } catch (e) { log(`Simulação Segurar falhou: ${e.message}`, true); } }
   if (trader?.canBuy && state.autoCompra?.on && realList.length) {
     try {
       const limits = buyLimits(state, tokens, realCfg, now);
@@ -727,12 +733,14 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       for (const x of trades.filter((y) => y.ok && y.sig)) await avisar({ titulo: `Robô comprou: ${x.symbol}`, texto: `Compra automática de ${(x.sol || 0).toFixed(4)} SOL no sinal de boa entrada. A vigia e os stops já estão protegendo.`, mint: x.mint, chave: `compra-${x.sig}` });
       // Compra feita agora: já entra na carteira desta rodada, com entrada e posição (antes só aparecia na rodada seguinte, 5 min depois)
       const okBuys = trades.filter((x) => x.ok && x.sig);
+      if (perfil === 'segurar') for (const b of okBuys) if (tokens[b.mint] && !tokens[b.mint].segurar) tokens[b.mint].segurar = { desde: now, alvoPct: cfgSeg.segurar?.alvoPct ?? 150, sig: b.sig };
       if (okBuys.length && wallet && state.wallet && api.getRecentOps) {
         try {
           if (api.sleep) await api.sleep(2500);
           const recent = await api.getRecentOps(wallet, 8);
           let solUsdNow = null; try { solUsdNow = api.getSolUsd ? await api.getSolUsd() : null; } catch {}
           for (const b of okBuys) {
+            if (perfil === 'segurar' && tokens[b.mint]) { tokens[b.mint].segurar = { desde: now, alvoPct: cfgSeg.segurar?.alvoPct ?? 150, sig: b.sig }; log(`${b.symbol}: comprada no perfil SEGURAR. Só vende em +${tokens[b.mint].segurar.alvoPct}%.`); }
             const op = recent.find((o) => o.sig === b.sig && o.mint === b.mint); const t = tokens[b.mint];
             if (!op || !t) continue;
             if (solUsdNow && !op.solUsd) op.solUsd = solUsdNow;
@@ -751,12 +759,15 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // 21/11: a reprovação manual vale mesmo se alguma etapa acima mexeu no status (ex.: simulação aberta nela)
   for (const t of Object.values(tokens)) if (t.reprovadaManual && !t.held && t.status !== 'reprovada') { t.status = 'reprovada'; t.reasons = ['Reprovada por você no painel']; delete t.sinal; delete t.sinalAgr; }
 
+  // Posição do Segurar fechada (vendeu tudo): a marca sai, e uma compra futura segue o perfil da hora
+  for (const t of Object.values(tokens)) if (t.segurar && !t.held && now - (t.segurar.desde || 0) > 10 * 60000) delete t.segurar;
+
   // 21/11: servidor do painel pega código novo sozinho
   if (api.atualizarPainel) await api.atualizarPainel(log).catch(() => {});
 
   // 7. Limpeza
   const rejected = Object.values(tokens).filter((t) => t.status === 'reprovada').sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));
-  const simNow = new Set([...(state.sim?.open || []), ...(state.simAgr?.open || []), ...(state.simLouco?.open || [])].map((o) => o.mint));
+  const simNow = new Set([...(state.sim?.open || []), ...(state.simAgr?.open || []), ...(state.simLouco?.open || []), ...(state.simSeg?.open || [])].map((o) => o.mint));
   for (const t of rejected.slice(MAX_REJECTED_KEPT)) if (!simNow.has(t.mint)) delete tokens[t.mint];
   for (const t of Object.values(tokens)) {
     if (t.held || t.favorita || simNow.has(t.mint)) { delete t._rug; continue; }
@@ -801,7 +812,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     counts,
     autoBuy: !!trader?.canBuy,
     autoCompra: state.autoCompra ? { on: state.autoCompra.on, at: state.autoCompra.at } : null,
-    perfil: { name: state.perfil?.name === 'agressivo' ? 'agressivo' : 'conservador', at: state.perfil?.at || null },
+    perfil: { name: ['agressivo', 'segurar'].includes(state.perfil?.name) ? state.perfil.name : 'conservador', at: state.perfil?.at || null },
     autoSell: !!trader?.canSell,
     autoVenda: state.autoVenda ? { on: state.autoVenda.on, at: state.autoVenda.at } : null,
     watch: trader?.canWatch ? { quedaDoPicoPct: cfg.venda.vigia.quedaDoPicoPct, quedaLiquidezPct: cfg.venda.vigia.quedaLiquidezPct } : null,

@@ -816,3 +816,23 @@ console.log('Teste da tendência de baixa: ok');
   assert.match(run, /Reprovada por você no painel/);
   console.log('Teste da reprovação manual: ok');
 }
+
+// Perfil Segurar (21/11)
+{
+  const { PROFILE_RE, profileCfg } = await import('./autobuy.mjs');
+  assert.equal(PROFILE_RE.exec('faro:perfil=segurar')?.[1], 'segurar');
+  const cfgS = JSON.parse(await readFile(new URL('../config.json', import.meta.url), 'utf8'));
+  const seg = profileCfg(cfgS, 'segurar');
+  assert.equal(seg.segurar.alvoPct, 150); assert.equal(seg.segurar.ligado, true);
+  const { simStep } = await import('./sim.mjs');
+  const now = Date.now(), st = { simSeg: { open: [{ mint: 'M', symbol: 'M', at: now - 3600000, entry: 1, stop: 0.85, sol: 0.05 }], closed: [], startedAt: now } };
+  // caiu 60%: no Segurar não sai
+  simStep({ state: st, key: 'simSeg', tokens: { M: { mint: 'M', priceUsd: 0.4, candles: [[now - 300000, 0.5, 0.5, 0.4, 0.4, 1]] } }, candidates: [], cfg: seg, now, log: () => {} });
+  assert.equal(st.simSeg.open.length, 1, 'sem stop no Segurar');
+  // chegou a +150%: sai no alvo
+  simStep({ state: st, key: 'simSeg', tokens: { M: { mint: 'M', priceUsd: 2.6, candles: [[now, 2, 2.6, 2, 2.6, 1]] } }, candidates: [], cfg: seg, now: now + 60000, log: () => {} });
+  assert.equal(st.simSeg.open.length, 0); assert.match(st.simSeg.closed[0].why, /alvo \+150%/);
+  const w = await readFile(new URL('./watch.mjs', import.meta.url), 'utf8');
+  assert.match(w, /if \(t\.segurar\) \{/, 'a vigia deve pular tudo nas posições do Segurar');
+  console.log('Teste do perfil Segurar: ok');
+}
