@@ -1,0 +1,800 @@
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 12:28:05] Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+[vigia 12:28:05] Compra automática LIGADA (carteira 9czVe1...)
+[vigia 12:28:05] Venda automática por golpe LIGADA (carteira 9czVe1...)
+[vigia 12:28:06] vigiando BAWSAQ, Christmas, XV: golpe sim, queda -40% do pico com confirmação (ou -60% sem), liquidez -30% em 5 min, lucro +100%, stop móvel a partir de +20%, realizar com +50%/+80% se perder força
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-90%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders) | Preço 54% abaixo da máxima
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2436,"reprovada":300}
+[vigia 12:29:05] Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+[vigia 12:29:05] Compra automática LIGADA (carteira 9czVe1...)
+[vigia 12:29:05] Venda automática por golpe LIGADA (carteira 9czVe1...)
+[vigia 12:29:06] vigiando BAWSAQ, Christmas, XV: golpe sim, queda -40% do pico com confirmação (ou -60% sem), liquidez -30% em 5 min, lucro +100%, stop móvel a partir de +20%, realizar com +50%/+80% se perder força
+2026-11-21 12:29:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+Venda automática DESLIGADA pelo painel
+DexScreener perfis novos: 25 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 13 moedas novas
+GeckoTerminal em alta (1h) 2: 12 moedas novas
+GeckoTerminal em alta (5min): 11 moedas novas
+GeckoTerminal migradas para a PumpSwap: 3 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 3 moedas novas
+Jupiter em alta (5min): 2 moedas novas
+Jupiter em alta (1h): 2 moedas novas
+Jupiter mais negociadas (1h): 1 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 12:30:06] Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+[vigia 12:30:06] Compra automática LIGADA (carteira 9czVe1...)
+[vigia 12:30:06] Venda automática por golpe LIGADA (carteira 9czVe1...)
+[vigia 12:30:06] vigiando BAWSAQ, Christmas, XV: golpe sim, queda -40% do pico com confirmação (ou -60% sem), liquidez -30% em 5 min, lucro +100%, stop móvel a partir de +20%, realizar com +50%/+80% se perder força
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+ALERTA win: Novo alerta grave no RugCheck: Single holder ownership; Low Liquidity | Holders concentrando: top 10 foi de 15% para 50% | Apareceram 2001 carteiras ligadas entre si (insiders) | Liquidez sumiu (-100%). Possível rug | Preço 100% abaixo da máxima
+Painel do servidor reiniciado com o código novo
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2440,"reprovada":300}
+[vigia 12:31:05] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:31:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 13 moedas novas
+GeckoTerminal em alta (1h) 2: 12 moedas novas
+GeckoTerminal em alta (5min): 11 moedas novas
+GeckoTerminal migradas para a PumpSwap: 1 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 3 moedas novas
+Jupiter em alta (1h): 2 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 12:32:05] venda automática desligada pelo painel: vigia parada
+ALERTA XV: Apareceram 4 carteiras ligadas entre si (insiders)
+ALERTA Leonida: Novo alerta grave no RugCheck: Single holder ownership; Low Liquidity | Holders concentrando: top 10 foi de 12% para 68% | Liquidez sumiu (-100%). Possível rug | Preço 92% abaixo da máxima
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2439,"reprovada":300}
+[vigia 12:33:05] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:33:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 12 moedas novas
+GeckoTerminal em alta (1h) 2: 13 moedas novas
+GeckoTerminal em alta (5min): 16 moedas novas
+GeckoTerminal migradas para a PumpSwap: 3 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 3 moedas novas
+Jupiter em alta (1h): 2 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 0 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 12:34:05] venda automática desligada pelo painel: vigia parada
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-90%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders)
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2443,"reprovada":300}
+[vigia 12:35:05] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:35:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 12 moedas novas
+GeckoTerminal em alta (5min): 9 moedas novas
+GeckoTerminal migradas para a PumpSwap: 1 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 1 moedas novas
+Jupiter em alta (5min): 2 moedas novas
+Jupiter em alta (1h): 2 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 2 moedas novas
+Carteira: 17 moedas encontradas
+Carteira: 1 compras/vendas novas lidas
+[vigia 12:36:06] venda automática desligada pelo painel: vigia parada
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+Recuperou 0.0031 SOL fechando 2 conta(s) de moeda vazia
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2446,"reprovada":300}
+[vigia 12:37:06] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:37:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 11 moedas novas
+GeckoTerminal em alta (5min): 8 moedas novas
+GeckoTerminal migradas para a PumpSwap: 0 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 2 moedas novas
+Jupiter em alta (1h): 2 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 3 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 12:38:06] venda automática desligada pelo painel: vigia parada
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2442,"reprovada":300}
+[vigia 12:39:06] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:39:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 11 moedas novas
+GeckoTerminal em alta (5min): 5 moedas novas
+GeckoTerminal migradas para a PumpSwap: 2 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 0 moedas novas
+Jupiter em alta (5min): 5 moedas novas
+Jupiter em alta (1h): 2 moedas novas
+Jupiter mais negociadas (1h): 1 moedas novas
+Jupiter organic score (1h): 3 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 12:40:06] venda automática desligada pelo painel: vigia parada
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-90%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders)
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2442,"reprovada":300}
+[vigia 12:41:06] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:41:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 15 moedas novas
+GeckoTerminal em alta (1h) 2: 10 moedas novas
+GeckoTerminal em alta (5min): 5 moedas novas
+GeckoTerminal migradas para a PumpSwap: 3 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 2 moedas novas
+Jupiter em alta (5min): 6 moedas novas
+Jupiter em alta (1h): 2 moedas novas
+Jupiter mais negociadas (1h): 0 moedas novas
+Jupiter organic score (1h): 2 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 12:42:06] venda automática desligada pelo painel: vigia parada
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+ALERTA ZOL: Apareceram 18 carteiras ligadas entre si (insiders)
+ALERTA SNAPMATIC : Apareceram 9 carteiras ligadas entre si (insiders) | Preço 75% abaixo da máxima
+ALERTA BTC: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 524 carteiras ligadas entre si (insiders) | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA HOGE: Novo alerta grave no RugCheck: Single holder ownership; Low Liquidity | Holders concentrando: top 10 foi de 10% para 50% | Liquidez sumiu (-100%). Possível rug
+ALERTA win: Novo alerta grave no RugCheck: Top 10 holders high ownership; Single holder ownership; Single holder ownership; Low Liquidity; High ownership | Holders concentrando: top 10 foi de 14% para 100% | Apareceram 718 carteiras ligadas entre si (insiders) | Risco no RugCheck subiu para 65/100 | Liquidez sumiu (-100%). Possível rug | Preço 95% abaixo da máxima
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2442,"reprovada":300}
+[vigia 12:43:06] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:43:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 12 moedas novas
+GeckoTerminal em alta (5min): 13 moedas novas
+GeckoTerminal migradas para a PumpSwap: 3 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 2 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 12:44:06] venda automática desligada pelo painel: vigia parada
+APROVADA: Emily (nota 71)
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":23,"carteira":19,"aguardando":2441,"reprovada":300}
+[vigia 12:45:06] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:45:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 13 moedas novas
+GeckoTerminal em alta (5min): 11 moedas novas
+GeckoTerminal migradas para a PumpSwap: 2 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 0 moedas novas
+Jupiter em alta (5min): 4 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 17 moedas encontradas
+[entrada 12:45:47] SIMULAÇÃO RÁPIDA: entrou em RIEMANN a US$ 0.0005727 (correção 54%, liquidez US$ 53063)
+[vigia 12:46:06] venda automática desligada pelo painel: vigia parada
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-90%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders)
+NA ZONA SEM ENTRADA: shep - fundo ainda caindo; sem vela verde acima da anterior; vendas dominando (0 compras x 10 vendas em 5 min)
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":23,"carteira":19,"aguardando":2438,"reprovada":300}
+[vigia 12:47:06] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:47:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 15 moedas novas
+GeckoTerminal em alta (1h) 2: 12 moedas novas
+GeckoTerminal em alta (5min): 13 moedas novas
+GeckoTerminal migradas para a PumpSwap: 3 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 4 moedas novas
+Jupiter em alta (1h): 0 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+Carteira: 1 compras/vendas novas lidas
+[vigia 12:48:06] venda automática desligada pelo painel: vigia parada
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+STOP MÓVEL ligado em Emily: garante +28%
+SINAL: Emily - Devolvendo o lucro
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":23,"carteira":19,"aguardando":2441,"reprovada":300}
+[vigia 12:49:06] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:49:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 15 moedas novas
+GeckoTerminal em alta (1h) 2: 12 moedas novas
+GeckoTerminal em alta (5min): 12 moedas novas
+GeckoTerminal migradas para a PumpSwap: 3 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 6 moedas novas
+Jupiter em alta (1h): 0 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 12:50:07] venda automática desligada pelo painel: vigia parada
+ALERTA Emily: Apareceram 4 carteiras ligadas entre si (insiders)
+ALERTA chud: Vendas dominando a última hora (só 30% compras)
+NA ZONA SEM ENTRADA: shep - fundo ainda caindo; sem vela verde acima da anterior
+Recuperou 0.0015 SOL fechando 1 conta(s) de moeda vazia
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":23,"carteira":19,"aguardando":2444,"reprovada":300}
+[vigia 12:51:07] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:51:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 23 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 15 moedas novas
+GeckoTerminal em alta (1h) 2: 12 moedas novas
+GeckoTerminal em alta (5min): 10 moedas novas
+GeckoTerminal migradas para a PumpSwap: 2 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 0 moedas novas
+Jupiter em alta (5min): 4 moedas novas
+Jupiter em alta (1h): 0 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 0 moedas novas
+Carteira: 17 moedas encontradas
+Carteira: 1 compras/vendas novas lidas
+[vigia 12:52:07] venda automática desligada pelo painel: vigia parada
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-90%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders)
+SAIU DO RADAR: XV (Já passou do auge: está 52% abaixo do topo de 135 min atrás)
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2440,"reprovada":300}
+[vigia 12:53:07] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:53:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 23 moedas Solana
+DexScreener boosts recentes: 22 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 14 moedas novas
+GeckoTerminal em alta (5min): 12 moedas novas
+GeckoTerminal migradas para a PumpSwap: 0 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 6 moedas novas
+Jupiter em alta (1h): 0 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 0 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 12:54:07] venda automática desligada pelo painel: vigia parada
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+Velas de CI indisponíveis: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/pools/HQGmrymdDbXywS5DYaNBzQJfdHEbAdXNHrneoq3MGrup/ohlcv/minute?aggregate=5&limit=72&currency=usd
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2438,"reprovada":300}
+[vigia 12:55:07] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:55:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 14 moedas novas
+GeckoTerminal em alta (5min): 16 moedas novas
+GeckoTerminal migradas para a PumpSwap: 2 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 6 moedas novas
+Jupiter em alta (1h): 0 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 0 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 12:56:07] venda automática desligada pelo painel: vigia parada
+ALERTA Catnomics: Apareceram 20 carteiras ligadas entre si (insiders) | Liquidez caiu 70% desde a referência | Preço 89% abaixo da máxima
+ALERTA Democat: Novo alerta grave no RugCheck: Single holder ownership; Low Liquidity | Holders concentrando: top 10 foi de 14% para 51% | Apareceram 94 carteiras ligadas entre si (insiders) | Liquidez sumiu (-100%). Possível rug | Preço 100% abaixo da máxima
+ALERTA RSI: Novo alerta grave no RugCheck: Top 10 holders high ownership; Single holder ownership; Low Liquidity; High ownership | Holders concentrando: top 10 foi de 18% para 99% | Apareceram 41 carteiras ligadas entre si (insiders) | Risco no RugCheck subiu para 62/100 | Liquidez sumiu (-100%). Possível rug | Preço 70% abaixo da máxima
+ALERTA Raja: Apareceram 22 carteiras ligadas entre si (insiders) | Liquidez caiu 51% desde a referência | Preço 74% abaixo da máxima
+ALERTA NIVIDIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-99%). Possível rug | Preço 100% abaixo da máxima
+ALERTA VINTEL: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 62% desde a referência | Preço 79% abaixo da máxima
+ALERTA SI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-96%). Possível rug | Preço 100% abaixo da máxima | Vendas dominando a última hora (só 4% compras)
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2440,"reprovada":300}
+[vigia 12:57:07] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:57:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 14 moedas novas
+GeckoTerminal em alta (5min): 14 moedas novas
+GeckoTerminal migradas para a PumpSwap: 2 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 4 moedas novas
+Jupiter em alta (1h): 0 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 12:58:07] venda automática desligada pelo painel: vigia parada
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-90%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders)
+NA ZONA SEM ENTRADA: shep - fundo ainda caindo; sem vela verde acima da anterior; alvo paga 1.8x o risco (pede 2x)
+SIMULAÇÃO CRAZY: entrou em RIEMANN na primeira correção (-29% do topo), US$ 3
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2443,"reprovada":300}
+[vigia 12:59:07] venda automática desligada pelo painel: vigia parada
+2026-11-21 12:59:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 14 moedas novas
+GeckoTerminal em alta (5min): 13 moedas novas
+GeckoTerminal migradas para a PumpSwap: 0 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 4 moedas novas
+Jupiter em alta (1h): 0 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 13:00:07] venda automática desligada pelo painel: vigia parada
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+ALERTA win: Novo alerta grave no RugCheck: Single holder ownership; Low Liquidity | Holders concentrando: top 10 foi de 15% para 50% | Apareceram 2001 carteiras ligadas entre si (insiders) | Liquidez sumiu (-100%). Possível rug | Preço 100% abaixo da máxima
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2440,"reprovada":300}
+[vigia 13:01:07] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:01:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 9 moedas novas
+GeckoTerminal em alta (5min): 9 moedas novas
+GeckoTerminal migradas para a PumpSwap: 1 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 4 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 13:02:07] venda automática desligada pelo painel: vigia parada
+NA ZONA SEM ENTRADA: shep - sem vela verde acima da anterior; vendas dominando (2 compras x 4 vendas em 5 min)
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":19,"aguardando":2443,"reprovada":300}
+[vigia 13:03:08] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:03:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 13 moedas novas
+GeckoTerminal em alta (1h) 2: 11 moedas novas
+GeckoTerminal em alta (5min): 14 moedas novas
+GeckoTerminal migradas para a PumpSwap: 2 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 3 moedas novas
+Jupiter em alta (1h): 2 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 13:04:08] venda automática desligada pelo painel: vigia parada
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-90%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders)
+ALERTA Leonida: Novo alerta grave no RugCheck: Single holder ownership; Low Liquidity | Holders concentrando: top 10 foi de 12% para 50% | Liquidez sumiu (-100%). Possível rug | Preço 92% abaixo da máxima
+ALERTA XV: Apareceram 4 carteiras ligadas entre si (insiders)
+[vigia 13:05:08] venda automática desligada pelo painel: vigia parada
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":18,"aguardando":2446,"reprovada":300}
+2026-11-21 13:05:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 13 moedas novas
+GeckoTerminal em alta (5min): 11 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=1
+Jupiter em alta (5min): 2 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 13:06:08] venda automática desligada pelo painel: vigia parada
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":18,"aguardando":2443,"reprovada":300}
+[entrada 13:06:48] SIMULAÇÃO RÁPIDA: entrou em Emily a US$ 0.0001157 (correção 62%, liquidez US$ 23654)
+[vigia 13:07:08] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:07:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 12 moedas novas
+GeckoTerminal em alta (5min): 10 moedas novas
+GeckoTerminal migradas para a PumpSwap: 0 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 3 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 17 moedas encontradas
+[vigia 13:08:08] venda automática desligada pelo painel: vigia parada
+NA ZONA SEM ENTRADA: shep - volume fraco; alvo paga 1.9x o risco (pede 2x)
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":18,"aguardando":2443,"reprovada":300}
+[vigia 13:09:08] venda automática desligada pelo painel: vigia parada
+[entrada 13:09:09] SIMULAÇÃO RÁPIDA: fechou Emily por stop (-20.4%)
+2026-11-21 13:09:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 21 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 11 moedas novas
+GeckoTerminal em alta (5min): 8 moedas novas
+GeckoTerminal migradas para a PumpSwap: 0 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 1 moedas novas
+Jupiter em alta (5min): 2 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+Carteira: 1 compras/vendas novas lidas
+[vigia 13:10:08] venda automática desligada pelo painel: vigia parada
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-89%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders) | Preço 56% abaixo da máxima
+ALERTA Emily: Apareceram 4 carteiras ligadas entre si (insiders)
+ALERTA Gestalt: Preço 62% abaixo da máxima
+NA ZONA SEM ENTRADA: shep - sem vela verde acima da anterior; vendas dominando (2 compras x 3 vendas em 5 min)
+STOP MÓVEL ligado em Emily: garante +14%
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":18,"aguardando":2440,"reprovada":300}
+[vigia 13:11:08] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:11:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 20 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 11 moedas novas
+GeckoTerminal em alta (5min): 7 moedas novas
+GeckoTerminal migradas para a PumpSwap: 0 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 0 moedas novas
+Jupiter em alta (5min): 3 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 0 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 13:12:08] venda automática desligada pelo painel: vigia parada
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":18,"aguardando":2436,"reprovada":300}
+[vigia 13:13:08] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:13:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 20 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 13 moedas novas
+GeckoTerminal em alta (1h) 2: 10 moedas novas
+GeckoTerminal em alta (5min): 9 moedas novas
+GeckoTerminal migradas para a PumpSwap: 2 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap 2: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=2
+Jupiter em alta (5min): 2 moedas novas
+Jupiter em alta (1h): 0 moedas novas
+Jupiter mais negociadas (1h): 4 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 13:14:08] venda automática desligada pelo painel: vigia parada
+ALERTA ZOL: Apareceram 18 carteiras ligadas entre si (insiders)
+ALERTA SNAPMATIC : Apareceram 9 carteiras ligadas entre si (insiders) | Preço 69% abaixo da máxima
+ALERTA BTC: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 524 carteiras ligadas entre si (insiders) | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA HOGE: Novo alerta grave no RugCheck: Single holder ownership; Low Liquidity | Holders concentrando: top 10 foi de 10% para 50% | Liquidez sumiu (-100%). Possível rug
+ALERTA win: Novo alerta grave no RugCheck: Top 10 holders high ownership; Single holder ownership; Single holder ownership; Low Liquidity; High ownership | Holders concentrando: top 10 foi de 14% para 100% | Apareceram 718 carteiras ligadas entre si (insiders) | Risco no RugCheck subiu para 65/100 | Liquidez sumiu (-100%). Possível rug | Preço 95% abaixo da máxima
+NA ZONA SEM ENTRADA: shep - sinal repetido
+SINAL: Emily - Bateu o stop móvel
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":17,"aguardando":2434,"reprovada":300}
+[vigia 13:15:08] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:15:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 20 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 14 moedas novas
+GeckoTerminal em alta (1h) 2: 10 moedas novas
+GeckoTerminal em alta (5min): 11 moedas novas
+GeckoTerminal migradas para a PumpSwap: 2 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 3 moedas novas
+Jupiter em alta (5min): 6 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 13:16:08] venda automática desligada pelo painel: vigia parada
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-89%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders)
+ALERTA Emily: Apareceram 4 carteiras ligadas entre si (insiders)
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":17,"aguardando":2439,"reprovada":300}
+[vigia 13:17:09] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:17:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 20 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 13 moedas novas
+GeckoTerminal em alta (1h) 2: 10 moedas novas
+GeckoTerminal em alta (5min): 8 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=1
+Jupiter em alta (5min): 5 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 13:18:09] venda automática desligada pelo painel: vigia parada
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+SINAL: Emily - Chegou no alvo
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":17,"aguardando":2436,"reprovada":300}
+[vigia 13:19:09] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:19:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 20 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 13 moedas novas
+GeckoTerminal em alta (1h) 2: 11 moedas novas
+GeckoTerminal em alta (5min): 13 moedas novas
+GeckoTerminal migradas para a PumpSwap: 3 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 0 moedas novas
+Jupiter em alta (5min): 7 moedas novas
+Jupiter em alta (1h): 0 moedas novas
+Jupiter mais negociadas (1h): 2 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 13:20:09] venda automática desligada pelo painel: vigia parada
+SINAL: Emily - Bateu o stop móvel
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":17,"aguardando":2433,"reprovada":300}
+[vigia 13:21:09] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:21:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 20 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 13 moedas novas
+GeckoTerminal em alta (1h) 2: 11 moedas novas
+GeckoTerminal em alta (5min): 13 moedas novas
+GeckoTerminal migradas para a PumpSwap: 2 moedas novas
+GeckoTerminal migradas para a PumpSwap 2: 0 moedas novas
+Jupiter em alta (5min): 4 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 3 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 18 moedas encontradas
+[vigia 13:22:09] venda automática desligada pelo painel: vigia parada
+ALERTA ANGSTIPAN: Novo alerta grave no RugCheck: Low Liquidity | Liquidez caiu 79% desde a referência | Preço 94% abaixo da máxima
+ALERTA Mabel: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 19 carteiras ligadas entre si (insiders) | Liquidez sumiu (-89%). Possível rug | Preço 99% abaixo da máxima
+ALERTA NASDUCK: Novo alerta grave no RugCheck: Low Liquidity | Apareceram 21 carteiras ligadas entre si (insiders) | Liquidez sumiu (-92%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTE: Novo alerta grave no RugCheck: Creator history of rugged tokens; Low Liquidity | Risco no RugCheck subiu para 78/100 | Liquidez sumiu (-97%). Possível rug | Preço 100% abaixo da máxima
+ALERTA WIFGTA6: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-93%). Possível rug | Preço 99% abaixo da máxima
+ALERTA PEPESURVIV: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA tapcat: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-86%). Possível rug | Preço 96% abaixo da máxima
+ALERTA CI: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-90%). Possível rug | Preço 100% abaixo da máxima
+ALERTA SBS: Apareceram 7 carteiras ligadas entre si (insiders)
+ALERTA Emily: Apareceram 4 carteiras ligadas entre si (insiders)
+ROMPIMENTO (simulação): shep
+SINAL: Emily - Chegou no alvo
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":17,"aguardando":2433,"reprovada":300}
+[vigia 13:23:09] venda automática desligada pelo painel: vigia parada
+2026-11-21 13:23:44 ---- rodada ----
+Venda no lucro LIGADA (posições abaixo de US$ 10, vende 100% com +100%)
+Compra automática LIGADA (carteira 9czVe1...)
+Venda automática por golpe LIGADA (carteira 9czVe1...)
+DexScreener perfis novos: 24 moedas Solana
+DexScreener boosts recentes: 20 moedas Solana
+DexScreener mais impulsionadas: 0 moedas Solana
+DexScreener community takeovers: 6 moedas Solana
+GeckoTerminal em alta (1h): 13 moedas novas
+GeckoTerminal em alta (1h) 2: 12 moedas novas
+GeckoTerminal em alta (5min): 12 moedas novas
+Falha em GeckoTerminal migradas para a PumpSwap: 429 limite de consultas em https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=1
+Jupiter em alta (5min): 3 moedas novas
+Jupiter em alta (1h): 1 moedas novas
+Jupiter mais negociadas (1h): 4 moedas novas
+Jupiter organic score (1h): 1 moedas novas
+Carteira: 17 moedas encontradas
+Carteira: 1 compras/vendas novas lidas
+[vigia 13:24:09] venda automática desligada pelo painel: vigia parada
+ALERTA LUCIA: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima
+ALERTA GTA 6 Coin: Novo alerta grave no RugCheck: Low Liquidity | Liquidez sumiu (-89%). Possível rug | Preço 98% abaixo da máxima
+NA ZONA SEM ENTRADA: shep - alvo paga 1.5x o risco (pede 2x)
+Recuperou 0.0015 SOL fechando 1 conta(s) de moeda vazia
+Dados salvos criptografados (data.enc.json).
+Pronto: {"aprovada":22,"carteira":17,"aguardando":2433,"reprovada":300}
