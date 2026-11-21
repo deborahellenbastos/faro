@@ -5805,7 +5805,18 @@ function fakeBuys(per = {}) {
 
   // ---------- Comprar / vender (Jupiter + Phantom) ----------
   const SOL_MINT = 'So11111111111111111111111111111111111111112';
-  const JUP = 'https://lite-api.jup.ag/swap/v1';
+  // 21/11: com a chave da Jupiter usa a API principal (limite maior); sem chave, a gratuita (lite), que trava mais
+  const JUP_LITE = 'https://lite-api.jup.ag/swap/v1';
+  const jupSwapBase = () => (jupKey() ? 'https://api.jup.ag/swap/v1' : JUP_LITE);
+  const jupHdr = (extra = {}) => ({ ...extra, ...(jupKey() ? { 'x-api-key': jupKey() } : {}) });
+  async function jupFetch(url, opts = {}) {
+    let r = await fetch(url, { ...opts, headers: jupHdr(opts.headers) });
+    if ((r.status === 401 || r.status === 403) && url.startsWith('https://api.jup.ag')) r = await fetch(url.replace('https://api.jup.ag/swap/v1', JUP_LITE), opts); // chave recusada: tenta a gratuita
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok && !j.error) j.error = r.status === 429 ? 'a Jupiter pediu uma pausa (muitos pedidos)' : `a Jupiter respondeu ${r.status}`;
+    return j;
+  }
+  const JUP = JUP_LITE;
   const isDemo = () => !!window.__DEMO_DATA;
   const getPhantom = () => (window.phantom?.solana?.isPhantom ? window.phantom.solana : window.solana?.isPhantom ? window.solana : null);
 
@@ -5843,7 +5854,7 @@ function fakeBuys(per = {}) {
     const dec = await tokenDecimals(t);
     const inMint = buy ? SOL_MINT : t.mint, outMint = buy ? t.mint : SOL_MINT;
     const raw = buy ? Math.round(amt * 1e9) : Math.floor(amt * 10 ** dec);
-    const q = await fetch(`${JUP}/quote?inputMint=${inMint}&outputMint=${outMint}&amount=${raw}&slippageBps=${Math.round(slip * 100)}`).then((r) => r.json());
+    const q = await jupFetch(`${jupSwapBase()}/quote?inputMint=${inMint}&outputMint=${outMint}&amount=${raw}&slippageBps=${Math.round(slip * 100)}`);
     if (!q?.outAmount) throw new Error(q?.error || 'A Jupiter não encontrou rota para essa troca');
     const outDec = buy ? dec : 9;
     return { raw: q, inUi: amt, outUi: Number(q.outAmount) / 10 ** outDec, minUi: Number(q.otherAmountThreshold) / 10 ** outDec, impact: Number(q.priceImpactPct || 0) * 100 };
@@ -5852,10 +5863,17 @@ function fakeBuys(per = {}) {
     if (isDemo()) return 'DEMO';
     const ph = getPhantom();
     const { publicKey } = await ph.connect();
-    const sw = await fetch(`${JUP}/swap`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quoteResponse: st.quote.raw, userPublicKey: publicKey.toString(), wrapAndUnwrapSol: true, dynamicComputeUnitLimit: true, dynamicSlippage: st.slip === 'auto' || !!st.emergency,
-        prioritizationFeeLamports: st.emergency ? { priorityLevelWithMaxLamports: { maxLamports: 5000000, priorityLevel: 'veryHigh' } } : 'auto' }) }).then((r) => r.json());
-    if (!sw?.swapTransaction) throw new Error(sw?.error || 'A Jupiter não montou a transação');
+    // 21/11: a Jupiter às vezes falha ao montar (cotação velha, pausa por muitos pedidos). Tenta até 3 vezes sozinho,
+    // com cotação nova a cada tentativa, em vez de você ter que clicar de novo
+    let sw = null;
+    for (let i = 0; i < 3; i++) {
+      if (i) { await new Promise((r) => setTimeout(r, 500 * i)); try { st.quote = await getQuote(data.tokens[st.mint] || t, st); } catch { /* usa a anterior */ } }
+      sw = await jupFetch(`${jupSwapBase()}/swap`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quoteResponse: st.quote.raw, userPublicKey: publicKey.toString(), wrapAndUnwrapSol: true, dynamicComputeUnitLimit: true, dynamicSlippage: st.slip === 'auto' || !!st.emergency,
+          prioritizationFeeLamports: st.emergency || i ? { priorityLevelWithMaxLamports: { maxLamports: st.emergency ? 5000000 : 2000000, priorityLevel: 'veryHigh' } } : 'auto' }) }).catch((e) => ({ error: e.message }));
+      if (sw?.swapTransaction) break;
+    }
+    if (!sw?.swapTransaction) throw new Error(`A Jupiter não montou a transação depois de 3 tentativas${sw?.error ? ` (${sw.error})` : ''}. Espere uns segundos e tente de novo.`);
     const { VersionedTransaction } = await loadWeb3();
     const tx = VersionedTransaction.deserialize(Uint8Array.from(atob(sw.swapTransaction), (c) => c.charCodeAt(0)));
     const res = await ph.signAndSendTransaction(tx); // a Phantom mostra a confirmação para você aprovar
