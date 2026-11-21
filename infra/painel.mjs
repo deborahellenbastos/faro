@@ -3,12 +3,14 @@
 // Escuta só em 127.0.0.1: ninguém de fora chega aqui direto. Quem entrega para a internet é o
 // túnel do Cloudflare (cloudflared), com o login do Cloudflare Access na frente.
 // Só leitura nos arquivos: entrega só o que está em docs/. A única escrita é a lista de aparelhos que recebem
-// avisos no celular (push), pelas rotas /push/..., que ficam atrás do mesmo login do Cloudflare.
+// avisos no celular (push), pelas rotas /push/..., e a lista de moedas que ela reprovou à mão (/radar/...),
+// tudo atrás do mesmo login do Cloudflare.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chaves, guardarAparelho, tirarAparelho, avisar } from '../scanner/push.mjs';
+import { reprovar, desfazer } from '../scanner/manual.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'docs');
 const PORT = Number(process.env.FARO_PAINEL_PORTA || 8080);
@@ -76,6 +78,9 @@ async function rotaPush(req, res, rota) {
       return json(res, 200, { ok: true, aparelhos: n });
     }
     if (rota === '/push/sair') return json(res, 200, { ok: true, aparelhos: await tirarAparelho(String(corpo.endpoint || '')) });
+    // 21/11: reprovar uma moeda do Radar à mão (o robô aplica na próxima rodada)
+    if (rota === '/radar/reprovar') return json(res, 200, { ok: true, total: await reprovar(String(corpo.mint || ''), corpo.simbolo) });
+    if (rota === '/radar/desfazer') return json(res, 200, { ok: true, total: await desfazer(String(corpo.mint || '')) });
     if (rota === '/push/teste') {
       const n = await avisar({ titulo: 'Faro: avisos ligados', texto: 'Pronto! Agora o robô te avisa mesmo com o app fechado.', chave: `teste-${Date.now()}` });
       return json(res, 200, { ok: n > 0, enviados: n });
@@ -87,7 +92,7 @@ async function rotaPush(req, res, rota) {
 const server = createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url, 'http://local'); } catch { return responder(res, 400, 'Endereço inválido'); }
-  if (url.pathname.startsWith('/push/')) return rotaPush(req, res, url.pathname);
+  if (url.pathname.startsWith('/push/') || url.pathname.startsWith('/radar/')) return rotaPush(req, res, url.pathname);
   if (req.method !== 'GET' && req.method !== 'HEAD') return responder(res, 405, 'Método não permitido', { Allow: 'GET, HEAD' });
   let rel = decodeURIComponent(url.pathname);
   if (rel.endsWith('/')) rel += 'index.html';

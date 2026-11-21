@@ -155,8 +155,18 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   const favSet = new Set(state.favs && now - (state.favs.at || 0) < FAV_MS ? (state.favs.mints || []).filter((m) => !(state.favsOut || []).includes(m)) : []);
   for (const m of favSet) if (!tokens[m]) tokens[m] = { mint: m, firstSeen: now, status: 'aguardando', source: 'favorita' };
   for (const t of Object.values(tokens)) { if (favSet.has(t.mint)) t.favorita = true; else delete t.favorita; }
+  // 21/11: moedas que a Kerah reprovou à mão no painel (lista no servidor). Saem do Radar e não voltam a ser avaliadas;
+  // "Desfazer" no painel tira da lista e a moeda volta para a análise na rodada seguinte. Moeda na carteira não é mexida
+  const manuais = api.lerReprovadas ? await api.lerReprovadas().catch(() => ({})) : {};
+  for (const t of Object.values(tokens)) {
+    const r = manuais[t.mint];
+    if (r && !t.held) {
+      if (!t.reprovadaManual) { log(`REPROVADA POR VOCÊ: ${t.symbol || t.mint.slice(0, 6)} saiu do Radar`); t.rejectedAt = now; }
+      t.reprovadaManual = r.at; t.status = 'reprovada'; t.reasons = ['Reprovada por você no painel']; delete t.favorita; delete t.sinal; delete t.sinalAgr;
+    } else if (t.reprovadaManual && !r) { delete t.reprovadaManual; t.status = 'aguardando'; t.reasons = ['Reprovação desfeita: volta para a análise']; }
+  }
   const monitored = (t) => t.favorita || t.held || simOpen.has(t.mint) || t.status === 'carteira' || reentryOpen(t) || curveOn(t) || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
-  const active = Object.values(tokens).filter((t) => t.status === 'nova' || t.status === 'aguardando' || monitored(t));
+  const active = Object.values(tokens).filter((t) => (!t.reprovadaManual || t.held || simOpen.has(t.mint)) && (t.status === 'nova' || t.status === 'aguardando' || monitored(t)));
 
   // 3. Dados de mercado de todas de uma vez
   const market = await api.getMarketData(active.map((t) => t.mint), log);
@@ -737,6 +747,12 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       }
     } catch (e) { log(`Módulo de compra falhou: ${e.message}`, true); }
   }
+
+  // 21/11: a reprovação manual vale mesmo se alguma etapa acima mexeu no status (ex.: simulação aberta nela)
+  for (const t of Object.values(tokens)) if (t.reprovadaManual && !t.held && t.status !== 'reprovada') { t.status = 'reprovada'; t.reasons = ['Reprovada por você no painel']; delete t.sinal; delete t.sinalAgr; }
+
+  // 21/11: servidor do painel pega código novo sozinho
+  if (api.atualizarPainel) await api.atualizarPainel(log).catch(() => {});
 
   // 7. Limpeza
   const rejected = Object.values(tokens).filter((t) => t.status === 'reprovada').sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));

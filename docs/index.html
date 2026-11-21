@@ -2428,7 +2428,8 @@
   const isUnseen = (t) => t.status === 'aprovada' && !SEEN.has(t.mint) && !isMine(t);
   const radarOrd = () => 'nota'; // ordem fixa: melhor nota primeiro (os filtros em pílula fazem o resto)
   // Favoritas (coração) e filtro do Radar
-  // Reprovadas por você (só neste aparelho; o robô não fica sabendo): mint -> quando
+  // Reprovadas por você: mint -> quando. 21/11: vale também no Radar e, no meufaro.tech, vai para o robô
+  // (lista no servidor), que tira a moeda do Radar e não compra nem simula mais ela
   const MANREP = new Map(Object.entries(store.get('faro-reprov', {})));
   const saveManRep = () => store.set('faro-reprov', Object.fromEntries(MANREP));
   function undoToast(msg, fn) {
@@ -2437,12 +2438,14 @@
     b.onclick = () => { fn(); el.classList.remove('show'); }; el.append(sp, b);
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.classList.remove('undo'), 250); }, 5000);
   }
+  const ROBO_OK = !/github\.io$/.test(location.hostname);
+  const avisaRobo = (rota, m) => { if (!ROBO_OK) return; postJson(`radar/${rota}`, { mint: m, simbolo: data?.tokens?.[m]?.symbol || '' }).then((r) => { if (!r.ok) throw new Error(r.status); }).catch(() => toast('Não consegui avisar o robô agora. Tente de novo em instantes.')); };
   function manReprovar(m) {
     const sym = data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda';
-    MANREP.set(m, Date.now()); saveManRep();
+    MANREP.set(m, Date.now()); saveManRep(); avisaRobo('reprovar', m);
     if (ui.sel[ui.tab] === m) { ui.sel[ui.tab] = null; if (document.body.classList.contains('show-detail')) closeSheet(); }
     render();
-    undoToast(`${sym} reprovada`, () => { MANREP.delete(m); saveManRep(); render(); });
+    undoToast(ROBO_OK ? `${sym} reprovada. O robô tira do Radar na próxima rodada.` : `${sym} reprovada (só neste aparelho)`, () => { MANREP.delete(m); saveManRep(); avisaRobo('desfazer', m); render(); });
   }
   // Em análise: arrastar a moeda para a esquerda reprova (dedo no celular, mouse no computador)
   // 20/11: sem setPointerCapture (prendia os cliques seguintes numa moeda só) e o fim do gesto é ouvido na janela inteira
@@ -2451,7 +2454,7 @@
     const reset = (row) => { if (!row) return; row.classList.remove('swiping', 'swipe-armed'); row.classList.add('swipe-back'); row.style.transform = ''; setTimeout(() => row.classList.remove('swipe-back'), 220); };
     list.addEventListener('pointerdown', (e) => {
       if (sw?.on) reset(sw.row); sw = null;
-      if (ui.tab !== 'aguardando' || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      if ((ui.tab !== 'aguardando' && ui.tab !== 'aprovada') || (e.pointerType === 'mouse' && e.button !== 0)) return;
       const row = e.target.closest('.row[data-sel]'); if (!row) return;
       sw = { row, x: e.clientX, y: e.clientY, dx: 0, on: false, id: e.pointerId, mouse: e.pointerType === 'mouse' };
     });
@@ -2479,7 +2482,7 @@
     window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
     list.addEventListener('click', (e) => { if (blockClick) { blockClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
   })();
-  function manDesfazer(m) { MANREP.delete(m); saveManRep(); render(); toast(`${data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda'} voltou para Em análise`); }
+  function manDesfazer(m) { MANREP.delete(m); saveManRep(); avisaRobo('desfazer', m); render(); toast(`${data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda'} voltou para Em análise`); }
   const FAVS = new Set(store.get('faro-favs', []));
   const isFav = (t) => FAVS.has(t.mint);
   const radarFilt = () => store.get('faro-radar-filt', 'todas');
@@ -3860,7 +3863,7 @@ function fakeBuys(per = {}) {
       </div>
       <div class="tbody">
         ${t.status === 'aguardando' && !t.held ? `<div class="obs-note">${ICON.warn}<span><b>Ainda em observação</b> (nota ${t.score}). ${(t.pending ?? (t.reasons || []).length) ? `Falta${(t.pending ?? t.reasons.length) > 1 ? 'm' : ''} ${t.pending ?? t.reasons.length} critério${(t.pending ?? t.reasons.length) > 1 ? 's' : ''}: ${esc((t.reasons || [])[0] || '')}` : 'Ainda na fila de checagem.'}</span></div>` : ''}
-        ${t.status === 'aguardando' && !t.held ? (MANREP.has(t.mint) ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
+        ${['aguardando', 'aprovada', 'reprovada'].includes(t.status) && !t.held && (t.status !== 'reprovada' || MANREP.has(t.mint) || t.reprovadaManual) ? (MANREP.has(t.mint) || t.reprovadaManual ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
         ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
         <div class="tbal"><span>Saldo</span><span class="num">${bal}</span></div>
@@ -5332,7 +5335,7 @@ function fakeBuys(per = {}) {
     const danger = mine.filter((t) => levelOf(t) === 'danger').length;
     // Aprovada que virou perigo não fica no radar: vai para as reprovadas na hora (o robô confirma na rodada)
     const fell = (t) => t.status === 'aprovada' && levelOf(t) === 'danger';
-    const lists = { minhas: [...mine, ...dead, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t)), aguardando: by('aguardando').filter((t) => !MANREP.has(t.mint)), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => fell(t) && !isSold(t)), ...by('aguardando').filter((t) => MANREP.has(t.mint))] };
+    const lists = { minhas: [...mine, ...dead, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t) && !MANREP.has(t.mint)), aguardando: by('aguardando').filter((t) => !MANREP.has(t.mint)), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => (fell(t) && !isSold(t)) || MANREP.has(t.mint)), ...by('aguardando').filter((t) => MANREP.has(t.mint))] };
 
     // Moeda aberta que você acabou de comprar: o Faro vai junto com ela para a Carteira
     const opened = ui.sel[ui.tab];

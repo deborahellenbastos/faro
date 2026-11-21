@@ -800,3 +800,19 @@ console.log('Teste das velas com limite de consultas: ok');
   assert.equal(typeof simStep, 'function');
 }
 console.log('Teste da tendência de baixa: ok');
+
+// Reprovação manual pelo painel (21/11)
+{
+  const { mkdtemp } = await import("node:fs/promises"); const os = await import("node:os"); const path = await import("node:path");
+  process.env.FARO_PUSH_DIR = await mkdtemp(path.join(os.tmpdir(), 'faro-man-'));
+  const M = await import('./manual.mjs?t=' + Date.now());
+  const mint = '7bCiddGLe5aM8HE2pigT9jsqkmC1HSPxyXN6GkHEpump';
+  await M.reprovar(mint, 'OGTA');
+  assert.ok((await M.lerReprovadas())[mint], 'grava a moeda reprovada');
+  await assert.rejects(M.reprovar('../../etc/passwd'), /inválido/);
+  await M.desfazer(mint);
+  assert.equal((await M.lerReprovadas())[mint], undefined, 'desfazer tira da lista');
+  const run = await readFile(new URL('./run.mjs', import.meta.url), 'utf8');
+  assert.match(run, /Reprovada por você no painel/);
+  console.log('Teste da reprovação manual: ok');
+}
