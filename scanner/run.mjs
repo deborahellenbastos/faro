@@ -767,6 +767,19 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // 21/11: a reprovação manual vale mesmo se alguma etapa acima mexeu no status (ex.: simulação aberta nela)
   for (const t of Object.values(tokens)) if (t.reprovadaManual && !t.held && t.status !== 'reprovada') { t.status = 'reprovada'; t.reasons = ['Reprovada por você no painel']; delete t.sinal; delete t.sinalAgr; }
 
+  // 21/11: alvo do Segurar escolhido moeda por moeda no painel (vale para as compras dela e do robô)
+  if (api.lerSegurar) {
+    const esc = await api.lerSegurar().catch(() => ({}));
+    for (const [mint, e] of Object.entries(esc)) {
+      const t = tokens[mint];
+      if (!t || (!t.held && now - e.at > 10 * 60000)) { await api.definirSegurar(mint, null).catch(() => {}); continue; } // posição fechada: a escolha sai
+      if (!t.held) continue;
+      const antes = t.segurar?.alvoPct || 0;
+      if (e.alvoPct > 0) t.segurar = { ...(t.segurar || { desde: e.at }), alvoPct: e.alvoPct, manual: true };
+      else delete t.segurar;
+      if (antes !== (e.alvoPct || 0)) log(`${t.symbol}: ${e.alvoPct > 0 ? `modo Segurar até +${e.alvoPct}% (escolhido no painel)` : 'saiu do modo Segurar, volta às regras normais (escolhido no painel)'}`);
+    }
+  }
   // Posição do Segurar fechada (vendeu tudo): a marca sai, e uma compra futura segue o perfil da hora
   for (const t of Object.values(tokens)) if (t.segurar && !t.held && now - (t.segurar.desde || 0) > 10 * 60000) delete t.segurar;
 

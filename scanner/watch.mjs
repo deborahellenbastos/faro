@@ -12,6 +12,7 @@ import { getRugReport, getWalletHoldings, getRecentOps } from './api.mjs';
 import { summarizeRug, scamSignals, isLpSignal } from './analyze.mjs';
 import { weakSignals, realizeCheck } from './signals.mjs';
 import { avisar } from './push.mjs';
+import { lerSegurar, segurarDe } from './manual.mjs';
 
 const seconds = Math.max(0, Number(process.argv[2]) || 0);
 const until = Date.now() + seconds * 1000;
@@ -273,6 +274,7 @@ while (Date.now() < until) {
     const r = await fetch(`https://api.dexscreener.com/tokens/v1/solana/${live.map((t) => t.mint).join(',')}`, { signal: AbortSignal.timeout(8000) });
     const pairs = r.ok ? await r.json() : [];
     const now = Date.now();
+    const escSeg = await lerSegurar().catch(() => ({})); // 21/11: alvo do Segurar escolhido no painel vale na hora
     for (const t of live) {
       // Mesmo par que o robô usa; se não houver, o mais líquido
       const ps = (pairs || []).filter((p) => p?.baseToken?.address === t.mint);
@@ -288,11 +290,12 @@ while (Date.now() < until) {
       const fromPeak = (1 - px / mem.peak[t.mint]) * 100;
       const liqDrop = liqTop > 0 && liq > 0 ? (1 - liq / liqTop) * 100 : 0;
       // 21/11: posição comprada no perfil Segurar: nada de stop, stop móvel, escada, golpe ou queda. Só vende em +alvoPct
-      if (t.segurar) {
+      const SEGt = segurarDe(t, escSeg);
+      if (SEGt) {
         const avgS = t.position?.avgPriceUsd > 0 && !t.staleCost ? t.position.avgPriceUsd : 0;
         const gS = avgS ? (px / avgS - 1) * 100 : null;
-        if (!mem.segLog?.[t.mint]) { (mem.segLog = mem.segLog || {})[t.mint] = now; log(`${t.symbol}: perfil Segurar, só vende em +${t.segurar.alvoPct ?? 150}%`); }
-        if (gS != null && gS >= (t.segurar.alvoPct ?? 150)) await sell(t, `alvo do perfil Segurar: +${gS.toFixed(0)}% (alvo +${t.segurar.alvoPct ?? 150}%)`, 'alvo-segurar', px);
+        if (mem.segLog?.[t.mint] !== SEGt.alvoPct) { (mem.segLog = mem.segLog || {})[t.mint] = SEGt.alvoPct; log(`${t.symbol}: modo Segurar, só vende em +${SEGt.alvoPct ?? 150}%`); }
+        if (gS != null && gS >= (SEGt.alvoPct ?? 150)) await sell(t, `alvo do modo Segurar: +${gS.toFixed(0)}% (alvo +${SEGt.alvoPct ?? 150}%)`, 'alvo-segurar', px);
         // 21/11 (pedido da Kerah): única proteção do Segurar: liquidez retirada do pool (golpe de verdade, não correção).
         // 70% em 5 min: uma queda normal de preço tira bem menos (preço -50% tira uns 30% da liquidez)
         else if (liqDrop >= (cfg.perfis?.segurar?.segurar?.liquidezRetiradaPct ?? 70)) await sell(t, `liquidez retirada do pool: caiu ${liqDrop.toFixed(0)}% em ${liqWin / 60000} min (proteção contra golpe do perfil Segurar)`, 'golpe', px);

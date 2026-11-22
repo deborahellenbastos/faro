@@ -402,4 +402,4 @@ export async function getSolUsd() {
   const v = Number(best?.priceUsd);
   return Number.isFinite(v) && v > 0 ? v : null;
 }
-export { lerReprovadas, atualizarPainel } from './manual.mjs';
+export { lerReprovadas, atualizarPainel, lerSegurar, definirSegurar } from './manual.mjs';

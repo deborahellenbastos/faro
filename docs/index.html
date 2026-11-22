@@ -650,11 +650,17 @@
   .pfrow { flex-wrap: wrap; row-gap: 8px; }
   .pfrow small[data-pfstate] { color: var(--muted); font-weight: 600; } .pfrow.agr small[data-pfstate] { color: #f5b14c; }
   .pfrow[hidden] { display: none; }
-  .pf-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 3px; border-radius: var(--r-2); background: var(--bg); border: 1px solid var(--line); width: 100%; }
+  .pf-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; padding: 3px; border-radius: var(--r-2); background: var(--bg); border: 1px solid var(--line); width: 100%; }
   .pf-seg button { border: 0; background: transparent; height: 32px; border-radius: var(--r-1); color: var(--muted); font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; }
   .pf-seg button.on { background: var(--panel-3); color: var(--text); }
   .pfrow.agr .pf-seg button.on { background: rgba(245,177,76,.16); color: #f5b14c; }
   .pf-seg button:disabled { cursor: progress; }
+  /* 21/11: alvo do modo Segurar, moeda por moeda */
+  .seg-alvo { margin: 10px 0; }
+  .seg-alvo > div:first-child { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .seg-alvo b { color: var(--text); }
+  .seg-alvo .pf-seg button.on { background: rgba(245,177,76,.16); color: #f5b14c; }
+  .seg-alvo .pf-seg button.on[data-segalvo="0"] { background: var(--panel-3); color: var(--text); }
   .pfrow.in-drawer { padding: 12px 14px; margin-bottom: var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg); }
   .pf-table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 8px 0 12px; }
   .pf-table th, .pf-table td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -2482,6 +2488,31 @@
     window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
     list.addEventListener('click', (e) => { if (blockClick) { blockClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
   })();
+  // 21/11: alvo do modo Segurar moeda por moeda (qualquer moeda na carteira). Vai para o servidor e vale na hora na vigia
+  const SEGPEND = new Map(); // mint -> { alvo, at } até os dados do robô mostrarem a escolha
+  function segAlvoAtual(t) {
+    const p = SEGPEND.get(t.mint), cur = t.segurar?.alvoPct || 0;
+    if (p && (p.alvo === cur || Date.now() - p.at > 6 * 60000)) SEGPEND.delete(t.mint);
+    return SEGPEND.has(t.mint) ? SEGPEND.get(t.mint).alvo : cur;
+  }
+  function segAlvoRow(t) {
+    if (!ROBO_OK || !t.held || !((t.heldAmount || 0) > 0) || isDemo()) return '';
+    const a = segAlvoAtual(t), g = t.position?.avgPriceUsd > 0 && t.priceUsd > 0 ? (t.priceUsd / t.position.avgPriceUsd - 1) * 100 : null;
+    const op = (v, l) => `<button data-segalvo="${v}" data-segmint="${esc(t.mint)}" class="${a === v ? 'on' : ''}">${l}</button>`;
+    return `<div class="seg-alvo"><div><span>Segurar até ${a ? `<b>+${a}%</b> (sem stop)` : '<b>regras normais</b>'}</span>${g != null ? `<span>agora <b class="num ${cls(g)}">${g >= 0 ? '+' : ''}${g.toFixed(0)}%</b></span>` : ''}</div>
+      <div class="pf-seg">${op(0, 'Normal')}${op(100, '+100%')}${op(150, '+150%')}${op(200, '+200%')}</div></div>`;
+  }
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-segalvo]'); if (!b) return;
+    const m = b.dataset.segmint, alvo = Number(b.dataset.segalvo), t = data?.tokens?.[m]; if (!t) return;
+    const g = t.position?.avgPriceUsd > 0 && t.priceUsd > 0 ? (t.priceUsd / t.position.avgPriceUsd - 1) * 100 : null;
+    if (alvo > 0 && g != null && g >= alvo && !confirm(`${dispName(t)} já está em +${g.toFixed(0)}%. Com alvo de +${alvo}%, o robô vende agora. Continuar?`)) return;
+    SEGPEND.set(m, { alvo, at: Date.now() }); render();
+    try {
+      const r = await postJson('radar/segurar', { mint: m, alvo }); if (!r.ok) throw new Error(r.status);
+      toast(alvo ? `${dispName(t)}: segurando até +${alvo}%. Sem stop até lá.` : `${dispName(t)}: voltou às regras normais (stops e vigia).`);
+    } catch { SEGPEND.delete(m); render(); toast('Não consegui avisar o robô agora. Tente de novo em instantes.'); }
+  });
   function manDesfazer(m) { MANREP.delete(m); saveManRep(); avisaRobo('desfazer', m); render(); toast(`${data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda'} voltou para Em análise`); }
   const FAVS = new Set(store.get('faro-favs', []));
   const isFav = (t) => FAVS.has(t.mint);
@@ -3864,7 +3895,8 @@ function fakeBuys(per = {}) {
       <div class="tbody">
         ${t.status === 'aguardando' && !t.held ? `<div class="obs-note">${ICON.warn}<span><b>Ainda em observação</b> (nota ${t.score}). ${(t.pending ?? (t.reasons || []).length) ? `Falta${(t.pending ?? t.reasons.length) > 1 ? 'm' : ''} ${t.pending ?? t.reasons.length} critério${(t.pending ?? t.reasons.length) > 1 ? 's' : ''}: ${esc((t.reasons || [])[0] || '')}` : 'Ainda na fila de checagem.'}</span></div>` : ''}
         ${['aguardando', 'aprovada', 'reprovada'].includes(t.status) && !t.held && (t.status !== 'reprovada' || MANREP.has(t.mint) || t.reprovadaManual) ? (MANREP.has(t.mint) || t.reprovadaManual ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
-        ${t.held && t.segurar ? `<div class="obs-note">${ICON.warn}<span><b>Perfil Segurar:</b> o robô só vende esta moeda em +${t.segurar.alvoPct ?? 150}% ou se a liquidez do pool for retirada (golpe). Sem stop: se cair, ela fica na carteira até você vender.</span></div>` : ''}
+        ${segAlvoRow(t)}
+        ${t.held && t.segurar ? `<div class="obs-note">${ICON.warn}<span><b>Perfil Segurar:</b> o robô só vende esta moeda em +${t.segurar.alvoPct ?? 150}% ou se a liquidez do pool for retirada (golpe). Sem stop: se cair, ela fica na carteira até você vender. Dá para mudar o alvo ou voltar ao Normal acima.</span></div>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
         <div class="tbal"><span>Saldo</span><span class="num">${bal}</span></div>

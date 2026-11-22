@@ -10,7 +10,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chaves, guardarAparelho, tirarAparelho, avisar } from '../scanner/push.mjs';
-import { reprovar, desfazer } from '../scanner/manual.mjs';
+import { reprovar, desfazer, definirSegurar } from '../scanner/manual.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'docs');
 const PORT = Number(process.env.FARO_PAINEL_PORTA || 8080);
@@ -80,6 +80,8 @@ async function rotaPush(req, res, rota) {
     if (rota === '/push/sair') return json(res, 200, { ok: true, aparelhos: await tirarAparelho(String(corpo.endpoint || '')) });
     // 21/11: reprovar uma moeda do Radar à mão (o robô aplica na próxima rodada)
     if (rota === '/radar/reprovar') return json(res, 200, { ok: true, total: await reprovar(String(corpo.mint || ''), corpo.simbolo) });
+    // 21/11: alvo do modo Segurar só para uma moeda (0 = regras normais)
+    if (rota === '/radar/segurar') { await definirSegurar(String(corpo.mint || ''), Number(corpo.alvo)); return json(res, 200, { ok: true }); }
     if (rota === '/radar/desfazer') return json(res, 200, { ok: true, total: await desfazer(String(corpo.mint || '')) });
     if (rota === '/push/teste') {
       const n = await avisar({ titulo: 'Faro: avisos ligados', texto: 'Pronto! Agora o robô te avisa mesmo com o app fechado.', chave: `teste-${Date.now()}` });

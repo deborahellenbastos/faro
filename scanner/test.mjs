@@ -836,3 +836,19 @@ console.log('Teste da tendência de baixa: ok');
   assert.match(w, /if \(t\.segurar\) \{/, 'a vigia deve pular tudo nas posições do Segurar');
   console.log('Teste do perfil Segurar: ok');
 }
+
+// Alvo do Segurar moeda por moeda (21/11)
+{
+  const { mkdtemp } = await import("node:fs/promises"); const os = await import("node:os"); const path = await import("node:path");
+  process.env.FARO_PUSH_DIR = await mkdtemp(path.join(os.tmpdir(), 'faro-seg-'));
+  const M = await import('./manual.mjs?seg=' + Date.now());
+  const mint = '7bCiddGLe5aM8HE2pigT9jsqkmC1HSPxyXN6GkHEpump';
+  await M.definirSegurar(mint, 200);
+  const esc = await M.lerSegurar();
+  assert.equal(M.segurarDe({ mint, segurar: { desde: Date.now() - 60000, alvoPct: 150 } }, esc).alvoPct, 200, 'escolha do painel muda o alvo');
+  assert.equal(M.segurarDe({ mint }, esc).alvoPct, 200, 'vale para compra manual');
+  await M.definirSegurar(mint, 0);
+  assert.equal(M.segurarDe({ mint, segurar: { desde: 1, alvoPct: 150 } }, await M.lerSegurar()), null, 'Normal volta às regras');
+  await assert.rejects(M.definirSegurar(mint, 300), /inválido/);
+  console.log('Teste do alvo do Segurar por moeda: ok');
+}

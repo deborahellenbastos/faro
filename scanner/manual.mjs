@@ -50,3 +50,31 @@ export async function atualizarPainel(log = () => {}) {
   log('Painel do servidor reiniciado com o código novo');
   return true;
 }
+
+// 21/11 (pedido da Kerah): alvo do modo Segurar escolhido moeda por moeda no painel (qualquer moeda na carteira,
+// comprada por ela ou pelo robô). alvoPct 100/150/200 = segura até lá, sem stop; 0 = volta às regras normais.
+const ARQ_SEG = () => path.join(DIR, 'segurar-manual.json');
+export const ALVOS_SEGURAR = [0, 100, 150, 200];
+export async function lerSegurar() {
+  try { const j = JSON.parse(await readFile(ARQ_SEG(), 'utf8')); return j && typeof j.mints === 'object' ? j.mints : {}; } catch { return {}; }
+}
+export async function definirSegurar(mint, alvoPct) {
+  if (!MINT.test(String(mint))) throw new Error('Endereço de moeda inválido');
+  const m = await lerSegurar();
+  if (alvoPct == null) delete m[mint];
+  else {
+    const a = Number(alvoPct);
+    if (!ALVOS_SEGURAR.includes(a)) throw new Error('Alvo inválido (use 0, 100, 150 ou 200)');
+    m[mint] = { alvoPct: a, at: Date.now() };
+  }
+  await mkdir(DIR, { recursive: true });
+  const tmp = ARQ_SEG() + '.tmp';
+  await writeFile(tmp, JSON.stringify({ mints: Object.fromEntries(Object.entries(m).sort((x, y) => y[1].at - x[1].at).slice(0, 200)) }, null, 2));
+  await rename(tmp, ARQ_SEG());
+}
+// Junta a marca da compra (perfil Segurar) com a escolha do painel. Devolve o alvo em vigor ou null (regras normais)
+export function segurarDe(t, escolhas) {
+  const e = escolhas?.[t.mint];
+  if (e && (!t.segurar || e.at >= (t.segurar.desde || 0) - 60000 || e.alvoPct === 0)) return e.alvoPct > 0 ? { ...(t.segurar || {}), alvoPct: e.alvoPct, manual: true } : null;
+  return t.segurar || null;
+}
