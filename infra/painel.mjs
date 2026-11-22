@@ -9,7 +9,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chaves, guardarAparelho, tirarAparelho, avisar } from '../scanner/push.mjs';
+import { chaves, guardarAparelho, tirarAparelho, avisar, historico } from '../scanner/push.mjs';
 import { reprovar, desfazer, definirSegurar } from '../scanner/manual.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'docs');
@@ -64,6 +64,10 @@ async function rotaPush(req, res, rota) {
   if (rota === '/push/chave' && req.method === 'GET') {
     const k = await chaves({ criar: true });
     return json(res, 200, { publicKey: k.publicKey });
+  }
+  if (rota === '/push/historico' && req.method === 'GET') {
+    const desde = Number(new URL(req.url, 'http://x').searchParams.get('desde')) || 0;
+    return json(res, 200, { itens: (await historico(desde)).slice(-100) });
   }
   if (req.method !== 'POST') return responder(res, 405, 'Método não permitido', { Allow: 'POST' });
   const origem = req.headers.origin || '';

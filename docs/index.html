@@ -1843,14 +1843,31 @@
   // já como lido, e sem som nem notificação. Antes ele aparecia como "agora" e confundia (18/11).
   const RECENTE_MIN = 15;
   const recente = (at) => !at || Date.now() - at <= RECENTE_MIN * 60000;
+  // Mesmo aviso vindo do painel e do servidor ("Perigo em X" e "Perigo: X"): conta uma vez só
+  const tituloBase = (s) => String(s || '').toLowerCase().replace(/^perigo em /, 'perigo: ').replace(/\s+/g, ' ').trim();
   function addInbox(title, body, mint, level, id, extra) {
     const key = id || `${title}|${body}`;
     if (INBOX.list.some((x) => x.key === key && Date.now() - x.at < 10 * 60000)) return;
     const { eventAt, ...resto } = extra || {};
     const at = eventAt && eventAt < Date.now() ? eventAt : Date.now();
+    if (INBOX.list.some((x) => x.key === key || (tituloBase(x.title) === tituloBase(title) && Math.abs(x.at - at) < 15 * 60000))) return;
     INBOX.list.unshift({ key, title, body, mint, level, at, read: !recente(at), snap: mint ? tokenSnap(mint) : null, ...resto });
     INBOX.list = INBOX.list.sort((a, b) => b.at - a.at).slice(0, 200);
     store.set('faro-inbox', INBOX.list); renderInbox();
+  }
+  async function syncPushHist() {
+    if (/github\.io$/.test(location.hostname) || isDemo() || syncPushHist.busy) return;
+    syncPushHist.busy = true;
+    try {
+      const desde = store.get('faro-pushhist-at', Date.now() - 24 * 3600000);
+      const r = await fetch(`push/historico?desde=${desde}`, { cache: 'no-store' }); if (!r.ok) return;
+      const { itens = [] } = await r.json();
+      for (const x of itens.sort((a, b) => a.at - b.at)) {
+        const nivel = x.urgente || /^(perigo|venda falhou)/i.test(x.titulo) ? 'danger' : /^(robô realizou|robô vendeu)/i.test(x.titulo) ? 'good' : 'info';
+        addInbox(x.titulo, x.texto, x.mint || undefined, nivel, `srv:${x.chave}`, { eventAt: x.at });
+      }
+      if (itens.length) store.set('faro-pushhist-at', Math.max(desde, ...itens.map((x) => x.at)));
+    } catch { /* sem servidor (GitHub) ou fora do ar: fica só com os avisos do painel */ } finally { syncPushHist.busy = false; }
   }
   function renderInbox() {
     const unreadN = INBOX.list.filter((x) => !x.read).length;
@@ -2732,6 +2749,7 @@
       // primeira vez com esta versão: o que já estava no radar conta como visto
       if (!store.get('faro-vistas-init', false)) { Object.values(data.tokens || {}).filter((t) => t.status === 'aprovada').forEach((t) => SEEN.add(t.mint)); store.set('faro-vistas', [...SEEN]); store.set('faro-vistas-init', true); }
       detectEvents(data);
+      syncPushHist(); // 21/11: avisos que o servidor mandou para o celular também entram no sino
       applyLive(); connectWallet();
       if (!LIVE.booted) { loadLW().catch(() => {}); LIVE.booted = true; pollPrice(); pollLive(); pollWallet(); setTimeout(pollTrades, 600); }
       render();

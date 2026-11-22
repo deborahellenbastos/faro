@@ -57,19 +57,31 @@ async function biblioteca() {
 
 // avisar({ titulo, texto, mint, chave, urgente })
 //   chave: identifica o aviso para não repetir (ex.: "venda-<assinatura da transação>").
+// 21/11 (pedido da Kerah): tudo que vai para o celular também fica num histórico, que o painel puxa para dentro das
+// notificações dele (antes, avisos que só o servidor manda, como reentrada e perigo, não apareciam no sino do painel)
+const ARQ_HIST = path.join(DIR, 'push-historico.json');
+export async function historico(desde = 0) {
+  const h = await lerJson(ARQ_HIST, []);
+  return (Array.isArray(h) ? h : []).filter((x) => x.at > desde);
+}
 export async function avisar({ titulo, texto = '', mint = '', chave = '', urgente = false } = {}) {
   try {
     if (process.env.FARO_PUSH === 'off' || !titulo) return 0;
-    const lista = await aparelhos();
-    if (!lista.length) return 0;
-    const k = await chaves();
-    const wp = k && (await biblioteca());
-    if (!wp) return 0;
     const agora = Date.now();
     const enviados = await lerJson(ARQ_ENVIADOS, {});
     for (const [c, at] of Object.entries(enviados)) if (agora - at > REPETIR_HORAS * 3600000) delete enviados[c];
     if (chave && enviados[chave]) return 0;
     if (chave) { enviados[chave] = agora; await gravarJson(ARQ_ENVIADOS, enviados); }
+    try {
+      const h = await lerJson(ARQ_HIST, []);
+      const novo = { at: agora, titulo: String(titulo).slice(0, 80), texto: String(texto).slice(0, 240), mint, chave: chave || `${agora}`, urgente: !!urgente };
+      await gravarJson(ARQ_HIST, [...(Array.isArray(h) ? h : []), novo].slice(-200));
+    } catch { /* o histórico não pode atrapalhar o aviso */ }
+    const lista = await aparelhos();
+    if (!lista.length) return 0;
+    const k = await chaves();
+    const wp = k && (await biblioteca());
+    if (!wp) return 0;
     const corpo = JSON.stringify({ title: String(titulo).slice(0, 80), body: String(texto).slice(0, 240), tag: chave ? chave.slice(0, 60) : undefined, mint });
     const opcoes = { vapidDetails: { subject: k.subject || 'https://meufaro.tech', publicKey: k.publicKey, privateKey: k.privateKey }, TTL: 3600, urgency: urgente ? 'high' : 'normal', timeout: 10000 };
     let ok = 0; const mortos = [];
