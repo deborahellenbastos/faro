@@ -4686,7 +4686,8 @@ function fakeBuys(per = {}) {
   function perfilState() {
     const robot = data?.lastRun?.perfil || null;
     let pend = store.get('faro-perfil-pend', null);
-    if (pend && robot && robot.name === pend.name) { store.set('faro-perfil-pend', null); pend = null; }
+    // 21/11: some assim que o robô confirma (pelo nome ou pela assinatura nova), sem esperar os 20 min
+    if (pend && robot && (robot.name === pend.name || (robot.at && pend.at && robot.at >= pend.at - 120000))) { store.set('faro-perfil-pend', null); pend = null; }
     if (pend && Date.now() - pend.at > 20 * 60000) { store.set('faro-perfil-pend', null); pend = null; }
     return { name: ['agressivo', 'segurar'].includes(robot?.name) ? robot.name : 'conservador', pend };
   }
@@ -4751,7 +4752,7 @@ function fakeBuys(per = {}) {
       const cur = P.pend ? P.pend.name : P.name;
       r.querySelectorAll('[data-pf]').forEach((b) => { b.classList.toggle('on', b.dataset.pf === cur); b.disabled = !!P.pend; });
       r.classList.toggle('agr', cur === 'agressivo' || cur === 'segurar');
-      r.querySelector('[data-pfstate]').textContent = P.pend ? `trocando para ${PF_NOME[P.pend.name] || 'Conservador'}... (até 5 min)` : P.name === 'agressivo' ? 'entra mais vezes, arrisca mais' : P.name === 'segurar' ? 'só vende em +150%, sem stop' : 'protege o saldo';
+      r.querySelector('[data-pfstate]').textContent = P.pend ? `trocando para ${PF_NOME[P.pend.name] || 'Conservador'}...` : P.name === 'agressivo' ? 'entra mais vezes, arrisca mais' : P.name === 'segurar' ? 'só vende em +150%, sem stop' : 'protege o saldo';
     });
   }
   function openPerfilInfo() {
