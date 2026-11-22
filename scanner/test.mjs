@@ -833,7 +833,7 @@ console.log('Teste da tendência de baixa: ok');
   simStep({ state: st, key: 'simSeg', tokens: { M: { mint: 'M', priceUsd: 2.6, candles: [[now, 2, 2.6, 2, 2.6, 1]] } }, candidates: [], cfg: seg, now: now + 60000, log: () => {} });
   assert.equal(st.simSeg.open.length, 0); assert.match(st.simSeg.closed[0].why, /alvo \+150%/);
   const w = await readFile(new URL('./watch.mjs', import.meta.url), 'utf8');
-  assert.match(w, /if \(t\.segurar\) \{/, 'a vigia deve pular tudo nas posições do Segurar');
+  assert.match(w, /if \(SEGt\) \{/, 'a vigia deve pular tudo nas posições do Segurar');
   console.log('Teste do perfil Segurar: ok');
 }
 
