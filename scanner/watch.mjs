@@ -293,6 +293,9 @@ while (Date.now() < until) {
         const gS = avgS ? (px / avgS - 1) * 100 : null;
         if (!mem.segLog?.[t.mint]) { (mem.segLog = mem.segLog || {})[t.mint] = now; log(`${t.symbol}: perfil Segurar, só vende em +${t.segurar.alvoPct ?? 150}%`); }
         if (gS != null && gS >= (t.segurar.alvoPct ?? 150)) await sell(t, `alvo do perfil Segurar: +${gS.toFixed(0)}% (alvo +${t.segurar.alvoPct ?? 150}%)`, 'alvo-segurar', px);
+        // 21/11 (pedido da Kerah): única proteção do Segurar: liquidez retirada do pool (golpe de verdade, não correção).
+        // 70% em 5 min: uma queda normal de preço tira bem menos (preço -50% tira uns 30% da liquidez)
+        else if (liqDrop >= (cfg.perfis?.segurar?.segurar?.liquidezRetiradaPct ?? 70)) await sell(t, `liquidez retirada do pool: caiu ${liqDrop.toFixed(0)}% em ${liqWin / 60000} min (proteção contra golpe do perfil Segurar)`, 'golpe', px);
         continue;
       }
       // 1. Golpe no contrato  2. Queda forte  3. Lucro em posição pequena
