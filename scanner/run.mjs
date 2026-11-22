@@ -547,6 +547,14 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     // "desde" muda só quando a fase muda (para o painel avisar uma vez)
     sig.at = prev && prev.tipo === sig.tipo && prev.fase === sig.fase && prev.key === sig.key ? prev.at : now;
     t.sinal = sig;
+    // 21/11 (pedido da Kerah): favorita chegou na zona de Fibonacci de 50% a 61,8% da subida: avisa no celular,
+    // uma vez por correção (a chave do sinal muda quando a moeda faz um topo novo)
+    if (t.favorita && !t.held && sig.tipo === 'entrada' && sig.retr >= 0.48 && sig.retr <= 0.64 && t.favZona !== (sig.key || '')) {
+      t.favZona = sig.key || '';
+      const r = Math.round(sig.retr * 1000) / 10;
+      log(`FAVORITA NA ZONA: ${t.symbol} corrigiu ${String(r).replace('.', ',')}% da subida`);
+      await avisar({ titulo: `Favorita na zona 50-61,8%: ${t.symbol}`, texto: `Corrigiu ${String(r).replace('.', ',')}% da subida. ${sig.boa ? 'E já deu Boa entrada.' : 'Ainda esperando a reação (vela verde e compras) para a Boa entrada.'}`, mint: t.mint, chave: `favzona-${t.mint}-${sig.key || now}` });
+    }
     // 19/11: moeda do Radar na zona (ou travada) sem virar "Boa entrada": anota o motivo quando ele muda
     if (sig.tipo === 'entrada' && !sig.boa && !t.held && t.status === 'aprovada' && ['zona', 'pico-passou', 'repetido'].includes(sig.fase)) {
       const mot = sig.fase === 'pico-passou' ? ['pico já passou'] : sig.fase === 'repetido' ? ['sinal repetido'] : sig.faltou?.length ? sig.faltou : [sig.titulo];
