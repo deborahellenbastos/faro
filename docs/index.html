@@ -656,7 +656,7 @@
   .pfrow.agr .pf-seg button.on { background: rgba(245,177,76,.16); color: #f5b14c; }
   .pf-seg button:disabled { cursor: progress; }
   /* 21/11: alvo do modo Segurar, moeda por moeda */
-  .seg-alvo { margin: 10px 0; }
+  .seg-alvo { margin: 12px 0 4px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-3, 14px); background: var(--panel-2, rgba(255,255,255,.02)); }
   .seg-alvo > div:first-child { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
   .seg-alvo b { color: var(--text); }
   .seg-alvo .pf-seg button.on { background: rgba(245,177,76,.16); color: #f5b14c; }
@@ -2499,7 +2499,7 @@
     if (!ROBO_OK || !t.held || !((t.heldAmount || 0) > 0) || isDemo()) return '';
     const a = segAlvoAtual(t), g = t.position?.avgPriceUsd > 0 && t.priceUsd > 0 ? (t.priceUsd / t.position.avgPriceUsd - 1) * 100 : null;
     const op = (v, l) => `<button data-segalvo="${v}" data-segmint="${esc(t.mint)}" class="${a === v ? 'on' : ''}">${l}</button>`;
-    return `<div class="seg-alvo"><div><span>Segurar até ${a ? `<b>+${a}%</b> (sem stop)` : '<b>regras normais</b>'}</span>${g != null ? `<span>agora <b class="num ${cls(g)}">${g >= 0 ? '+' : ''}${g.toFixed(0)}%</b></span>` : ''}</div>
+    return `<div class="seg-alvo" title="Vale só para esta moeda. Não precisa assinar na Phantom."><div><span>Venda do robô nesta moeda: ${a ? `segurar até <b>+${a}%</b> (sem stop)` : '<b>regras normais</b>'}</span>${g != null ? `<span>agora <b class="num ${cls(g)}">${g >= 0 ? '+' : ''}${g.toFixed(0)}%</b></span>` : ''}</div>
       <div class="pf-seg">${op(0, 'Normal')}${op(100, '+100%')}${op(150, '+150%')}${op(200, '+200%')}</div></div>`;
   }
   document.addEventListener('click', async (e) => {
@@ -3895,7 +3895,6 @@ function fakeBuys(per = {}) {
       <div class="tbody">
         ${t.status === 'aguardando' && !t.held ? `<div class="obs-note">${ICON.warn}<span><b>Ainda em observação</b> (nota ${t.score}). ${(t.pending ?? (t.reasons || []).length) ? `Falta${(t.pending ?? t.reasons.length) > 1 ? 'm' : ''} ${t.pending ?? t.reasons.length} critério${(t.pending ?? t.reasons.length) > 1 ? 's' : ''}: ${esc((t.reasons || [])[0] || '')}` : 'Ainda na fila de checagem.'}</span></div>` : ''}
         ${['aguardando', 'aprovada', 'reprovada'].includes(t.status) && !t.held && (t.status !== 'reprovada' || MANREP.has(t.mint) || t.reprovadaManual) ? (MANREP.has(t.mint) || t.reprovadaManual ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
-        ${segAlvoRow(t)}
         ${t.held && t.segurar ? `<div class="obs-note">${ICON.warn}<span><b>Perfil Segurar:</b> o robô só vende esta moeda em +${t.segurar.alvoPct ?? 150}% ou se a liquidez do pool for retirada (golpe). Sem stop: se cair, ela fica na carteira até você vender. Dá para mudar o alvo ou voltar ao Normal acima.</span></div>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
@@ -3971,6 +3970,7 @@ function fakeBuys(per = {}) {
         <div class="tfs">${tfs}</div>
       </div>
       ${chartBox(t)}
+      ${segAlvoRow(t)}
       ${t.periods ? marketStats(t) : ''}
       ${tradesHtml(t)}
       ${canMark || (t.status === 'aprovada' && !mine) ? `<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
