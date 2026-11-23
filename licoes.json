@@ -472,6 +472,52 @@
       "regra": "Teste só na simulação desde 20/11, a pedido da Kerah (scanner/tendencia.mjs): marca a entrada como 'tendência de baixa' quando 4 das 5 últimas velas de 5 min fecharam mais baixo, ou 3 dos 5 passos tiveram topo e fundo mais baixos, ou o preço fechou 2%+ abaixo de um suporte tocado 2+ vezes antes. Libera quando uma vela fecha acima das máximas das 2 anteriores sem fazer fundo novo. Não bloqueia nada: só marca, nas simulações (Conservador, Agressivo, Crazy e Entrada rápida), e conta em stats.regras.tendBaixa. A análise da noite compara o resultado das entradas marcadas com o das outras para decidir se vira trava.",
       "status": "em teste",
       "tipo": "sinal"
+    },
+    {
+      "data": "2026-11-22",
+      "titulo": "Venda automática desligada: nem a proteção contra golpe vendeu",
+      "moedas": [
+        "DCTY",
+        "cCAT"
+      ],
+      "aconteceu": "Desde 21/11 às 20:20 a venda automática está desligada pelo painel (memo faro:venda=off). Com ela desligada, o robô não vende nada, nem por golpe, e a vigia fica parada. Em 22/11 a Kerah comprou DCTY às 05:38 (0,0158 SOL, cerca de US$ 1,12) e cCAT às 22:02 (0,0086 SOL, cerca de US$ 0,61). As duas continuaram abertas e na manhã de 23/11 valiam -97% e -99%, com a liquidez do pool caindo 90% e 92% (alertas de 'Liquidez sumiu. Possível rug' no log do servidor). Juntas, -US$ 1,70, mais da metade do prejuízo das operações do dia (cerca de -US$ 3,06).",
+      "regra": "Proposta: separar a venda por golpe do interruptor da venda. Mesmo com a venda desligada, o robô vende se a liquidez do pool cair 70% ou mais em 5 min (a mesma proteção do perfil Segurar), a não ser que a Kerah desligue também essa proteção, de propósito. E o painel mostra um aviso fixo 'Venda automática desligada desde DD/MM HH:MM' enquanto houver moeda aberta.",
+      "status": "sugerida",
+      "tipo": "protecao"
+    },
+    {
+      "data": "2026-11-22",
+      "titulo": "Moeda reprovada por insiders em outro dia, comprada de novo",
+      "moedas": [
+        "DCTY"
+      ],
+      "aconteceu": "Em 18/11 o Faro reprovou a DCTY por 24 carteiras ligadas entre si (já está no caderno). Em 22/11 às 05:38 a Kerah comprou a DCTY de novo, com 0,0158 SOL (cerca de US$ 1,12). Na manhã de 23/11 a moeda desabou (o robô registrou 'Despejo: caiu 74% em menos de 20 minutos' e 'Liquidez sumiu (-90%)') e a posição vale cerca de US$ 0,03 (-97%). O Radar acompanha cada moeda por 3 dias (busca.diasAcompanhando), então a reprovação de 18/11 pode não aparecer mais no botão Comprar. Não consegui conferir no painel se o bloqueio apareceu.",
+      "regra": "Proposta: guardar por 14 dias uma lista das moedas reprovadas por insiders ou golpe, mesmo depois que saem do Radar. O botão Comprar mostra o motivo antigo ('reprovada em 18/11: 24 carteiras ligadas') e pede a segunda confirmação, como já faz com as reprovadas de agora.",
+      "status": "sugerida",
+      "tipo": "protecao"
+    },
+    {
+      "data": "2026-11-22",
+      "titulo": "Compra no meio de uma disparada de várias vezes",
+      "moedas": [
+        "OpenIndex",
+        "CUNTS"
+      ],
+      "aconteceu": "OpenIndex: na hora das 15h de 22/11 o preço foi de US$ 0,00009 para US$ 0,00077 (+750%). A Kerah comprou às 15:57 a cerca de US$ 0,00063, perto do topo. A moeda fez o pico às 17h (US$ 0,00077) e às 22:00 ela vendeu a cerca de US$ 0,00031 (-62%, cerca de -US$ 0,38). CUNTS: subiu de US$ 0,000017 às 05h para US$ 0,000157 às 20h (+835%). Ela comprou às 20:34 a cerca de US$ 0,000135 e vendeu às 21:57 com -17% (-US$ 0,10). As duas compras foram feitas depois de a moeda já ter multiplicado várias vezes no dia.",
+      "regra": "Proposta: no painel, quando o preço estiver 3 vezes ou mais acima da mínima das últimas 6 horas, o botão Comprar mostra 'disparada: +X% desde a mínima de 6h' e pede segunda confirmação. Na simulação, marcar essas entradas (stats.regras.disparada) para medir por alguns dias se elas perdem mais que as outras.",
+      "status": "sugerida",
+      "tipo": "compra"
+    },
+    {
+      "data": "2026-11-22",
+      "titulo": "Venda manual inteira no primeiro lucro",
+      "moedas": [
+        "earball"
+      ],
+      "aconteceu": "A Kerah comprou earball às 13:16 de 22/11 e vendeu tudo às 15:25 com +18% (+US$ 0,20), a cerca de US$ 0,000057. Na hora seguinte a moeda chegou a US$ 0,000116, o dobro do preço da venda (+103%). Fechou o dia a US$ 0,000065 (+14% acima da venda) e na manhã de 23/11 estava a US$ 0,000087 (+53%). Foi o maior lucro do dia, e ficou bem menor do que podia.",
+      "regra": "Proposta: quando ela vender no lucro pelo painel, oferecer 'vender metade' ao lado de 'vender tudo'. A metade que fica segue com o stop móvel da regra A (liga em +20%, vende 12% abaixo do maior fechamento de 1 min). Só uma opção a mais, sem mudar a venda inteira.",
+      "status": "sugerida",
+      "tipo": "venda"
     }
   ]
 }
