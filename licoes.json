@@ -383,7 +383,7 @@
         "BUNC"
       ],
       "aconteceu": "Nas 19 vendas do robô de 16 a 18/11 em que a moeda passou de +30%, o pico médio foi +70% e a venda média saiu com +23%. A regra antiga travava o stop em +5% entre +30% e +60%: a Pussy foi de +36% a -19% e a QUIT de +81% a +5%. No teste com os gráficos de 1 min das 52 vendas, a regra A melhorou 8 de 13 vendas e piorou 4 (ex.: AC sairia com +52% em vez de +69%). O pavio sozinho como gatilho deu resultado misto.",
-      "regra": "Aplicada direto no robô em 19/11 às 02:00, a pedido da Kerah (\"melhor perder um pico maior do que sair no prejuízo\"). config.json venda.stopMovel: ativarPct 20, seguirAPartirPct 20, distanciaPct 12, pico 'fechamento'. A vigia segue o maior fechamento de 1 min, não o pavio. Confirmação de 10 s abaixo do stop continua. No relatório diário: comparar as vendas por stop móvel com o pico de cada operação (quanto devolveu) e contar quantas a regra vendeu cedo demais (moeda subiu 30%+ depois). Conferido em 19/11 (7 vendas pelo stop móvel depois das 02:00): Sparrow +6% (pico guardado +10%), PIPI +61%, DCTY +25%, FIONA +11% e +26%, JENSEN -17% e COOKIE -3%. Nas duas últimas, o aviso dizia 'garantindo +27%' e '+34%', mas a venda saiu 30% abaixo do stop, num despejo de par com 20 e 6 min de vida (as duas caíram 77% e 98% depois, então vender ainda ajudou). Vendeu cedo demais (moeda subiu 30%+ depois): só a PIPI, que depois da venda das 09:50 chegou a cerca de +78% acima dela. As outras 6 caíram de 36% a 98% depois.",
+      "regra": "Aplicada direto no robô em 19/11 às 02:00, a pedido da Kerah (\"melhor perder um pico maior do que sair no prejuízo\"). config.json venda.stopMovel: ativarPct 20, seguirAPartirPct 20, distanciaPct 12, pico 'fechamento'. A vigia segue o maior fechamento de 1 min, não o pavio. Confirmação de 10 s abaixo do stop continua. No relatório diário: comparar as vendas por stop móvel com o pico de cada operação (quanto devolveu) e contar quantas a regra vendeu cedo demais (moeda subiu 30%+ depois). Conferido em 19/11 (7 vendas pelo stop móvel depois das 02:00): Sparrow +6% (pico guardado +10%), PIPI +61%, DCTY +25%, FIONA +11% e +26%, JENSEN -17% e COOKIE -3%. Nas duas últimas, o aviso dizia 'garantindo +27%' e '+34%', mas a venda saiu 30% abaixo do stop, num despejo de par com 20 e 6 min de vida (as duas caíram 77% e 98% depois, então vender ainda ajudou). Vendeu cedo demais (moeda subiu 30%+ depois): só a PIPI, que depois da venda das 09:50 chegou a cerca de +78% acima dela. As outras 6 caíram de 36% a 98% depois. Simulação até 24/11 (único dado legível, pelo log do servidor, porque o painel estava trancado): no Agressivo, a Rockstar entrou às ~07:18 de 24/11 na Boa entrada a 0,0000582 e saiu pelo stop móvel com +2,9% às ~07:24. Às ~07:35 a moeda teve despejo de -68% em menos de 20 min. O stop móvel salvou a operação. Sem dados de 23/11.",
       "status": "em teste"
     },
     {
@@ -518,6 +518,46 @@
       "regra": "Proposta: quando ela vender no lucro pelo painel, oferecer 'vender metade' ao lado de 'vender tudo'. A metade que fica segue com o stop móvel da regra A (liga em +20%, vende 12% abaixo do maior fechamento de 1 min). Só uma opção a mais, sem mudar a venda inteira.",
       "status": "sugerida",
       "tipo": "venda"
+    },
+    {
+      "data": "2026-11-23",
+      "titulo": "Compra de pó com o saldo quase zerado",
+      "moedas": [
+        "COPIUM (BAKsQrynzwadyACDMsg3J5R8a4CTvj1u7kEYyjq7pump)"
+      ],
+      "aconteceu": "Às 13:12 de 23/11 saiu uma compra de COPIUM pela DFlow com só 10 lamports de SOL (0,00000001 SOL). Vieram 0,000826 COPIUM, que valem menos de US$ 0,000001. Mesmo assim a compra custou 0,0016 SOL (cerca de US$ 0,11): 0,0015 SOL de aluguel da conta da moeda, mais a taxa e a gorjeta. A carteira tinha só 0,00496 SOL na hora, então o valor da compra provavelmente saiu do saldo menos a reserva, que dava quase zero. A COPIUM subiu cerca de 20% depois, mas com essa quantidade não faz diferença.",
+      "regra": "Proposta: o botão Comprar não envia a compra quando o valor em SOL for menor que 0,005 SOL ou menor que o aluguel da conta da moeda (cerca de 0,002 SOL). Mostra 'saldo insuficiente: a compra seria de X SOL e o aluguel da conta custa mais que isso'.",
+      "status": "sugerida",
+      "tipo": "painel"
+    },
+    {
+      "data": "2026-11-23",
+      "titulo": "Aluguel preso em contas de moedas mortas",
+      "moedas": [
+        "cCAT",
+        "DCTY",
+        "GIFTER",
+        "NASDUCK",
+        "Mabel",
+        "SBS",
+        "KAREN",
+        "GRAUDIA",
+        "LUCIA",
+        "COPIUM"
+      ],
+      "aconteceu": "O robô vê 23 moedas na carteira. Quase todas são restos que viraram golpe (alertas de 'Liquidez sumiu. Possível rug' e preço 96% a 99% abaixo da máxima no log do servidor). Cada conta de moeda prende cerca de 0,0015 a 0,002 SOL de aluguel. Somadas, são cerca de 0,035 a 0,047 SOL (US$ 2,40 a US$ 3,30), de 7 a 10 vezes o SOL livre da carteira no fim do dia 23/11 (0,0047 SOL). Quando a ZOL foi vendida às 19:25, o fechamento da conta devolveu 0,0015 SOL.",
+      "regra": "Proposta: um botão 'limpar moedas mortas' no painel. Para cada moeda que vale menos de US$ 0,05 e está com alerta de rug ou com o preço 90%+ abaixo da máxima, vende o resto se houver rota, senão queima, e fecha a conta, devolvendo o aluguel. Pede uma confirmação só, com a lista e o SOL que volta.",
+      "status": "sugerida",
+      "tipo": "painel"
+    },
+    {
+      "data": "2026-11-23",
+      "titulo": "Análise da noite sem dados: painel trancado e log do servidor de só 1 hora",
+      "moedas": [],
+      "aconteceu": "Em 22/11 e 23/11 a análise diária abriu o painel no navegador embutido, mas ele estava trancado: a chave 'faro-key' não está salva lá e o 'faro-inbox' está vazio. O log do servidor (ramo servidor-log) guarda só a última hora, então os sinais do dia, os alertas de insiders do Radar e as simulações dos três perfis se perderam nas duas noites. O RPC publicnode também só devolveu a história da carteira desde 22/11 às 22:00.",
+      "regra": "Proposta: o servidor guardar no ramo servidor-log as últimas 24 horas do log, em vez de 1 hora (as mesmas linhas que já são publicadas, só por mais tempo), mais uma linha de resumo da simulação a cada hora (operações, acerto e resultado de sim, simAgr e simLouco, e as contagens de stats.regras). Assim a análise da noite funciona mesmo com o painel trancado.",
+      "status": "sugerida",
+      "tipo": "painel"
     }
   ]
 }
