@@ -396,9 +396,13 @@ export function mergeSafety(prev, alerts, now) {
 
 // ---------- Sua operação (a partir das transações da carteira) ----------
 const soldTokensFor = (sells) => sells.reduce((a, o) => a - o.tokens, 0);
-export function positionFrom(ops, heldAmount, priceNative, priceUsd) {
-  const solUsd = priceNative > 0 ? priceUsd / priceNative : null;
-  const valueSol = heldAmount * (priceNative || 0);
+// 25/11: preço do SOL só vale se for plausível. Moeda cujo par não é contra SOL (ex.: Zolana) dava um "preço do SOL"
+// absurdo (priceUsd / priceNative) e o resultado dela virou +US$ 93 mil. Fora da faixa, usa o preço de referência do SOL
+export const solOk = (x) => Number.isFinite(x) && x > 20 && x < 2000;
+export function positionFrom(ops, heldAmount, priceNative, priceUsd, solRef = null) {
+  const parSol = priceNative > 0 ? priceUsd / priceNative : null;
+  const solUsd = solOk(parSol) ? parSol : solOk(solRef) ? solRef : null;
+  const valueSol = solUsd === parSol ? heldAmount * (priceNative || 0) : solUsd && priceUsd > 0 ? (heldAmount * priceUsd) / solUsd : 0;
   const base = { amount: heldAmount, valueSol, valueUsd: solUsd ? valueSol * solUsd : null, solUsd };
   const buys = (ops || []).filter((o) => o.tokens > 0 && o.sol < 0);
   const sells = (ops || []).filter((o) => o.tokens < 0 && o.sol > 0);
@@ -414,7 +418,7 @@ export function positionFrom(ops, heldAmount, priceNative, priceUsd) {
   const pnlSol = valueSol + receivedSol - spentSol;
   const usd = (v) => (solUsd ? v * solUsd : null);
   // Em dólar, cada compra/venda vale pelo preço do SOL da hora em que aconteceu (quando conhecido)
-  const atUsd = (o) => Math.abs(o.sol) * (o.solUsd || solUsd || 0);
+  const atUsd = (o) => Math.abs(o.sol) * (solOk(o.solUsd) ? o.solUsd : solUsd || 0);
   const spentUsdHist = buys.reduce((a, o) => a + atUsd(o), 0);
   const receivedUsdHist = sells.reduce((a, o) => a + atUsd(o), 0);
   const avgUsdAll = spentUsdHist / (buys.reduce((a, o) => a + o.tokens, 0) || 1);

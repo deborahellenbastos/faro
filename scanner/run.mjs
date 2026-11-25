@@ -14,6 +14,14 @@ const MAX_CANDLE_CALLS = 20;        // 20/11: a Jupiter responde rápido; o Geck
 const MAX_GECKO_CALLS = 6;          // GeckoTerminal grátis aceita poucas consultas por minuto
 const CANDLE_REFRESH_MIN = 5;       // radar e carteira: velas novas a cada rodada, para o sinal de entrada e saída sair na hora
 
+// 25/11: preço de referência do SOL (mediana dos pares contra SOL), para moeda cujo par não é contra SOL
+let solRefCache = { at: 0, v: null }, solRefTokens = null;
+function solRef() {
+  if (Date.now() - solRefCache.at < 60000 && solRefCache.v) return solRefCache.v;
+  const v = Object.values(solRefTokens || {}).filter((t) => /^(W?SOL)$/i.test(t.quoteSymbol || '') && t.priceNative > 0).map((t) => t.priceUsd / t.priceNative).filter((x) => x > 20 && x < 2000).sort((a, b) => a - b);
+  solRefCache = { at: Date.now(), v: v.length ? v[Math.floor(v.length / 2)] : null };
+  return solRefCache.v;
+}
 export async function runOnce({ api, cfg, state, now = Date.now(), trader = null }) {
   const started = Date.now();
   const logs = [];
@@ -26,6 +34,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   state.tokens = state.tokens || {};
   state.trades = state.trades || [];
   const tokens = state.tokens;
+  solRefTokens = tokens; solRefCache = { at: 0, v: null };
   // Devs de golpes que o Faro já viu: moedas novas do mesmo dev são reprovadas
   state.badDevs = state.badDevs || {};
   for (const t of Object.values(tokens)) {
@@ -198,7 +207,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       track(t, m, now);
       if (t.held && state.wallet) {
         const myOps = state.wallet.ops.filter((o) => o.mint === t.mint);
-        t.position = positionFrom(myOps, t.heldAmount || 0, m.priceNative, m.priceUsd);
+        t.position = positionFrom(myOps, t.heldAmount || 0, m.priceNative, m.priceUsd, solRef());
         // Histórico de compras e vendas desta moeda (mais recentes primeiro)
         t.history = myOps.slice(-50).reverse().map((o) => ({ sig: o.sig, at: o.at, tokens: o.tokens, sol: o.sol, ...(o.est ? { est: 1 } : {}) }));
       }
@@ -756,7 +765,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
             if (!t.held) t.heldSince = now;
             t.held = true; t.closedOp = false; t.heldAmount = (t.heldAmount || 0) + op.tokens; t.status = t.status === 'nova' ? 'carteira' : t.status;
             const myOps = state.wallet.ops.filter((o) => o.mint === t.mint);
-            t.position = positionFrom(myOps, t.heldAmount, t.priceNative, t.priceUsd);
+            t.position = positionFrom(myOps, t.heldAmount, t.priceNative, t.priceUsd, solRef());
             t.history = myOps.slice(-50).reverse().map((o) => ({ sig: o.sig, at: o.at, tokens: o.tokens, sol: o.sol }));
           }
         } catch (e) { log(`Não consegui registrar a compra na hora: ${e.message}`, true); }

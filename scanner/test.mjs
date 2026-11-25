@@ -852,3 +852,13 @@ console.log('Teste da tendência de baixa: ok');
   await assert.rejects(M.definirSegurar(mint, 300), /inválido/);
   console.log('Teste do alvo do Segurar por moeda: ok');
 }
+
+// Preço do SOL absurdo (par que não é contra SOL) não estraga o resultado (25/11, Zolana)
+{
+  const { positionFrom } = await import('./analyze.mjs');
+  const ops = [{ at: 1, tokens: 1000, sol: -0.0015 }, { at: 2, tokens: -1000, sol: 0.0012 }];
+  const p = positionFrom(ops, 0, 1e-12, 0.0002, 150); // par contra outra moeda: priceUsd/priceNative = 2e8
+  assert.ok(Math.abs(p.receivedUsd - 0.18) < 1e-6, 'usa o preço de referência do SOL');
+  assert.ok(p.pnlPct < 0, 'resultado negativo, não milhões de %');
+  console.log('Teste do preço do SOL absurdo: ok');
+}
