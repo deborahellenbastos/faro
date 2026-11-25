@@ -150,6 +150,16 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
           }
         }
       }
+      // 25/11 (Zolana): valor estimado de moeda enviada/recebida fora de qualquer proporção com o preço de compra
+      // (par que não é contra SOL/dólar dá preço absurdo) não vale: enviada sem preço confiável conta como zero
+      const precoCompra = {};
+      for (const o of state.wallet.ops) if (!o.est && o.tokens > 0 && o.sol < 0 && o.solUsd) { const c = (precoCompra[o.mint] = precoCompra[o.mint] || { usd: 0, tok: 0 }); c.usd += -o.sol * o.solUsd; c.tok += o.tokens; }
+      for (const o of state.wallet.ops) {
+        if (!o.est || o.estFora || !o.solUsd || !o.tokens) continue;
+        const c = precoCompra[o.mint]; if (!c?.tok) continue;
+        const pc = c.usd / c.tok, pe = Math.abs(o.sol * o.solUsd / o.tokens);
+        if (pe > pc * 1000 || pe < pc / 10000) { log(`Carteira: valor estimado absurdo numa transferência de ${tokens[o.mint]?.symbol || o.mint.slice(0, 6)} (${o.sol.toFixed(4)} SOL), conta como zero`); o.sol = 0; o.estFora = 1; }
+      }
     } catch (e) {
       log(`Não consegui ler a carteira: ${e.message}`, true);
     }
