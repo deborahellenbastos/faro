@@ -4305,7 +4305,17 @@ function fakeBuys(per = {}) {
       add(entryPx, '#a78bfa', runBuys.length > 1 || (!t.held && allBuys.length > 1) ? 'entrada (média)' : 'entrada', 2, 2);
       // Meta: +100% (ou o alvo configurado) sobre a entrada. Em posição pequena é onde o robô vende sozinho
       const tp = metaOf(t);
-      if (t.held && tp) add(tp.px, '#10d27f', tp.segurar ? `alvo Segurar +${tp.pct}% (robô vende)` : tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
+      // 26/11: no Segurar, depois que a moeda bate o alvo o robô liga um stop móvel (distância abaixo do maior preço desde
+      // o alvo). O painel refaz a mesma conta com as velas e o preço ao vivo e desenha a linha onde o robô vende
+      let segStop = null;
+      if (t.held && tp?.segurar) {
+        const dist = data?.config?.perfis?.segurar?.segurar?.aposAlvo?.distanciaPct ?? 15, ini = posStart(t) / 1000;
+        const cs = (CH.bars || []).filter((b) => b.time >= ini - 60);
+        const iHit = cs.findIndex((b) => b.high >= tp.px);
+        if (iHit >= 0 || t.priceUsd >= tp.px) { const topo = Math.max(t.priceUsd || 0, ...cs.slice(Math.max(0, iHit)).map((b) => b.high)); segStop = topo * (1 - dist / 100); }
+      }
+      if (t.held && tp) add(tp.px, '#10d27f', tp.segurar ? (segStop ? `alvo +${tp.pct}% batido` : `alvo Segurar +${tp.pct}% (robô liga o stop)`) : tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
+      if (segStop) add(segStop, '#f5b14c', `stop depois do alvo (robô vende)`, 2, 2);
       // Metas do robô (liga e desliga pelo botão da bandeira): stop móvel e realização em faixas
       if (t.held && !tp?.segurar && store.get('faro-metas', false)) {
         const E = t.position.avgPriceUsd, V = data?.config?.venda || {};
