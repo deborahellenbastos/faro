@@ -295,10 +295,29 @@ while (Date.now() < until) {
         const avgS = t.position?.avgPriceUsd > 0 && !t.staleCost ? t.position.avgPriceUsd : 0;
         const gS = avgS ? (px / avgS - 1) * 100 : null;
         if (mem.segLog?.[t.mint] !== SEGt.alvoPct) { (mem.segLog = mem.segLog || {})[t.mint] = SEGt.alvoPct; log(`${t.symbol}: modo Segurar, só vende em +${SEGt.alvoPct ?? 150}%`); }
-        if (gS != null && gS >= (SEGt.alvoPct ?? 150)) await sell(t, `alvo do modo Segurar: +${gS.toFixed(0)}% (alvo +${SEGt.alvoPct ?? 150}%)`, 'alvo-segurar', px);
+        // 26/11 (pedido da Kerah): ao bater o alvo, não vende de uma vez. Liga um stop móvel (distanciaPct abaixo do maior
+        // preço desde o alvo) e segue a alta; vende quando cair essa distância e ficar 10 s abaixo
+        const AA = cfg.perfis?.segurar?.segurar?.aposAlvo || {}, alvoS = SEGt.alvoPct ?? 150, distS = AA.distanciaPct ?? 15;
+        mem.segTopo = mem.segTopo || {}; mem.segBelow = mem.segBelow || {};
+        let ST = mem.segTopo[t.mint];
+        if (ST && ((alvoS > ST.alvo && gS != null && gS < alvoS) || (t.heldSince && t.heldSince > ST.at))) { delete mem.segTopo[t.mint]; ST = null; } // subiu o alvo, ou é uma compra nova da mesma moeda
+        if (!ST && gS != null && gS >= alvoS) {
+          if (AA.ligado === false) { await sell(t, `alvo do modo Segurar: +${gS.toFixed(0)}% (alvo +${alvoS}%)`, 'alvo-segurar', px); continue; }
+          ST = mem.segTopo[t.mint] = { at: now, pico: px, alvo: alvoS };
+          log(`${t.symbol}: BATEU O ALVO +${alvoS}% (+${gS.toFixed(0)}%). Stop móvel ligado ${distS}% abaixo do topo, seguindo a alta`);
+          await avisar({ titulo: `Bateu o alvo: ${t.symbol}`, texto: `+${gS.toFixed(0)}%. O robô ligou um stop móvel ${distS}% abaixo do maior preço e segue a alta. Vende se ela virar.`, mint: t.mint, chave: `segtopo-${t.mint}-${alvoS}` });
+        }
+        if (ST) {
+          ST.pico = Math.max(ST.pico, px);
+          const stopS = ST.pico * (1 - distS / 100), gTopo = avgS ? (ST.pico / avgS - 1) * 100 : 0;
+          if (px < stopS) {
+            mem.segBelow[t.mint] = mem.segBelow[t.mint] || now;
+            if (now - mem.segBelow[t.mint] >= (AA.confirmarSegundos ?? 10) * 1000) { await sell(t, `stop depois do alvo: caiu ${distS}% do topo (+${gTopo.toFixed(0)}%) e vendeu com +${(gS ?? 0).toFixed(0)}%`, 'alvo-segurar', px); continue; }
+          } else delete mem.segBelow[t.mint];
+        }
         // 21/11 (pedido da Kerah): única proteção do Segurar: liquidez retirada do pool (golpe de verdade, não correção).
         // 70% em 5 min: uma queda normal de preço tira bem menos (preço -50% tira uns 30% da liquidez)
-        else if (liqDrop >= (cfg.perfis?.segurar?.segurar?.liquidezRetiradaPct ?? 70)) await sell(t, `liquidez retirada do pool: caiu ${liqDrop.toFixed(0)}% em ${liqWin / 60000} min (proteção contra golpe do perfil Segurar)`, 'golpe', px);
+        if (liqDrop >= (cfg.perfis?.segurar?.segurar?.liquidezRetiradaPct ?? 70)) await sell(t, `liquidez retirada do pool: caiu ${liqDrop.toFixed(0)}% em ${liqWin / 60000} min (proteção contra golpe do perfil Segurar)`, 'golpe', px);
         continue;
       }
       // 1. Golpe no contrato  2. Queda forte  3. Lucro em posição pequena
