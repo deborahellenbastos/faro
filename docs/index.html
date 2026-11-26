@@ -2513,11 +2513,14 @@
     return SEGPEND.has(t.mint) ? SEGPEND.get(t.mint).alvo : cur;
   }
   function segAlvoRow(t) {
-    if (!ROBO_OK || !t.held || !((t.heldAmount || 0) > 0) || isDemo()) return '';
-    const a = segAlvoAtual(t), g = t.position?.avgPriceUsd > 0 && t.priceUsd > 0 ? (t.priceUsd / t.position.avgPriceUsd - 1) * 100 : null;
+    if (!ROBO_OK || isDemo() || !t.mint) return '';
+    // 25/11: aparece também logo depois da compra (antes dos dados do robô) e em moeda que você ainda não tem:
+    // aí a escolha vale para a compra que você fizer nos próximos 10 min
+    const tem = (t.held && (t.heldAmount || 0) > 0) || WAL.bal[t.mint]?.amount > 0;
+    const a = segAlvoAtual(t), g = tem && t.position?.avgPriceUsd > 0 && t.priceUsd > 0 ? (t.priceUsd / t.position.avgPriceUsd - 1) * 100 : null;
     const op = (v, l) => `<button data-segalvo="${v}" data-segmint="${esc(t.mint)}" class="${a === v ? 'on' : ''}">${l}</button>`;
-    return `<div class="seg-alvo" title="Vale só para esta moeda. Não precisa assinar na Phantom."><div><span>Venda do robô nesta moeda: ${a ? `segurar até <b>+${a}%</b> (sem stop)` : '<b>regras normais</b>'}</span>${g != null ? `<span>agora <b class="num ${cls(g)}">${g >= 0 ? '+' : ''}${g.toFixed(0)}%</b></span>` : ''}</div>
-      <div class="pf-seg">${op(0, 'Normal')}${op(100, '+100%')}${op(150, '+150%')}${op(200, '+200%')}</div></div>`;
+    return `<div class="seg-alvo" title="Vale só para esta moeda. Não precisa assinar na Phantom."><div><span>${tem ? 'Venda do robô nesta moeda' : 'Se você comprar agora, o robô vende'}: ${a ? `segurar até <b>+${a}%</b> (sem stop)` : '<b>regras normais</b>'}</span>${g != null ? `<span>agora <b class="num ${cls(g)}">${g >= 0 ? '+' : ''}${g.toFixed(0)}%</b></span>` : ''}</div>
+      <div class="pf-seg">${op(0, 'Normal')}${op(100, '+100%')}${op(150, '+150%')}${op(200, '+200%')}</div>${tem ? '' : '<small style="display:block;margin-top:6px;color:var(--faint)">Escolha antes de comprar: vale para a compra feita nos próximos 10 min.</small>'}</div>`;
   }
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-segalvo]'); if (!b) return;
