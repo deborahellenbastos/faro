@@ -4122,7 +4122,7 @@ function fakeBuys(per = {}) {
     MOS.timer = setInterval(() => {
       if (!$('mosaic')) return closeMosaic();
       MOS.tiles.forEach((x) => { moFill(x); const h = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); const nt = data?.tokens?.[x.mint]; if (h && nt) { const html = moHead(nt); if (h.__html !== html) { h.nextElementSibling?.classList.contains('mo-info') && h.nextElementSibling.remove(); h.outerHTML = html; const nh = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); if (nh) nh.__html = html; } } });
-    }, 30000);
+    }, 15000);
   }
   // Menu lateral recolhível (só ícones), lembrado entre visitas
   { const apply = (on) => { document.body.classList.toggle('side-mini', on); const b = document.querySelector('[data-sidetoggle]'); if (b) { b.title = b.ariaLabel = on ? 'Abrir o menu' : 'Recolher o menu'; } document.querySelectorAll('.sidebar .nav-item').forEach((n) => { if (!n.title) n.title = n.querySelector('span')?.textContent || ''; }); setTimeout(() => window.dispatchEvent(new Event('resize')), 260); };
@@ -4426,7 +4426,21 @@ function fakeBuys(per = {}) {
     decorate(t);
   }
   // Atualiza a última vela com o preço ao vivo
+  // 26/11 (pedido da Kerah): mosaico mais rápido. A cada preço novo (2,5 s) a última vela e o topo de cada quadrinho
+  // atualizam na hora; antes só a cada 30 s, quando as velas eram baixadas de novo
+  function moTick(t) {
+    const x = MOS.tiles?.find((y) => y.mint === t.mint); if (!x || !t.priceUsd || !x.bars?.length || !$('mosaic')) return;
+    const sec = (IVALS.find((y) => y[0] === MOS.iv) || IVALS[1])[3], now = Math.floor(Date.now() / 1000), bucket = Math.floor(now / sec) * sec;
+    let last = x.bars[x.bars.length - 1];
+    if (bucket > last.time) { last = { time: bucket, open: last.close, high: last.close, low: last.close, close: last.close, value: 0 }; x.bars.push(last); }
+    last.close = t.priceUsd; last.high = Math.max(last.high, t.priceUsd); last.low = Math.min(last.low, t.priceUsd);
+    try { x.cs.update({ time: last.time + TZ, open: last.open, high: last.high, low: last.low, close: last.close }); } catch {}
+    // só o valor e o resultado (sem recriar os botões, para não perder um toque no Emergência)
+    const v = $('mosaic').querySelector(`[data-motile="${CSS.escape(t.mint)}"] .mo-v`), p = t.position || {};
+    if (v) { const html = `<b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}`; if (v.__html !== html) { v.innerHTML = html; v.__html = html; } }
+  }
   function tickBar(t) {
+    if (MOS.tiles?.length) moTick(t);
     if (CH.mint === t.mint) updateSince(t);
     if (!CH.chart || CH.mint !== t.mint || !t.priceUsd || !CH.bars.length) return;
     const sec = ivalSec(); const now = Math.floor(Date.now() / 1000); const bucket = Math.floor(now / sec) * sec;
