@@ -2138,7 +2138,12 @@
   const isDust = (t) => !!(t.held && t.position?.known && (t.position.valueUsd || 0) < 0.01 && !isLost(t));
   // Perdida (-95% ou mais) que você ainda tem também fica nas mortas
   // 20/11: valer menos de US$ 1 só porque a compra foi pequena não é morta (Zolana: US$ 1,00 -> 0,98). Precisa ter caído 50%+
-  const isDead = (t) => !!(t.held && t.position?.known && !isDust(t) && (isLost(t) || ((t.position.valueUsd || 0) < 1 && t.position.openPnlPct <= -50)));
+  // 26/11 (pedido da Kerah): também vai para as mortas o que vale menos de US$ 0,10, e moeda que entrou na carteira sem
+  // compra conhecida (sem custo) valendo menos de US$ 1 (Hogecoin: 92 HOGE = US$ 0,05)
+  const valorDe = (t) => t.position?.valueUsd ?? ((t.heldAmount || 0) * (t.priceUsd || 0));
+  const isDead = (t) => !!(t.held && !isDust(t) && (
+    (t.position?.known && (isLost(t) || ((t.position.valueUsd || 0) < 1 && t.position.openPnlPct <= -50)))
+    || valorDe(t) < 0.10 || (!t.position?.known && valorDe(t) < 1)));
   // Resultado de uma operação encerrada fica congelado (não muda com o preço da moeda nem do SOL depois da venda)
   const CLOSED = store.get('faro-closed', {});
   function closedResult(t) {
@@ -5412,7 +5417,7 @@ function fakeBuys(per = {}) {
     const by = (s) => all.filter((t) => t.status === s && !isMine(t));
     const approved = all.filter((t) => t.status === 'aprovada');
     const order = { danger: 0, warn: 1, ok: 2 };
-    const held = all.filter(isMine);
+    const held = all.filter((t) => isMine(t) && !(t.held && !((t.heldAmount || 0) > 0) && !(t.position?.amount > 0)));
     const dead = held.filter(isDead).sort((a, b) => (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
     const mine = held.filter((t) => !isDead(t) && !isDust(t)).sort((a, b) => order[levelOf(a)] - order[levelOf(b)] || (b.position?.valueUsd || 0) - (a.position?.valueUsd || 0));
     const closed = [...held.filter(isDust), ...all.filter(isSold)].sort((a, b) => (b.history?.[0]?.at || 0) - (a.history?.[0]?.at || 0));
