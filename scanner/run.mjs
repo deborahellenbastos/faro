@@ -760,14 +760,19 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       for (const x of trades.filter((y) => y.ok && y.sig)) await avisar({ titulo: `Robô comprou: ${x.symbol}`, texto: `Compra automática de ${(x.sol || 0).toFixed(4)} SOL no sinal de boa entrada. A vigia e os stops já estão protegendo.`, mint: x.mint, chave: `compra-${x.sig}` });
       // Compra feita agora: já entra na carteira desta rodada, com entrada e posição (antes só aparecia na rodada seguinte, 5 min depois)
       const okBuys = trades.filter((x) => x.ok && x.sig);
-      if (perfil === 'segurar') for (const b of okBuys) if (tokens[b.mint] && !tokens[b.mint].segurar) tokens[b.mint].segurar = { desde: now, alvoPct: cfgSeg.segurar?.alvoPct ?? 150, sig: b.sig };
+      // 26/11 (pedido da Kerah): de madrugada (horário de Brasília) a compra do Segurar entra no Normal; acordada, ela muda à mão
+      const M = cfgSeg.segurar?.madrugada || {};
+      const horaBR = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hourCycle: 'h23' }).format(new Date(now)));
+      const madrugada = M.ligado !== false && horaBR >= (M.de ?? 0) && horaBR < (M.ate ?? 6);
+      if (perfil === 'segurar' && madrugada) for (const b of okBuys) log(`${b.symbol}: comprada de madrugada (${horaBR}h) no perfil Segurar. Entra no Normal; dá para mudar o alvo no painel.`);
+      if (perfil === 'segurar' && !madrugada) for (const b of okBuys) if (tokens[b.mint] && !tokens[b.mint].segurar) tokens[b.mint].segurar = { desde: now, alvoPct: cfgSeg.segurar?.alvoPct ?? 150, sig: b.sig };
       if (okBuys.length && wallet && state.wallet && api.getRecentOps) {
         try {
           if (api.sleep) await api.sleep(2500);
           const recent = await api.getRecentOps(wallet, 8);
           let solUsdNow = null; try { solUsdNow = api.getSolUsd ? await api.getSolUsd() : null; } catch {}
           for (const b of okBuys) {
-            if (perfil === 'segurar' && tokens[b.mint]) { tokens[b.mint].segurar = { desde: now, alvoPct: cfgSeg.segurar?.alvoPct ?? 150, sig: b.sig }; log(`${b.symbol}: comprada no perfil SEGURAR. Só vende em +${tokens[b.mint].segurar.alvoPct}%.`); }
+            if (perfil === 'segurar' && !madrugada && tokens[b.mint]) { tokens[b.mint].segurar = { desde: now, alvoPct: cfgSeg.segurar?.alvoPct ?? 150, sig: b.sig }; log(`${b.symbol}: comprada no perfil SEGURAR. Só vende em +${tokens[b.mint].segurar.alvoPct}%.`); }
             const op = recent.find((o) => o.sig === b.sig && o.mint === b.mint); const t = tokens[b.mint];
             if (!op || !t) continue;
             if (solUsdNow && !op.solUsd) op.solUsd = solUsdNow;
