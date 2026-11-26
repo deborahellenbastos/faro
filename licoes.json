@@ -383,7 +383,7 @@
         "BUNC"
       ],
       "aconteceu": "Nas 19 vendas do robô de 16 a 18/11 em que a moeda passou de +30%, o pico médio foi +70% e a venda média saiu com +23%. A regra antiga travava o stop em +5% entre +30% e +60%: a Pussy foi de +36% a -19% e a QUIT de +81% a +5%. No teste com os gráficos de 1 min das 52 vendas, a regra A melhorou 8 de 13 vendas e piorou 4 (ex.: AC sairia com +52% em vez de +69%). O pavio sozinho como gatilho deu resultado misto.",
-      "regra": "Aplicada direto no robô em 19/11 às 02:00, a pedido da Kerah (\"melhor perder um pico maior do que sair no prejuízo\"). config.json venda.stopMovel: ativarPct 20, seguirAPartirPct 20, distanciaPct 12, pico 'fechamento'. A vigia segue o maior fechamento de 1 min, não o pavio. Confirmação de 10 s abaixo do stop continua. No relatório diário: comparar as vendas por stop móvel com o pico de cada operação (quanto devolveu) e contar quantas a regra vendeu cedo demais (moeda subiu 30%+ depois). Conferido em 19/11 (7 vendas pelo stop móvel depois das 02:00): Sparrow +6% (pico guardado +10%), PIPI +61%, DCTY +25%, FIONA +11% e +26%, JENSEN -17% e COOKIE -3%. Nas duas últimas, o aviso dizia 'garantindo +27%' e '+34%', mas a venda saiu 30% abaixo do stop, num despejo de par com 20 e 6 min de vida (as duas caíram 77% e 98% depois, então vender ainda ajudou). Vendeu cedo demais (moeda subiu 30%+ depois): só a PIPI, que depois da venda das 09:50 chegou a cerca de +78% acima dela. As outras 6 caíram de 36% a 98% depois. Simulação até 24/11 (único dado legível, pelo log do servidor, porque o painel estava trancado): no Agressivo, a Rockstar entrou às ~07:18 de 24/11 na Boa entrada a 0,0000582 e saiu pelo stop móvel com +2,9% às ~07:24. Às ~07:35 a moeda teve despejo de -68% em menos de 20 min. O stop móvel salvou a operação. Sem dados de 23/11.",
+      "regra": "Aplicada direto no robô em 19/11 às 02:00, a pedido da Kerah (\"melhor perder um pico maior do que sair no prejuízo\"). config.json venda.stopMovel: ativarPct 20, seguirAPartirPct 20, distanciaPct 12, pico 'fechamento'. A vigia segue o maior fechamento de 1 min, não o pavio. Confirmação de 10 s abaixo do stop continua. No relatório diário: comparar as vendas por stop móvel com o pico de cada operação (quanto devolveu) e contar quantas a regra vendeu cedo demais (moeda subiu 30%+ depois). Conferido em 19/11 (7 vendas pelo stop móvel depois das 02:00): Sparrow +6% (pico guardado +10%), PIPI +61%, DCTY +25%, FIONA +11% e +26%, JENSEN -17% e COOKIE -3%. Nas duas últimas, o aviso dizia 'garantindo +27%' e '+34%', mas a venda saiu 30% abaixo do stop, num despejo de par com 20 e 6 min de vida (as duas caíram 77% e 98% depois, então vender ainda ajudou). Vendeu cedo demais (moeda subiu 30%+ depois): só a PIPI, que depois da venda das 09:50 chegou a cerca de +78% acima dela. As outras 6 caíram de 36% a 98% depois. Simulação até 24/11 (único dado legível, pelo log do servidor, porque o painel estava trancado): no Agressivo, a Rockstar entrou às ~07:18 de 24/11 na Boa entrada a 0,0000582 e saiu pelo stop móvel com +2,9% às ~07:24. Às ~07:35 a moeda teve despejo de -68% em menos de 20 min. O stop móvel salvou a operação. Sem dados de 23/11. Conferido em 26/11 (só pelo log do servidor, painel trancado): na simulação do Conservador e do Agressivo, a UHI entrou na 'Boa entrada' das 14:31 e saiu pelo stop móvel às ~14:57 com -3,8%, ou seja, o stop ligou com +20% e a venda saiu abaixo do preço de entrada. Às 15:15 a UHI estava a US$ 0,00174, +6% em 6h. Na carteira real, o stop móvel ficou armado em GRAUDIA ('garante +45%') e Kuro ('garante +10%') sem vender: na GRAUDIA a moeda virou golpe (-99%) e na Kuro o modo Segurar travou o stop (-31% às 15:15).",
       "status": "em teste"
     },
     {
@@ -616,6 +616,38 @@
       "regra": "Alerta 'apareceram carteiras ligadas (insiders)' numa moeda da carteira vale como golpe para a vigia: vende na hora, sem esperar queda de preço, se a posição valer mais que venda.valorMinimoProtecaoUsd. E o robô refaz a checagem de insiders logo antes de cada compra, em vez de usar a da aprovação.",
       "status": "sugerida",
       "tipo": "protecao"
+    },
+    {
+      "data": "2026-11-26",
+      "titulo": "Modo Segurar ignorou o stop móvel e os insiders crescendo",
+      "moedas": [
+        "Kuro (AuVQxjSZ)"
+      ],
+      "aconteceu": "26/11: a Kerah comprou Kuro às 14:37 (0,0721 SOL, cerca de US$ 5,12), com o par de 39 min, e escolheu no painel o modo Segurar (até +100%, depois +200%). A moeda subiu e o log passou a mostrar 'STOP MÓVEL ligado em Kuro: garante +7%' e depois '+10%', mas o Segurar não deixa o stop móvel vender. Ao mesmo tempo os alertas de insiders cresceram: 49 carteiras ligadas às 14:45, 55 às 14:51 e 67 às 14:57. Às 15:15 a posição valia cerca de US$ 3,55 (-31%), mesmo com a moeda +112% em 6h no DexScreener.",
+      "regra": "Proposta: no modo Segurar, o stop móvel continua valendo depois que a posição passa de +20% (o Segurar só tira o stop de perda inicial), e um alerta de insiders que cresce depois da compra (mais carteiras a cada rodada) tira a moeda do Segurar e manda uma notificação. O log deixa de dizer 'garante +X%' quando o stop está desligado pelo modo Segurar.",
+      "status": "sugerida",
+      "tipo": "venda"
+    },
+    {
+      "data": "2026-11-26",
+      "titulo": "Stop móvel 'garante +45%' numa moeda que já virou golpe",
+      "moedas": [
+        "GRAUDIA (6F2Fyeyp)",
+        "Green cat"
+      ],
+      "aconteceu": "26/11: o log do servidor repete a cada rodada 'STOP MÓVEL ligado em GRAUDIA: garante +45%', ao mesmo tempo que o alerta da mesma moeda diz 'Liquidez sumiu (-94%). Possível rug | Preço 99% abaixo da máxima'. No DexScreener a GRAUDIA estava a US$ 0,0000013, -99% em 24h, com US$ 1,4 mil de liquidez. Ou seja, o stop móvel ficou armado com lucro, a moeda despencou abaixo dele e a venda não aconteceu (provavelmente em 25/11; o log dessa hora já não existe). A Green cat repete 'garante +22%' do mesmo jeito.",
+      "regra": "Proposta: quando o preço fica abaixo do stop móvel e a venda não sai (sem rota, valor abaixo do mínimo, erro), o log grava o motivo uma vez e o stop vira 'stop furado' no painel, em vez de seguir dizendo 'garante +X%'. Se a posição ainda vale mais que o mínimo de proteção, tenta vender de novo a cada rodada.",
+      "status": "sugerida",
+      "tipo": "venda"
+    },
+    {
+      "data": "2026-11-26",
+      "titulo": "Log diz 'Compra automática LIGADA' com o interruptor do painel desligado",
+      "moedas": [],
+      "aconteceu": "26/11: às 11:44 a Kerah mandou o memo faro:compra=off pela carteira. Das 14:26 às 15:07 o log do servidor seguiu repetindo 'Compra automática LIGADA' a cada minuto. A frase só olha o config.json e a variável AUTO_BUY (scanner/trader.mjs), não o memo. O robô não comprou nada depois do memo, então o interruptor funcionou, mas o log engana quem lê.",
+      "regra": "Proposta: a linha do log mostra as três travas juntas, por exemplo 'Compra automática: config sim, AUTO_BUY sim, painel DESLIGADO desde 11:44', e o painel mostra o mesmo estado no card do robô.",
+      "status": "sugerida",
+      "tipo": "painel"
     }
   ]
 }
