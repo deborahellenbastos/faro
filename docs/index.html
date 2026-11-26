@@ -5114,11 +5114,20 @@ function fakeBuys(per = {}) {
   }
   setInterval(() => { connectWallet(); pollWallet(); }, 20000);
   // Acompanha uma transação enviada até a blockchain confirmar (ou recusar)
+  // 25/11: a confirmação passou a demorar 30 s ou mais porque o RPC gratuito (publicnode) às vezes demora a enxergar a
+  // transação ou recusa pedidos seguidos. Agora pergunta a dois RPCs ao mesmo tempo e fica com a primeira resposta
+  const RPCS_STATUS = [...new Set([RPC_URL, 'https://api.mainnet-beta.solana.com', 'https://solana-rpc.publicnode.com'])].slice(0, 3);
+  async function statusEm(url, sig) {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getSignatureStatuses', params: [[sig], { searchTransactionHistory: false }] }), signal: AbortSignal.timeout(4000) });
+    const s = (await r.json())?.result?.value?.[0];
+    if (!s) throw new Error('ainda não');
+    return s;
+  }
   async function confirmSig(sig) {
-    for (let i = 0; i < 75; i++) {
-      await new Promise((r) => setTimeout(r, 800));
+    for (let i = 0; i < 120; i++) {
+      await new Promise((r) => setTimeout(r, i < 20 ? 400 : 800));
       let s = null;
-      try { s = (await rpcCall('getSignatureStatuses', [[sig], { searchTransactionHistory: false }]))?.value?.[0]; } catch {}
+      try { s = await Promise.any(RPCS_STATUS.map((u) => statusEm(u, sig))); } catch {}
       if (!s) continue;
       if (s.err) return 'failed';
       if (s.confirmationStatus === 'confirmed' || s.confirmationStatus === 'finalized') return 'ok';
@@ -5991,7 +6000,7 @@ function fakeBuys(per = {}) {
           const link = `<a href="https://solscan.io/tx/${sig}" target="_blank" rel="noopener">Ver no Solscan</a>`;
           const res = await confirmSig(sig);
           if (res === 'failed') { st.msg = { err: true, html: `<b>A ${buy ? 'compra' : 'venda'} falhou na blockchain</b> (quase sempre o preço andou além do slippage). Nada foi trocado; só a taxa de rede foi cobrada. ${link}` }; play('problema'); }
-          else if (res === 'timeout') st.msg = { err: true, html: `Ainda sem confirmação depois de 1 minuto. Confira antes de tentar de novo: ${link}` };
+          else if (res === 'timeout') st.msg = { err: true, html: `Ainda sem confirmação depois de 1 minuto e meio. Confira antes de tentar de novo: ${link}` };
           else {
             // Som e aviso na hora da confirmação (o detalhe da troca chega logo depois)
             play(buy ? 'boa' : (saleProfitPct(t, t.priceUsd) || 0) > 0.5 ? 'lucro' : 'venda'); toast(`${buy ? 'Compra' : 'Venda'} de ${t.symbol} confirmada`); SND.add(sig);
