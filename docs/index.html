@@ -4152,7 +4152,7 @@ function fakeBuys(per = {}) {
       const list = param.time != null && param.point ? series.__info?.get(Number(param.time)) : null;
       if (!list?.length) { tip.hidden = true; return; }
       const hm = series.__hm || ((x) => '');
-      const html = list.map((x) => `<div><b style="color:${x.color}">${x.title}</b>${x.at ? `<small>${hm(x.at)}</small>` : ''}${x.txt ? `<p>${x.txt}</p>` : ''}</div>`).join('');
+      const html = list.map((x) => `<div><b style="color:${x.color}">${x.title}</b>${x.at ? `<small>${hm(x.at)}</small>` : ''}${x.txt ? `<p>${typeof x.txt === 'function' ? x.txt() : x.txt}</p>` : ''}</div>`).join('');
       if (tip.__html !== html) { tip.innerHTML = html; tip.__html = html; }
       tip.hidden = false;
       const W = host.clientWidth, w = tip.offsetWidth, h = tip.offsetHeight;
@@ -4381,7 +4381,14 @@ function fakeBuys(per = {}) {
     const addInfo = (time, color, title, txt, at) => { const a = info.get(time) || []; a.push({ color, title, txt: txt || '', at }); info.set(time, a); };
     const marks = (t.history || []).filter((o) => o.tokens && o.at / 1000 >= first).map((o) => {
       const buy = o.tokens > 0, time = Math.floor(o.at / 1000 / sec) * sec + TZ, robo = roboSigs().has(o.sig);
-      addInfo(time, buy ? '#10d27f' : '#ff5b5b', `${buy ? 'Compra' : 'Venda'} ${robo ? 'do robô' : 'sua'}`, `${int(Math.abs(o.tokens))} ${esc(t.symbol || '')} por ${solFmt(Math.abs(o.sol || 0), 4)}`, o.at);
+      // 26/11 (pedido da Kerah): quanto foi em dólar e quanto esse mesmo tanto de moedas vale hoje (calculado na hora do hover)
+      const linha = `${int(Math.abs(o.tokens))} ${esc(t.symbol || '')} por ${solFmt(Math.abs(o.sol || 0), 4)}`;
+      addInfo(time, buy ? '#10d27f' : '#ff5b5b', `${buy ? 'Compra' : 'Venda'} ${robo ? 'do robô' : 'sua'}`, () => {
+        const nt = data?.tokens?.[t.mint] || t, usd = Math.abs(o.sol || 0) * (o.solUsd || LIVE.solUsd || 0), hoje = Math.abs(o.tokens) * (nt.priceUsd || 0);
+        if (!(usd > 0) || !(hoje > 0)) return linha;
+        const d = (hoje / usd - 1) * 100;
+        return `${linha}<br>${buy ? 'Você colocou' : 'Você recebeu'} <b>${money(usd)}</b><br>${buy ? 'Hoje vale' : 'Se não tivesse vendido, hoje valeria'} <b class="${cls(d)}">${money(hoje)}</b> <span class="${cls(d)}">(${pct(d)})</span>`;
+      }, o.at);
       return { time, position: buy ? 'belowBar' : 'aboveBar', color: buy ? '#10d27f' : '#ff5b5b', shape: buy ? 'arrowUp' : 'arrowDown', text: buy ? 'C' : 'V' };
     });
     // Sinais que o Faro deu (insiders, liquidez, venda do robô...) no candle em que apareceram
