@@ -3308,6 +3308,9 @@ function fakeBuys(per = {}) {
       let net = 0, start = null;
       for (const o of [...(t.history || [])].reverse()) { if (!o.tokens) continue; if (net <= 0 && o.tokens > 0) start = o.at; net += o.tokens; if (net <= 0) start = null; }
       const entryAt = start || t.heldSince || Date.now();
+      // 26/11 (pedido da Kerah): no modo Segurar não existe stop nem sinal de saída; só o alvo
+      const seg = typeof segAlvoAtual === 'function' ? segAlvoAtual(t) : t.segurar?.alvoPct || 0;
+      if (seg > 0) return { tipo: 'saida', fase: 'segurar', titulo: `Segurando até +${seg}%`, msg: 'Modo Segurar: sem stop e sem sinais de saída. O robô vende quando chegar no alvo.', key: 'segurar' };
       ctx.trail = liveTrail(t, c, entryAt);
       const x = exitSignal(c, { entryPx: t.position.avgPriceUsd, entryAt }, ctx);
       return x ? { tipo: 'saida', ...x } : null;

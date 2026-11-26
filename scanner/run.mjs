@@ -506,8 +506,9 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         if (tr) { if (tr.ativo && !(prevStop > 0)) log(`STOP MÓVEL ligado em ${t.symbol}: garante +${tr.travadoPct.toFixed(0)}%`); t.trail = { ...tr, entryAt }; }
       } else delete t.trail;
       ctx.trail = t.trail;
-      const x = exitSignal(t.candles, { entryPx: t.position.avgPriceUsd, entryAt }, ctx);
-      if (x) sig = { tipo: 'saida', ...x };
+      // 26/11: posição no modo Segurar não tem sinal de saída (nem "bateu o stop móvel")
+      if (t.segurar) { delete t.trail; sig = { tipo: 'saida', fase: 'segurar', titulo: `Segurando até +${t.segurar.alvoPct ?? 150}%`, msg: 'Modo Segurar: sem stop e sem sinais de saída. O robô vende quando chegar no alvo.', key: 'segurar' }; }
+      else { const x = exitSignal(t.candles, { entryPx: t.position.avgPriceUsd, entryAt }, ctx); if (x) sig = { tipo: 'saida', ...x }; }
     } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t) || curveOn(t) || t.favorita) {
       sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };
       // Subida saudável (aula de análise técnica): moeda segura que sobe sem corrigir até a zona. Vale para o Conservador
