@@ -4291,14 +4291,14 @@ function fakeBuys(per = {}) {
       add(entryPx, '#a78bfa', runBuys.length > 1 || (!t.held && allBuys.length > 1) ? 'entrada (média)' : 'entrada', 2, 2);
       // Meta: +100% (ou o alvo configurado) sobre a entrada. Em posição pequena é onde o robô vende sozinho
       const tp = metaOf(t);
-      if (t.held && tp) add(tp.px, '#10d27f', tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
+      if (t.held && tp) add(tp.px, '#10d27f', tp.segurar ? `alvo Segurar +${tp.pct}% (robô vende)` : tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
       // Metas do robô (liga e desliga pelo botão da bandeira): stop móvel e realização em faixas
-      if (t.held && store.get('faro-metas', false)) {
+      if (t.held && !tp?.segurar && store.get('faro-metas', false)) {
         const E = t.position.avgPriceUsd, V = data?.config?.venda || {};
         if (V.stopMovel?.ligado) { add(E * (1 + (V.stopMovel.ativarPct ?? 30) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.ativarPct ?? 30}% liga stop móvel`, 3, 1); if ((V.stopMovel.seguirAPartirPct ?? 60) > (V.stopMovel.ativarPct ?? 30)) add(E * (1 + (V.stopMovel.seguirAPartirPct ?? 60) / 100), 'rgba(245,177,76,.8)', `+${V.stopMovel.seguirAPartirPct ?? 60}% stop segue o topo`, 3, 1); }
         if (V.realizar?.ligado) for (const f of V.realizar.faixas || []) add(E * (1 + f.lucroPct / 100), 'rgba(16,210,127,.65)', `+${f.lucroPct}% ${f.sinais <= 1 ? 'vende no 1º sinal' : `vende com ${f.sinais} sinais`}`, 3, 1);
       }
-      if (t.held && (t.position.valueUsd || 0) >= (data?.config?.venda?.valorMinimoUsd ?? 1)) {
+      if (t.held && !tp?.segurar && (t.position.valueUsd || 0) >= (data?.config?.venda?.valorMinimoUsd ?? 1)) {
         const tr = liveTrail(t, candlesOf(t), posStart(t));
         if (tr?.ativo) {
           // A linha do stop móvel começa na vela em que ele ligou (+30% sobre a entrada), não atravessa o gráfico todo:
@@ -4482,6 +4482,9 @@ function fakeBuys(per = {}) {
   // Variação desde a sua entrada (e desde a saída, se já vendeu), atualizada com o preço ao vivo
   function metaOf(t) {
     const p = t.position; if (!p?.known || !(p.avgPriceUsd > 0)) return null;
+    // 26/11: moeda no modo Segurar: a meta é o alvo dela (100/150/200%), e é ali que o robô vende
+    const seg = typeof segAlvoAtual === 'function' ? segAlvoAtual(t) : t.segurar?.alvoPct || 0;
+    if (seg > 0) return { pct: seg, px: p.avgPriceUsd * (1 + seg / 100), robot: true, segurar: true };
     const L = data?.lastRun?.takeProfit; const pct = L?.alvoPct || 100;
     return { pct, px: p.avgPriceUsd * (1 + pct / 100), robot: !!L && p.costOpenUsd > 0 && p.costOpenUsd < (L.ateUsd || 10) };
   }
@@ -4499,7 +4502,7 @@ function fakeBuys(per = {}) {
     const tp = t.held ? metaOf(t) : null;
     const toGo = tp ? (tp.px / t.priceUsd - 1) * 100 : null;
     el.innerHTML = (p.avgPriceUsd > 0 ? row('Desde a entrada', p.avgPriceUsd, t.held ? t.heldAmount : sells.reduce((a, o) => a - o.tokens, 0)) : '') + (exit ? row('Desde a saída', exit, soldTok) : '')
-      + (tp ? `<span>Até a meta +${tp.pct}%</span><b class="${toGo <= 0 ? 'pos' : ''}">${toGo <= 0 ? 'bateu!' : `falta +${toGo.toFixed(toGo < 10 ? 2 : 1).replace('.', ',')}% <em>(${usdBr((t.heldAmount || 0) * (tp.px - t.priceUsd))})</em>`}</b>` : '');
+      + (tp ? `<span>${tp.segurar ? 'Até o alvo' : 'Até a meta'} +${tp.pct}%</span><b class="${toGo <= 0 ? 'pos' : ''}">${toGo <= 0 ? 'bateu!' : `falta +${toGo.toFixed(toGo < 10 ? 2 : 1).replace('.', ',')}% <em>(${usdBr((t.heldAmount || 0) * (tp.px - t.priceUsd))})</em>`}</b>` : '');
     el.hidden = !el.innerHTML;
   }
   function setTool(tool) {
