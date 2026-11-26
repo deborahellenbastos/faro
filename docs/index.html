@@ -693,6 +693,9 @@
   .chart-box.max .mini-grip, .chart-box.max .cmin-only { display: none; }
   .chart-box.max .cmax-only { display: inline-flex; }
   .chart-box.max .chart-tools .back { display: inline-flex; }
+  /* 26/11: no celular a moeda abre numa folha com transform; com ela, o gráfico em tela cheia ficava preso na folha,
+     rolava junto e cobria o resto (inclusive o controle do Segurar). Com o gráfico aberto, a folha fica sem transform */
+  body.show-detail .detail:has(.chart-box.max) { transform: none !important; transition: none !important; }
 
   .drawer { position: fixed; inset: 0; z-index: 35; background: rgba(4,5,7,.6); display: none; justify-content: flex-end; }
   .drawer.show { display: flex; }
