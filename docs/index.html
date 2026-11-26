@@ -2668,7 +2668,11 @@
   function goTo(mint) {
     markSeen(mint);
     const t = data?.tokens?.[mint]; if (!t) return;
-    ui.tab = isMine(t) ? 'minhas' : t.status; ui.sel[ui.tab] = mint; ui.page = 1;
+    // 26/11: moeda que acabou de entrar (status "nova", ex.: comprada por carteira seguida) abre na Análise; antes ia para
+    // uma aba que não existe e o painel ficava na moeda anterior (Snowball abria a Kuro)
+    const aba = isMine(t) ? 'minhas' : ['aprovada', 'aguardando', 'reprovada'].includes(t.status) ? t.status : 'aguardando';
+    ui.tab = aba; ui.sel[ui.tab] = mint; ui.page = 1;
+    if (aba === 'aguardando' || aba === 'reprovada') { const dia = new Date(t.firstSeen || Date.now()).toLocaleDateString('sv'); ui.anDate = dia; ui.anDateEscolhida = dia !== new Date().toLocaleDateString('sv'); }
     if (isNarrow()) openSheet();
     render(); focusDanger(mint);
   }
@@ -5484,7 +5488,7 @@ function fakeBuys(per = {}) {
     const danger = mine.filter((t) => levelOf(t) === 'danger').length;
     // Aprovada que virou perigo não fica no radar: vai para as reprovadas na hora (o robô confirma na rodada)
     const fell = (t) => t.status === 'aprovada' && levelOf(t) === 'danger';
-    const lists = { minhas: [...mine, ...dead, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t) && !MANREP.has(t.mint)), aguardando: by('aguardando').filter((t) => !MANREP.has(t.mint)), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => (fell(t) && !isSold(t)) || MANREP.has(t.mint)), ...by('aguardando').filter((t) => MANREP.has(t.mint))] };
+    const lists = { minhas: [...mine, ...dead, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t) && !MANREP.has(t.mint)), aguardando: [...by('aguardando'), ...by('nova')].filter((t) => !MANREP.has(t.mint)), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => (fell(t) && !isSold(t)) || MANREP.has(t.mint)), ...by('aguardando').filter((t) => MANREP.has(t.mint))] };
 
     // Moeda aberta que você acabou de comprar: o Faro vai junto com ela para a Carteira
     const opened = ui.sel[ui.tab];
