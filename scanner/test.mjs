@@ -862,3 +862,20 @@ console.log('Teste da tendência de baixa: ok');
   assert.ok(p.pnlPct < 0, 'resultado negativo, não milhões de %');
   console.log('Teste do preço do SOL absurdo: ok');
 }
+
+// Carteiras seguidas editadas pelo painel (26/11)
+{
+  const { mkdtemp } = await import("node:fs/promises"); const os = await import("node:os"); const path = await import("node:path");
+  process.env.FARO_PUSH_DIR = await mkdtemp(path.join(os.tmpdir(), 'faro-sg-'));
+  const M = await import('./manual.mjs?sg=' + Date.now());
+  const pad = [{ endereco: 'Agir746nCrbvqHCjpy4zSb1EmAHuh1Pbhzn4fSbtwz6a', apelido: 'Carteira 1' }];
+  assert.equal((await M.lerSeguidas(pad)).length, 1, 'sem arquivo usa o config');
+  await M.salvarSeguida('Agir746nCrbvqHCjpy4zSb1EmAHuh1Pbhzn4fSbtwz6a', 'Baleia', pad);
+  await M.salvarSeguida('7bCiddGLe5aM8HE2pigT9jsqkmC1HSPxyXN6GkHEpump', 'Outra', pad);
+  let l = await M.lerSeguidas(pad);
+  assert.equal(l.length, 2); assert.equal(l[0].apelido, 'Baleia');
+  l = await M.removerSeguida('Agir746nCrbvqHCjpy4zSb1EmAHuh1Pbhzn4fSbtwz6a', pad);
+  assert.equal(l.length, 1);
+  await assert.rejects(M.salvarSeguida('x', 'y', pad), /inválido/);
+  console.log('Teste das carteiras seguidas: ok');
+}

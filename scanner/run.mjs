@@ -71,7 +71,8 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // e, no fim da rodada (já com nome e nota), vai um aviso para o celular
   const seguidasNovas = [];
   state.seguir = state.seguir || {};
-  for (const w of cfg.seguir?.carteiras || []) {
+  const listaSeguir = api.lerSeguidas ? await api.lerSeguidas(cfg.seguir?.carteiras || []).catch(() => cfg.seguir?.carteiras || []) : cfg.seguir?.carteiras || [];
+  for (const w of listaSeguir) {
     if (!w?.endereco || w.ligado === false) continue;
     const apelido = w.apelido || `${w.endereco.slice(0, 4)}...${w.endereco.slice(-4)}`;
     try {

@@ -78,3 +78,33 @@ export function segurarDe(t, escolhas) {
   if (e && (!t.segurar || e.at >= (t.segurar.desde || 0) - 60000 || e.alvoPct === 0)) return e.alvoPct > 0 ? { ...(t.segurar || {}), alvoPct: e.alvoPct, manual: true } : null;
   return t.segurar || null;
 }
+
+// 26/11 (pedido da Kerah): carteiras que ela segue, editadas pelo painel (incluir, dar apelido, excluir).
+// Enquanto o arquivo não existe, vale a lista do config.json
+const ARQ_SEGUIR = () => path.join(DIR, 'carteiras-seguidas.json');
+export async function lerSeguidas(padrao = []) {
+  try { const j = JSON.parse(await readFile(ARQ_SEGUIR(), 'utf8')); if (Array.isArray(j.carteiras)) return j.carteiras; } catch { /* sem arquivo */ }
+  return (padrao || []).filter((x) => x?.endereco);
+}
+async function gravarSeguidas(lista) {
+  await mkdir(DIR, { recursive: true });
+  const tmp = ARQ_SEGUIR() + '.tmp';
+  await writeFile(tmp, JSON.stringify({ carteiras: lista }, null, 2));
+  await rename(tmp, ARQ_SEGUIR());
+}
+export async function salvarSeguida(endereco, apelido, padrao = []) {
+  endereco = String(endereco || '').trim();
+  if (!MINT.test(endereco)) throw new Error('Endereço de carteira inválido');
+  const nome = String(apelido || '').trim().slice(0, 30) || `${endereco.slice(0, 4)}...${endereco.slice(-4)}`;
+  const lista = await lerSeguidas(padrao);
+  const i = lista.findIndex((x) => x.endereco === endereco);
+  if (i >= 0) lista[i] = { ...lista[i], apelido: nome };
+  else { if (lista.length >= 30) throw new Error('Limite de 30 carteiras'); lista.push({ endereco, apelido: nome, desde: Date.now() }); }
+  await gravarSeguidas(lista);
+  return lista;
+}
+export async function removerSeguida(endereco, padrao = []) {
+  const lista = (await lerSeguidas(padrao)).filter((x) => x.endereco !== String(endereco || '').trim());
+  await gravarSeguidas(lista);
+  return lista;
+}

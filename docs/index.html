@@ -655,6 +655,15 @@
   .pf-seg button.on { background: var(--panel-3); color: var(--text); }
   .pfrow.agr .pf-seg button.on { background: rgba(245,177,76,.16); color: #f5b14c; }
   .pf-seg button:disabled { cursor: progress; }
+  /* 26/11: carteiras seguidas */
+  .sg-list { display: grid; gap: 8px; margin: 10px 0 14px; }
+  .sg-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+  .sg-main { flex: 1; min-width: 0; display: grid; gap: 4px; }
+  .sg-main small { color: var(--faint); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .sg-nome { background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--text); font: inherit; font-weight: 700; padding: 4px 6px; margin-left: -6px; }
+  .sg-nome:focus, .sg-nome:hover { border-color: var(--line); outline: none; }
+  .sg-add { display: grid; gap: 8px; }
+  .sg-add input { background: var(--panel-2, rgba(255,255,255,.03)); border: 1px solid var(--line); border-radius: 10px; color: var(--text); font: inherit; padding: 10px 12px; }
   /* 21/11: alvo do modo Segurar, moeda por moeda */
   .seg-alvo { margin: 12px 0 4px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-3, 14px); background: var(--panel-2, rgba(255,255,255,.02)); }
   .seg-alvo > div:first-child { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
@@ -1658,6 +1667,7 @@
         <button data-rt="rodada" aria-pressed="false">Rodada</button>
         <button data-rt="sim" aria-pressed="false">Simulação</button>
         <button data-rt="licoes" aria-pressed="false">Lições</button>
+        <button data-rt="seguir" aria-pressed="false">Carteiras</button>
       </div>
       <div class="drawer-body">
         <div id="rt-config">
@@ -1678,6 +1688,7 @@
         </div>
         <div id="rt-sim" hidden></div>
         <div id="rt-licoes" hidden></div>
+        <div id="rt-seguir" hidden></div>
         <div id="rt-rodada" hidden>
           <div class="kv" id="run"></div>
           <div class="log" id="log"></div>
@@ -5940,6 +5951,39 @@ function fakeBuys(per = {}) {
   document.addEventListener('click', (e) => { if (e.target.closest('[data-open-robot]')) openRobot(); });
   $('robot-back').addEventListener('click', closeRobot);
   $('robot').addEventListener('click', (e) => { if (e.target.id === 'robot') closeRobot(); });
+  // 26/11 (pedido da Kerah): carteiras que ela segue. Incluir com apelido, renomear e excluir; fica no servidor
+  const SEGUIR = { lista: null, erro: '' };
+  async function renderSeguir(recarregar = true) {
+    const el = $('rt-seguir'); if (!el) return;
+    const noServ = !/github\.io$/.test(location.hostname);
+    if (recarregar && noServ) { try { const r = await fetch('radar/seguidas', { cache: 'no-store' }); SEGUIR.lista = r.ok ? (await r.json()).carteiras || [] : null; SEGUIR.erro = r.ok ? '' : 'Não consegui ler a lista agora.'; } catch { SEGUIR.erro = 'Não consegui ler a lista agora.'; } }
+    const st = data?.seguir || {};
+    const linhas = (SEGUIR.lista || []).map((w) => `<div class="sg-row"><div class="sg-main"><input class="sg-nome" data-sgnome="${esc(w.endereco)}" value="${esc(w.apelido || '')}" maxlength="30" aria-label="Apelido"><small><span class="mono">${esc(w.endereco.slice(0, 6))}...${esc(w.endereco.slice(-6))}</span> <button class="copy" data-copy="${esc(w.endereco)}" title="Copiar endereço">${ICON.copy}</button>${st[w.endereco]?.at ? ` - olhada ${ago(st[w.endereco].at)}` : ''}</small></div><button class="btn btn-sm sg-del" data-sgdel="${esc(w.endereco)}">Excluir</button></div>`).join('');
+    el.innerHTML = `<p class="note">Quando uma dessas carteiras comprar uma moeda, ela entra na análise do Faro e chega um aviso no celular (o robô não compra por causa disso). ${noServ ? '' : '<b>Abra pelo meufaro.tech para editar.</b>'}</p>
+      ${SEGUIR.erro ? `<p class="note neg">${SEGUIR.erro}</p>` : ''}
+      <div class="sg-list">${linhas || '<p class="note">Nenhuma carteira ainda.</p>'}</div>
+      ${noServ ? `<form class="sg-add" data-sgadd><input name="end" placeholder="Endereço da carteira" autocomplete="off" spellcheck="false" required><input name="nome" placeholder="Apelido (ex.: Baleia 1)" maxlength="30"><button class="btn btn-sm" type="submit">Seguir</button></form>` : ''}`;
+  }
+  async function seguirPost(rota, corpo, ok) {
+    try { const r = await postJson(`radar/${rota}`, corpo); const j = await r.json().catch(() => ({})); if (!r.ok || !j.ok) throw new Error(j.error || r.status); SEGUIR.lista = j.carteiras; renderSeguir(false); toast(ok); }
+    catch (e) { toast(`Não deu certo: ${e.message}`); }
+  }
+  document.addEventListener('submit', (e) => {
+    const f = e.target.closest('[data-sgadd]'); if (!f) return; e.preventDefault();
+    const end = f.end.value.trim(), nome = f.nome.value.trim();
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(end)) return toast('Esse endereço não parece uma carteira da Solana');
+    seguirPost('seguir', { endereco: end, apelido: nome }, `Seguindo ${nome || 'a carteira'}. As compras novas dela vão chegar como aviso.`);
+  });
+  document.addEventListener('change', (e) => {
+    const i = e.target.closest('[data-sgnome]'); if (!i) return;
+    seguirPost('seguir', { endereco: i.dataset.sgnome, apelido: i.value.trim() }, 'Apelido salvo');
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sgdel]'); if (!b) return;
+    const w = (SEGUIR.lista || []).find((x) => x.endereco === b.dataset.sgdel);
+    if (!confirm(`Parar de seguir ${w?.apelido || 'esta carteira'}?`)) return;
+    seguirPost('seguir-remover', { endereco: b.dataset.sgdel }, 'Carteira removida da lista');
+  });
   $('robot-seg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-rt]'); if (!b) return;
     for (const x of $('robot-seg').children) x.setAttribute('aria-pressed', x === b);
@@ -5948,7 +5992,9 @@ function fakeBuys(per = {}) {
     $('rt-rodada').hidden = b.dataset.rt !== 'rodada';
     $('rt-sim').hidden = b.dataset.rt !== 'sim';
     $('rt-licoes').hidden = b.dataset.rt !== 'licoes';
+    $('rt-seguir').hidden = b.dataset.rt !== 'seguir';
     if (b.dataset.rt === 'licoes') renderLicoes();
+    if (b.dataset.rt === 'seguir') renderSeguir();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
