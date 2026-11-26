@@ -393,7 +393,7 @@
         "FNDR (única do robô que deu lucro comprando depois do pico)"
       ],
       "aconteceu": "De 15 a 19/11 foram 111 operações (Kerah e robô). As 63 compras feitas depois do pico da moeda deram lucro só em 8 (13%) e somaram -0,569 SOL, quase todo o prejuízo da carteira. Em geral a compra foi uns 45 min depois do pico, com a moeda 45% abaixo dele, e em só 4 das 63 ela subiu 30%+ depois. As 48 compras antes do pico ficaram no zero a zero (-0,007 SOL); nas 16 em que a moeda subiu 30%+ com a posição aberta, 11 deram lucro (+0,099 SOL). Das 36 moedas boas do Radar (sem golpes), 19 já tinham feito o pico antes de entrar no Radar.",
-      "regra": "Ligada direto em 19/11 às 02:40, a pedido da Kerah. config.json sinais.picoPassou: não dá \"Boa entrada\" (nem compra real, nem simulação, nem sinal do agressivo, nem aviso no painel) se a moeda está 30%+ abaixo do maior preço dela desde o lançamento e esse pico foi há 30 min ou mais. O sinal vira \"Pico já passou\". O pico vem das velas de 15 min da Jupiter (uma vez por moeda) e das velas de 5 min da rodada. No relatório diário: contar quantos sinais a trava bloqueou e o que a moeda fez depois (subiu 30%+ ou continuou caindo). Conferido em 19/11: nenhum sinal bloqueado registrado (nenhuma moeda do Radar com a fase 'pico-passou' no histórico da zona, e nenhum 'PICO JÁ PASSOU' no trecho do log do servidor). Sem dados para medir ainda. Conferido em 24/11: primeiro bloqueio registrado no log. Às 21:59 a trava barrou a cateball ('63% abaixo do topo, há 3104 min. Não compra'), enquanto a simulação entrou nela pelo rompimento a 0,0009591. Às 22:20 a moeda estava a 0,000759 (-21% desde o bloqueio). Por enquanto a trava acertou.",
+      "regra": "Ligada direto em 19/11 às 02:40, a pedido da Kerah. config.json sinais.picoPassou: não dá \"Boa entrada\" (nem compra real, nem simulação, nem sinal do agressivo, nem aviso no painel) se a moeda está 30%+ abaixo do maior preço dela desde o lançamento e esse pico foi há 30 min ou mais. O sinal vira \"Pico já passou\". O pico vem das velas de 15 min da Jupiter (uma vez por moeda) e das velas de 5 min da rodada. No relatório diário: contar quantos sinais a trava bloqueou e o que a moeda fez depois (subiu 30%+ ou continuou caindo). Conferido em 19/11: nenhum sinal bloqueado registrado (nenhuma moeda do Radar com a fase 'pico-passou' no histórico da zona, e nenhum 'PICO JÁ PASSOU' no trecho do log do servidor). Sem dados para medir ainda. Conferido em 24/11: primeiro bloqueio registrado no log. Às 21:59 a trava barrou a cateball ('63% abaixo do topo, há 3104 min. Não compra'), enquanto a simulação entrou nela pelo rompimento a 0,0009591. Às 22:20 a moeda estava a 0,000759 (-21% desde o bloqueio). Por enquanto a trava acertou. Conferido em 26/11 (compra real, não simulação): às 00:09 o robô comprou NETHER com 0,05 SOL. O topo tinha sido às 23:45 (0,000132) e às 23:50 a moeda já tinha despejado 72%. A compra saiu uns 45% a 60% abaixo do topo, mas o topo tinha só 24 min, e a trava pede 30 min: passou. 6 min depois a Kerah vendeu com -55%, e a moeda está 94% abaixo da máxima. A trava também barrou a Sae às 08:57 (43% abaixo do topo, há 247 min); não deu para medir o que a Sae fez depois do bloqueio. Simulação não lida em 25 e 26/11 (painel trancado).",
       "status": "em teste"
     },
     {
@@ -578,6 +578,44 @@
       "regra": "Proposta: quando o saldo livre (saldo menos a reserva de 0,01 SOL) for menor que o valor da próxima compra, o log troca 'Compra automática LIGADA' por 'Compra automática SEM SALDO: tem X SOL, precisa de Y SOL', e o painel mostra um aviso fixo com quanto falta. Uma notificação só, na primeira rodada em que isso acontecer.",
       "status": "sugerida",
       "tipo": "painel"
+    },
+    {
+      "data": "2026-11-26",
+      "titulo": "Compra manual em moeda com o par de poucos minutos",
+      "moedas": [
+        "RASMR (EENkLC2u)",
+        "Yaranaika (Cd3YkR2H)",
+        "TEXEL (DFWYjuQY)"
+      ],
+      "aconteceu": "25 e 26/11: a Kerah comprou três moedas com o par de 6 a 28 minutos de vida, abaixo da idade mínima do próprio Faro (busca.idadeMinimaMinutos = 30). RASMR: par de 6 min, comprada às 21:40 de 25/11 por US$ 1,93; a vigia vendeu 1 min depois por US$ 0,74 (-62%) e a moeda ainda caiu mais 74%. Yaranaika: par de 8 min, comprada às 08:19 de 26/11 por US$ 0,88 e vendida às 08:23 (+2%); 21 min depois apareceram 17 carteiras ligadas, o top 10 foi de 10% para 99% e a liquidez sumiu (-100%). TEXEL: par de 28 min, comprada às 08:25 por US$ 1,22; em minutos o top 10 foi de 13% para 79% e a liquidez sumiu (-100%), a posição virou zero. Idade do par pela DexScreener (em moedas da pump.fun pode ser a hora da migração).",
+      "regra": "Quando a moeda tem menos de 30 min de par, ou ainda não foi aprovada pelo Faro, o botão de compra do painel mostra o aviso 'moeda nova demais: X min' em vermelho e pede uma segunda confirmação. A análise diária separa as compras feitas fora do Faro (swap direto da Phantom) para medir o resultado delas à parte.",
+      "status": "sugerida",
+      "tipo": "compra"
+    },
+    {
+      "data": "2026-11-26",
+      "titulo": "Vigia ligada não vendeu a MCAP numa queda de 20 minutos",
+      "moedas": [
+        "MCAP (AYij72wA)",
+        "Pumpcat (5CPiu3nm)"
+      ],
+      "aconteceu": "26/11: MCAP comprada pela Kerah às 00:32 por US$ 5,09. O preço caiu de 0,0000663 (00:40) para 0,0000206 (00:50, -69%) e 0,0000081 (01:10, -88%), e não voltou. A vigia estava ligada (memo faro:venda=on às 19:06 de 25/11) e não vendeu: a posição vale cerca de US$ 0,21. A Pumpcat, comprada às 00:16 por US$ 5,08, levou um rug de -99,7% numa vela só (00:35 a 00:40), e aí não havia como vender. Juntas, US$ 10,17 viraram cerca de US$ 0,23, mais da metade da perda do dia. O log do servidor dessa hora já não existe, então não deu para ver por que a vigia ficou parada na MCAP.",
+      "regra": "Moeda da carteira que cai 40% ou mais do pico em até 10 minutos é vendida pela vigia, em qualquer modo (inclusive Segurar) e em qualquer horário. O log da vigia grava, para cada moeda que passou do gatilho e não foi vendida, o motivo (modo Segurar, valor abaixo do mínimo, sem rota na Jupiter, erro na venda).",
+      "status": "sugerida",
+      "tipo": "protecao"
+    },
+    {
+      "data": "2026-11-26",
+      "titulo": "Insiders que aparecem depois da compra",
+      "moedas": [
+        "4chanpump (GFmaQAff)",
+        "NETHER (GkL4cJLA)",
+        "Yaranaika (Cd3YkR2H)"
+      ],
+      "aconteceu": "Nas três moedas, as carteiras ligadas entre si apareceram depois da compra ('Apareceram N carteiras ligadas'). 4chanpump: comprada pela Kerah às 19:08 de 25/11 (US$ 5,12), a vigia vendeu às 19:13 por US$ 1,94 (-62%); depois 27 insiders, liquidez -89%, preço 98% abaixo da máxima. NETHER: comprada pelo robô às 00:09 de 26/11 (US$ 3,54), vendida pela Kerah às 00:15 por US$ 1,60 (-55%); depois 9 insiders, liquidez -76%, 94% abaixo da máxima. Yaranaika: 17 insiders 21 min depois da venda dela, liquidez -100%. Das 9 moedas com alerta de insiders no log de 26/11, as 9 caíram 85% ou mais, de 8 a 5.118 carteiras ligadas.",
+      "regra": "Alerta 'apareceram carteiras ligadas (insiders)' numa moeda da carteira vale como golpe para a vigia: vende na hora, sem esperar queda de preço, se a posição valer mais que venda.valorMinimoProtecaoUsd. E o robô refaz a checagem de insiders logo antes de cada compra, em vez de usar a da aprovação.",
+      "status": "sugerida",
+      "tipo": "protecao"
     }
   ]
 }
