@@ -176,6 +176,12 @@
     "slippageStopPct": 5,
     "horasMaximas": 24
   },
+  "seguir": {
+    "_comentario": "26/11 (pedido da Kerah): carteiras que ela segue. Moeda que elas comprarem entra na análise do Faro e vai aviso para o celular",
+    "carteiras": [
+      { "endereco": "Agir746nCrbvqHCjpy4zSb1EmAHuh1Pbhzn4fSbtwz6a", "apelido": "Carteira 1 (Paircoin)" }
+    ]
+  },
   "perfis": {
     "segurar": {
       "_comentario": "21/11 (pedido da Kerah): entra nos mesmos sinais do Conservador e segura até +150%. Sem stop de perda, sem stop móvel, sem venda parcelada, sem venda por golpe ou queda. A regra vale para as compras do robô feitas com este perfil ligado (as suas compras manuais seguem as regras normais). Simulação sempre ao lado; lá a operação é encerrada em 72h só para medir.",

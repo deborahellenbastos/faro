@@ -3456,7 +3456,8 @@ function fakeBuys(per = {}) {
         const ageH = t.pairCreatedAt ? (Date.now() - t.pairCreatedAt) / 3600000 : null;
         const mig = t.dexId === 'pumpfun' || t.dexId === 'launchlab' ? `<span class="tag warn" title="Ainda na curva do launchpad: menos credibilidade">Não migrou</span>`
           : lp2 && t.dexId ? `<span class="tag ok" title="Saiu do ${esc(lp2)} e está na ${esc(DEX_NAMES[t.dexId] || t.dexId)}">Migrada${ageH != null ? ` há ${ageH < 1 ? Math.round(ageH * 60) + ' min' : ageH < 48 ? ageH.toFixed(ageH < 10 ? 1 : 0).replace('.', ',') + ' h' : Math.round(ageH / 24) + ' d'}` : ''}</span>` : '';
-        return `<div class="tags">${mig}${sh ? `<span class="tag ${sh[1]}" title="${esc(t.shape.msg)}">${sh[0]}</span>` : ''}${tw ? `<span class="tag ${tw.best ? 'ok' : 'warn'}" title="Existem ${tw.n} moedas com esse nome">${tw.best ? `A mais forte de ${tw.n} com esse nome` : `Cópia: há ${tw.n} com esse nome`}</span>` : ''}${socialsHtml(t)}</div>`; })() : ''}
+        const segT = t.seguida ? `<span class="tag ok" title="Comprada por uma carteira que você segue (${esc(t.seguida.carteira || '')})">${esc(t.seguida.apelido)} comprou ${ago(t.seguida.at)}</span>` : '';
+        return `<div class="tags">${segT}${mig}${sh ? `<span class="tag ${sh[1]}" title="${esc(t.shape.msg)}">${sh[0]}</span>` : ''}${tw ? `<span class="tag ${tw.best ? 'ok' : 'warn'}" title="Existem ${tw.n} moedas com esse nome">${tw.best ? `A mais forte de ${tw.n} com esse nome` : `Cópia: há ${tw.n} com esse nome`}</span>` : ''}${socialsHtml(t)}</div>`; })() : ''}
     </div>`;
   }
   function scoreBadge(n, small, preview) {

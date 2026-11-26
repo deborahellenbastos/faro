@@ -67,6 +67,26 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     if (!t) tokens[c.mint] = { mint: c.mint, firstSeen: now, status: 'nova', source: c.source, icon: c.icon, description: c.description, links: c.links, ...(c.soJupiter ? { soJupiter: true } : {}) };
     else if (!t.icon && c.icon) t.icon = c.icon;
   }
+  // 26/11 (pedido da Kerah): carteiras que ela segue. Moeda que elas comprarem entra na análise do Faro na hora
+  // e, no fim da rodada (já com nome e nota), vai um aviso para o celular
+  const seguidasNovas = [];
+  state.seguir = state.seguir || {};
+  for (const w of cfg.seguir?.carteiras || []) {
+    if (!w?.endereco || w.ligado === false) continue;
+    const apelido = w.apelido || `${w.endereco.slice(0, 4)}...${w.endereco.slice(-4)}`;
+    try {
+      const st = state.seguir[w.endereco] || {};
+      const r = await api.getFollowedBuys(w.endereco, st.lastSig);
+      state.seguir[w.endereco] = { ...st, apelido, lastSig: r.lastSig || st.lastSig, at: now };
+      for (const b of r.buys) {
+        let t = tokens[b.mint];
+        if (!t) t = tokens[b.mint] = { mint: b.mint, firstSeen: now, status: 'nova', source: `carteira seguida (${apelido})` };
+        t.seguida = { apelido, carteira: w.endereco, at: b.at || now, sol: -b.sol, sig: b.sig };
+        seguidasNovas.push({ mint: b.mint, apelido, sol: -b.sol, sig: b.sig });
+        log(`CARTEIRA SEGUIDA: ${apelido} comprou ${t.symbol || b.mint.slice(0, 6)} (${(-b.sol).toFixed(3)} SOL)`);
+      }
+    } catch (e) { log(`Carteira seguida ${apelido}: não consegui ler agora (${e.message})`); }
+  }
   // Rankings da Jupiter: guarda em quais listas a moeda apareceu e a nota orgânica (0 a 100). Só registra, não muda a nota do Faro
   for (const [mint, j] of candidates.jupiter || []) {
     const t = tokens[mint]; if (!t) continue;
@@ -184,7 +204,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       t.reprovadaManual = r.at; t.status = 'reprovada'; t.reasons = ['Reprovada por você no painel']; delete t.favorita; delete t.sinal; delete t.sinalAgr;
     } else if (t.reprovadaManual && !r) { delete t.reprovadaManual; t.status = 'aguardando'; t.reasons = ['Reprovação desfeita: volta para a análise']; }
   }
-  const monitored = (t) => t.favorita || t.held || simOpen.has(t.mint) || t.status === 'carteira' || reentryOpen(t) || curveOn(t) || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
+  const monitored = (t) => t.favorita || t.held || (t.seguida && now - (t.seguida.at || 0) < 6 * 3600000) || simOpen.has(t.mint) || t.status === 'carteira' || reentryOpen(t) || curveOn(t) || (t.status === 'aprovada' && now - (t.approvedAt || now) < trackMs);
   const active = Object.values(tokens).filter((t) => (!t.reprovadaManual || t.held || simOpen.has(t.mint)) && (t.status === 'nova' || t.status === 'aguardando' || monitored(t)));
 
   // 3. Dados de mercado de todas de uma vez
@@ -810,6 +830,13 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
 
   // 21/11: servidor do painel pega código novo sozinho
   if (api.atualizarPainel) await api.atualizarPainel(log).catch(() => {});
+
+  // Aviso das compras das carteiras seguidas (agora a moeda já tem nome, nota e situação no Faro)
+  for (const s of seguidasNovas) {
+    const t = tokens[s.mint]; if (!t) continue;
+    const sit = t.status === 'aprovada' ? 'Já está no Radar' : t.status === 'reprovada' ? `Reprovada no Faro: ${(t.reasons || [])[0] || 'não passou nos critérios'}` : 'Em análise no Faro';
+    await avisar({ titulo: `${s.apelido} comprou ${t.symbol || 'uma moeda nova'}`, texto: `${s.sol.toFixed(3)} SOL.${t.score != null ? ` Nota ${Math.round(t.score)}.` : ''} ${sit}.`, mint: s.mint, chave: `seguida-${s.sig}-${s.mint}` });
+  }
 
   // 7. Limpeza
   const rejected = Object.values(tokens).filter((t) => t.status === 'reprovada').sort((a, b) => (b.rejectedAt || 0) - (a.rejectedAt || 0));

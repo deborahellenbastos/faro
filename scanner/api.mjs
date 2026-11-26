@@ -236,6 +236,14 @@ export async function getWalletOps(owner, lastSig, maxTx = 40) {
   return { ops, ins, lastSig: newest, pending: Math.max(0, fresh.length - batch.length) };
 }
 
+// 26/11 (pedido da Kerah): compras de uma carteira que ela segue. Na primeira vez só marca o ponto de partida
+// (não traz o histórico antigo); depois traz as compras novas desde a última olhada
+export async function getFollowedBuys(owner, lastSig, maxTx = 15) {
+  if (!lastSig) { const s = await rpc('getSignaturesForAddress', [owner, { limit: 1 }]); return { buys: [], lastSig: s?.[0]?.signature || null }; }
+  const r = await getWalletOps(owner, lastSig, maxTx);
+  return { buys: r.ops.filter((o) => o.tokens > 0 && o.sol < 0 && !IGNORE.has(o.mint)), lastSig: r.lastSig };
+}
+
 // Transações novas da Solana podem vir em versões mais recentes; pedimos a maior que o RPC aceitar
 let txVersion = 1;
 async function getTx(signature) {
