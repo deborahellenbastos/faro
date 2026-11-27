@@ -469,7 +469,7 @@
         "MAGACITY"
       ],
       "aconteceu": "A Kerah não compra quando as velas estão fechando cada vez mais baixo e quebrando zonas de suporte. O robô só olhava a última vela ('fundo ainda caindo' e uma vela verde acima da anterior). Uma vela verde no meio de uma escada de queda bastava para a 'Boa entrada'. Ele também não guardava os suportes horizontais.",
-      "regra": "Teste só na simulação desde 20/11, a pedido da Kerah (scanner/tendencia.mjs): marca a entrada como 'tendência de baixa' quando 4 das 5 últimas velas de 5 min fecharam mais baixo, ou 3 dos 5 passos tiveram topo e fundo mais baixos, ou o preço fechou 2%+ abaixo de um suporte tocado 2+ vezes antes. Libera quando uma vela fecha acima das máximas das 2 anteriores sem fazer fundo novo. Não bloqueia nada: só marca, nas simulações (Conservador, Agressivo, Crazy e Entrada rápida), e conta em stats.regras.tendBaixa. A análise da noite compara o resultado das entradas marcadas com o das outras para decidir se vira trava.",
+      "regra": "Teste só na simulação desde 20/11, a pedido da Kerah (scanner/tendencia.mjs): marca a entrada como 'tendência de baixa' quando 4 das 5 últimas velas de 5 min fecharam mais baixo, ou 3 dos 5 passos tiveram topo e fundo mais baixos, ou o preço fechou 2%+ abaixo de um suporte tocado 2+ vezes antes. Libera quando uma vela fecha acima das máximas das 2 anteriores sem fazer fundo novo. Não bloqueia nada: só marca, nas simulações (Conservador, Agressivo, Crazy e Entrada rápida), e conta em stats.regras.tendBaixa. A análise da noite compara o resultado das entradas marcadas com o das outras para decidir se vira trava. Atualização 27/11: 7ª análise sem os dados decifrados (painel trancado), então ainda não há placar de stats.regras.tendBaixa. Não deu para conferir nas velas as compras do dia.",
       "status": "em teste",
       "tipo": "sinal"
     },
@@ -660,6 +660,61 @@
       "regra": "Proposta para testar na simulação: nos primeiros 5 minutos de uma compra manual, o stop de perda de -15% só vende com uma vela de 1 min fechando abaixo do stop (não no preço do momento), ou usa -25% nesse começo. Golpe, liquidez saindo e insiders seguem vendendo na hora. A análise conta quantas vendas por stop nos primeiros 5 min tiveram a moeda subindo 30%+ depois.",
       "status": "sugerida",
       "tipo": "venda"
+    },
+    {
+      "data": "2026-11-27",
+      "titulo": "Insiders liberados até 10 carteiras: moedas com 8 e 9 carteiras viraram golpe",
+      "moedas": [
+        "NETHER (GkL4cJLA)",
+        "SBS",
+        "MoonBoy (17 carteiras, 27/11)"
+      ],
+      "tipo": "filtro",
+      "status": "sugerida",
+      "aconteceu": "27/11, 18:09: insidersMax passou de 0 para 10 no config.json (até 10 carteiras ligadas não impede mais o Radar). Na análise de 26/11, das 9 moedas com insiders, 7 viraram golpe ou caíram mais de 90%, entre elas a NETHER com 9 carteiras (liquidez -79%, preço -96% da máxima) e a SBS com 8 (liquidez -69%, preço -97%). As duas passariam pelo filtro novo. Às 18:42 de 27/11 a MoonBoy (aprovada com nota 78, na Entrada rápida e no Crazy) ganhou o alerta de 17 carteiras ligadas.",
+      "regra": "Voltar insidersMax para 0 ou, se ela quiser manter o Radar mais aberto, deixar até 10 só no Radar e na simulação, sem compra automática nem compra manual sem aviso. Medir na simulação por 1 semana antes: moedas com 1 a 10 carteiras contra 11+ (quantas viraram golpe)."
+    },
+    {
+      "data": "2026-11-27",
+      "titulo": "Compras manuais em pares de menos de 1 h: quase todas morreram no mesmo dia",
+      "moedas": [
+        "CaveBaby (ADgpuUbn)",
+        "VOLALITY (4tPsVjDA)",
+        "ATX (14t9tMVV)",
+        "TWORBIT (GXpQZkap)",
+        "H100 (4gekdrLH)",
+        "VICAT (4WZLGbAp)",
+        "DCTY (BhXfN4bQ)"
+      ],
+      "tipo": "compra",
+      "status": "sugerida",
+      "aconteceu": "27/11: das 15 moedas novas que a Kerah comprou no dia, 13 estavam -90% ou mais às 19:15 (liquidez de US$ 1 mil a 3,5 mil). As compradas com o par de 27 a 60 min: CaveBaby (46 min, -92%), VOLALITY (55 min, aberta, ~-99%), ATX (32 min, aberta, ~-100%), TWORBIT (40 min, -100% em 3 compras), H100 (27 min, -88%), VICAT (35 min, 3 compras, depois -95%) e DCTY (60 min, aberta, ~-98%; outra moeda com o mesmo símbolo da DCTY reprovada em 22/11). Só a KITT (65 min) deu lucro (+114%, vendida às 13:17, depois -98%). As duas melhores do dia, Kibo (+109%) e CINU (+165%), tinham o par de 4 h e 6 h.",
+      "regra": "Na compra manual, se o par tiver menos de 1 h, o painel avisa 'par novo: 9 de cada 10 morreram no dia' e sugere metade do valor. Se a moeda não estiver aprovada no Radar, pede confirmação. Conferir o endereço quando o símbolo repetir o de uma moeda já reprovada."
+    },
+    {
+      "data": "2026-11-27",
+      "titulo": "Muitas compras e vendas rápidas na mesma moeda",
+      "moedas": [
+        "VICAT (4WZLGbAp)",
+        "DUG (9qXQCUDw)",
+        "DIHBALL (99CQuNiF)",
+        "TWORBIT (GXpQZkap)"
+      ],
+      "tipo": "compra",
+      "status": "sugerida",
+      "aconteceu": "27/11: 24 operações fechadas, 20 com compra no dia, quase todas da Kerah. Várias entradas na mesma moeda em minutos: VICAT 3 vezes (15:42 a 17:07: -7%, 0% e +4%), DUG 2 vezes em 8 min (-31% e -27%), DIHBALL 2 vezes em 22 min (+10% e -18%), TWORBIT 3 compras em 52 min (-100%). Total das fechadas: -US$ 16,16. A 'Pausa nas compras' só liga depois de 2 prejuízos e não pegou a VICAT (o 2º resultado foi quase zero).",
+      "regra": "Pausa de 15 min depois de cada venda com perda na mesma moeda, e contar como prejuízo a venda que não pagou as taxas (resultado abaixo de +1%)."
+    },
+    {
+      "data": "2026-11-27",
+      "titulo": "Venda logo depois da compra e a moeda subiu depois",
+      "moedas": [
+        "NBA (AjucUKL3)"
+      ],
+      "tipo": "venda",
+      "status": "sugerida",
+      "aconteceu": "27/11: a Kerah comprou a NBA às 15:25 por 0,0713 SOL (US$ 5,11), com o par de 2 h, e vendeu às 15:33 por US$ 4,05 (-21%). Às 19:15 a NBA estava +1.218% em 6 h, com liquidez de US$ 53 mil e cerca de 30% acima do preço que ela pagou.",
+      "regra": "Nas moedas com liquidez de US$ 30 mil+ que seguram a liquidez, o painel mostra o fundo da zona antes de uma venda manual com perda nos primeiros 10 min ('o stop do robô ainda não bateu'). Medir na simulação o stop de -15% contra -25% nessas moedas."
     }
   ]
 }
