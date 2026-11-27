@@ -266,6 +266,21 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       continue;
     }
 
+    // 27/11 (pedido da Kerah): moeda em Análise que despencou 95%+ (rug) vai direto para as reprovadas.
+    // Guarda os preços dos últimos 20 min (cada rodada) e usa também a variação de 5 min, 1 h e 6 h da DexScreener
+    if (!t.held && m.priceUsd > 0) {
+      t.pxWin = [...(t.pxWin || []).filter(([ms]) => now - ms <= 20 * 60000), [now, m.priceUsd]];
+      const top10 = Math.max(0, ...t.pxWin.filter(([ms]) => now - ms <= 10 * 60000).map(([, p]) => p));
+      const P = m.periods || {}, ch = (k) => Number(P[k]?.chg);
+      const why = top10 > 0 && m.priceUsd <= top10 * 0.05 ? `caiu ${((1 - m.priceUsd / top10) * 100).toFixed(0)}% em menos de 10 min`
+        : ch('m5') <= -95 ? `caiu ${Math.abs(ch('m5')).toFixed(0)}% em 5 min` : ch('h1') <= -95 ? `caiu ${Math.abs(ch('h1')).toFixed(0)}% na última hora`
+        : ch('h6') <= -95 ? `caiu ${Math.abs(ch('h6')).toFixed(0)}% nas últimas 6 h` : null;
+      if (why) {
+        t.status = 'reprovada'; t.rejectedAt = now; t.reasons = [`Despencou: ${why} (golpe)`]; delete t.pxWin;
+        log(`REPROVADA: ${t.symbol} (${t.reasons[0]})`);
+        continue;
+      }
+    }
     if (m.ageMin != null && m.ageMin > maxAgeMin) {
       t.status = 'reprovada';
       t.reasons = [...(t.reasons || []), `Passou de ${cfg.busca.idadeMaximaHoras}h sem ser aprovada`].slice(-4);
