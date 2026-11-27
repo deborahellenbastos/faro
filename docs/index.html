@@ -1502,6 +1502,7 @@
   /* Venda de emergência no topo do gráfico (normal, expandido e mosaico) */
   .emerg.emerg-sm { width: auto; height: 32px; padding: 0 12px; font-size: 13px; flex: none; }
   .mo-seg { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 0 12px 10px; }
+  .mo-seg.cmax-seg { padding: 0; flex-wrap: nowrap; }
   .mo-seg > span { font-size: 11.5px; color: var(--faint); white-space: nowrap; }
   .mo-seg .pf-seg { display: inline-flex !important; width: auto !important; max-width: 100%; overflow-x: auto; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); scrollbar-width: none; }
   .mo-seg .pf-seg::-webkit-scrollbar { display: none; }
@@ -2569,7 +2570,7 @@
     const g = t.position?.avgPriceUsd > 0 && t.priceUsd > 0 ? (t.priceUsd / t.position.avgPriceUsd - 1) * 100 : null;
     const lim = alvo >= SEGINF ? SEGINF_DE : alvo;
     if (alvo > 0 && g != null && g >= lim && !confirm(alvo >= SEGINF ? `${dispName(t)} já está em +${g.toFixed(0)}%. No Infinito, o robô liga o stop móvel ${15}% abaixo do topo agora. Continuar?` : `${dispName(t)} já está em +${g.toFixed(0)}%. Com alvo de +${alvo}%, o robô vende agora. Continuar?`)) return;
-    SEGPEND.set(m, { alvo, at: Date.now() }); render(); const moX = () => { moRefreshHead(m); const x = MOS.tiles?.find((y) => y.mint === m); if (x) moDraw(x); }; moX();
+    SEGPEND.set(m, { alvo, at: Date.now() }); render(); const moX = () => { document.querySelectorAll(`[data-segalvo][data-segmint="${CSS.escape(m)}"]`).forEach((b) => b.classList.toggle('on', Number(b.dataset.segalvo) === segAlvoAtual(t))); moRefreshHead(m); const x = MOS.tiles?.find((y) => y.mint === m); if (x) moDraw(x); }; moX();
     try {
       const r = await postJson('radar/segurar', { mint: m, alvo }); if (!r.ok) throw new Error(r.status);
       toast(alvo >= SEGINF ? `${dispName(t)}: Infinito. Sem stop até +${SEGINF_DE}%, depois stop móvel seguindo a alta.` : alvo ? `${dispName(t)}: vende em +${alvo}%. Sem stop até lá.` : `${dispName(t)}: voltou às regras normais (stops e vigia).`);
@@ -3574,6 +3575,7 @@ function fakeBuys(per = {}) {
         <span class="cmax-only cmax-info" data-cmaxinfo="${esc(t.mint)}"></span>
         ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 && !isDust(t) ? `<button class="emerg emerg-sm" data-temerg="${esc(t.mint)}" ${tradeState(t.mint).busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}<span class="lbl">Venda de emergência</span></button>` : ''}
+        ${t.held && (t.heldAmount || 0) > 0 && !isDust(t) ? moSeg(t).replace('class="mo-seg"', 'class="mo-seg cmax-only cmax-seg"') : ''}
         <span style="flex:1"></span>
         ${dexOn() ? '' : `<a class="btn btn-sm" href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}Abrir na Dex</a>`}
         ${(Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x)).length > 1) ? `<button class="btn btn-sm" data-mosaic title="Ver todas as compradas lado a lado">${ICON.grid}<span class="lbl">Mosaico</span></button>` : ''}
