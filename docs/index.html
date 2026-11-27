@@ -2505,8 +2505,10 @@
     const reset = (row) => { if (!row) return; row.classList.remove('swiping', 'swipe-armed'); row.classList.add('swipe-back'); row.style.transform = ''; setTimeout(() => row.classList.remove('swipe-back'), 220); };
     list.addEventListener('pointerdown', (e) => {
       if (sw?.on) reset(sw.row); sw = null;
-      if ((ui.tab !== 'aguardando' && ui.tab !== 'aprovada') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      if ((ui.tab !== 'aguardando' && ui.tab !== 'aprovada' && ui.tab !== 'devvendeu') || (e.pointerType === 'mouse' && e.button !== 0)) return;
       const row = e.target.closest('.row[data-sel]'); if (!row) return;
+      // 27/11: na lista Dev vendeu, só arrasta moeda que dá para reprovar (não está na carteira e você ainda não reprovou)
+      if (ui.tab === 'devvendeu') { const tt = data?.tokens?.[row.dataset.sel]; if (!tt || tt.held || isMine(tt) || MANREP.has(tt.mint) || tt.reprovadaManual) return; }
       sw = { row, x: e.clientX, y: e.clientY, dx: 0, on: false, id: e.pointerId, mouse: e.pointerType === 'mouse' };
     });
     window.addEventListener('pointermove', (e) => {
@@ -3968,7 +3970,7 @@ function fakeBuys(per = {}) {
       <div class="tbody">
         ${t.status === 'aprovada' && !t.held && levelOf(t) === 'danger' ? `<div class="obs-note">${ICON.warn}<span><b>Saiu do Radar por perigo:</b> ${esc((crashAlert(t)?.level === 'danger' && crashAlert(t)?.msg) || (t.safety?.alerts || []).find((x) => x.level === 'danger')?.msg || 'alerta grave')}. Os critérios de aprovação continuam ok, mas o Faro tira do Radar enquanto esse alerta durar.</span></div>` : ''}
         ${t.status === 'aguardando' && !t.held ? `<div class="obs-note">${ICON.warn}<span><b>Ainda em observação</b> (nota ${t.score}). ${(t.pending ?? (t.reasons || []).length) ? `Falta${(t.pending ?? t.reasons.length) > 1 ? 'm' : ''} ${t.pending ?? t.reasons.length} critério${(t.pending ?? t.reasons.length) > 1 ? 's' : ''}: ${esc((t.reasons || [])[0] || '')}` : 'Ainda na fila de checagem.'}</span></div>` : ''}
-        ${['aguardando', 'aprovada', 'reprovada'].includes(t.status) && !t.held && (t.status !== 'reprovada' || MANREP.has(t.mint) || t.reprovadaManual) ? (MANREP.has(t.mint) || t.reprovadaManual ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
+        ${['aguardando', 'nova', 'aprovada', 'reprovada'].includes(t.status) && !t.held && (t.status !== 'reprovada' || ui.tab === 'devvendeu' || MANREP.has(t.mint) || t.reprovadaManual) ? (MANREP.has(t.mint) || t.reprovadaManual ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
         ${t.held && t.segurar ? `<div class="obs-note">${ICON.warn}<span><b>Perfil Segurar:</b> ${(t.segurar.alvoPct ?? 150) >= SEGINF ? `Infinito. Sem stop até +${SEGINF_DE}%: se cair, ela fica na carteira. Passando de +${SEGINF_DE}%, o robô liga um stop móvel ${data.config?.perfis?.segurar?.segurar?.aposAlvo?.distanciaPct ?? 15}% abaixo do maior preço e segue a alta (vende quando ela virar).` : `sem stop até +${t.segurar.alvoPct ?? 150}%: se cair, ela fica na carteira. Ao bater o alvo, o robô vende na hora.`} Também vende se a liquidez do pool for retirada (golpe). Dá para mudar o alvo ou voltar ao Normal acima.</span></div>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
@@ -5642,7 +5644,7 @@ function fakeBuys(per = {}) {
           items = items.filter((t) => { const at = (ui.tab === 'reprovada' ? MANREP.get(t.mint) || t.rejectedAt || t.firstSeen : t.firstSeen) || 0; return at >= a && at < b; }); }
       } }
     // Em análise: pílulas de "quantos faltam" e de motivo. As contagens seguem o dia e o outro filtro escolhido
-    $('list').classList.toggle('swipe-ok', ui.tab === 'aguardando');
+    $('list').classList.toggle('swipe-ok', ui.tab === 'aguardando' || ui.tab === 'devvendeu');
     { const fEl = $('an-falta'), mEl = $('an-motivo'), lEl = $('an-lp'), on = ui.tab === 'aguardando';
       fEl.hidden = mEl.hidden = lEl.hidden = !on;
       if (on) {
