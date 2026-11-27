@@ -334,7 +334,8 @@ export function scamSignals(base, sum, cfg) {
   }
   // 26/11 (pedido da Kerah): dev com fatia pequena (menos de devFatiaMinPct, 5%) vendendo não é golpe; com isso o
   // risco dele até acaba (DEXDATA: dev com 3,9% zerou e a moeda seguiu de pé). Só vende se a fatia era grande
-  if (base.devPct != null && base.devPct >= (cfg.venda?.devFatiaMinPct ?? 5) && sum.devPct != null && sum.devPct <= base.devPct * 0.5) {
+  // 27/11 (Zhaki): dev que ZEROU não vende a posição (mesma regra do selo: não é perigo). Só a venda parcial de fatia grande
+  if (base.devPct != null && base.devPct >= (cfg.venda?.devFatiaMinPct ?? 5) && sum.devPct != null && sum.devPct >= 0.1 && sum.devPct <= base.devPct * 0.5) {
     out.push(`dev vendeu mais da metade (tinha ${base.devPct.toFixed(1)}%, agora ${sum.devPct.toFixed(1)}%)`);
   }
   return out;

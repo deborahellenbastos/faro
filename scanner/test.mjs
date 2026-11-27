@@ -230,6 +230,7 @@ assert.equal(scamSignals(base0, { rugged: true, lpLockedPct: 100, devPct: 4 }, c
   assert.equal(a.level, 'info', 'dev que zerou não é perigo (27/11)');
   const b = rugAlerts({ devPct: 12, top10Pct: 20, insiders: 0, dangerNames: [] }, { ...sumZ, devPct: 5 }, cfgT).find((x) => x.id === 'dev-vendendo');
   assert.equal(b.level, 'danger', 'dev grande vendendo em parte continua perigo'); }
+assert.equal(scamSignals({ ...base0, devPct: 5.1 }, { lpLockedPct: 100, devPct: 0, mintAuthority: null, freezeAuthority: null }, cfgT).length, 0, 'dev que zerou não vende a posição (27/11, Zhaki)');
 assert.equal(scamSignals({ lpLockedPct: 0, devPct: 0 }, { lpLockedPct: 0, devPct: 0 }, cfgT).length, 0);
 
 // Simulação e compra automática: entram no sinal de boa entrada; saem no +100% ou no stop

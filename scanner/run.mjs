@@ -310,7 +310,13 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (!sum) continue;
       // 26/11 (DEXDATA): recompra é uma posição nova; a referência dos sinais de golpe passa a ser a de agora.
       // Antes valia a da primeira compra (dev com 3,9%) e o robô via "dev vendeu" de novo e vendia a recompra
-      if (t.held && t.heldSince && (t.baselineAt || 0) < t.heldSince - 60000 && t.autoSell?.ok) { t.baseline = baselineFrom(sum); t.baselineAt = now; delete t.autoSell; log(`${t.symbol}: recompra, sinais de golpe recomeçam do zero`); }
+      // 27/11 (Zhaki): vale para qualquer compra. A referência passa a ser a última leitura ANTES da compra (até 1 h antes);
+      // sem ela, a de agora. Antes ficava a da aprovação (dev com 5,1%) e o robô vendeu por algo de antes da compra
+      if (t.held && t.heldSince && t.baselineFor !== t.heldSince) {
+        const c = [t.rugLast, t.baseline && { base: t.baseline, at: t.baselineAt || 0 }].filter((x) => x && x.at <= t.heldSince + 60000).sort((a, b) => b.at - a.at)[0];
+        if (c && t.heldSince - c.at <= 3600000) { t.baseline = c.base; t.baselineAt = c.at; } else { t.baseline = baselineFrom(sum); t.baselineAt = now; }
+        t.baselineFor = t.heldSince; delete t.autoSell;
+      }
       if (!t.baseline) { t.baseline = baselineFrom(sum); t.baselineAt = now; }
       t._rugAlerts = rugAlerts(t.baseline, sum, cfg);
       // 27/11: lista "Dev vendeu" no painel. Guarda quando o dev começou a vender e quanto tinha
@@ -323,6 +329,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
         if (ld < 15) t._rugAlerts = t._rugAlerts.map((a) => (a.id === 'lp' ? { ...a, level: 'warn', msg: `${a.msg} (a liquidez no mercado não caiu: pode ser falha do RugCheck)` } : a)); }
       t.checks = runChecks(m, sum, cfg);
       t.safety = mergeSafety(t.safety, [...t._rugAlerts, ...(t._mktAlerts || [])], now);
+      t.rugLast = { base: baselineFrom(sum), at: now };
       if (t.safety.level !== 'ok') log(`ALERTA ${t.symbol}: ${t.safety.alerts.map((a) => a.msg).join(' | ')}`);
       // Venda automática de 100% quando o contrato muda para golpe (só com tudo ligado)
       let scam = t.held ? scamSignals(t.baseline, sum, cfg) : [];
@@ -419,7 +426,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       t.maxPriceUsd = m.priceUsd;
       t.changePct = 0;
       t.maxChangePct = 0;
-      t.baseline = baselineFrom(res.summary);
+      t.baseline = baselineFrom(res.summary); t.baselineAt = now;
       t.safety = { level: 'ok', alerts: [], checkedAt: now };
       newlyApproved.push(t);
       log(`APROVADA: ${t.symbol} (nota ${t.score})`);
