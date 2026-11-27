@@ -850,7 +850,9 @@ console.log('Teste da tendência de baixa: ok');
   assert.equal(M.segurarDe({ mint }, esc).alvoPct, 200, 'vale para compra manual');
   await M.definirSegurar(mint, 0);
   assert.equal(M.segurarDe({ mint, segurar: { desde: 1, alvoPct: 150 } }, await M.lerSegurar()), null, 'Normal volta às regras');
-  await assert.rejects(M.definirSegurar(mint, 300), /inválido/);
+  await M.definirSegurar(mint, 500); assert.equal(M.segurarDe({ mint }, await M.lerSegurar()).alvoPct, 500, '+500% vale');
+  await M.definirSegurar(mint, M.INFINITO); assert.equal(M.segurarDe({ mint }, await M.lerSegurar()).alvoPct, 999, 'Infinito vale');
+  await assert.rejects(M.definirSegurar(mint, 250), /inválido/);
   console.log('Teste do alvo do Segurar por moeda: ok');
 }
 

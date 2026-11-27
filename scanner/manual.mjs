@@ -52,9 +52,11 @@ export async function atualizarPainel(log = () => {}) {
 }
 
 // 21/11 (pedido da Kerah): alvo do modo Segurar escolhido moeda por moeda no painel (qualquer moeda na carteira,
-// comprada por ela ou pelo robô). alvoPct 100/150/200 = segura até lá, sem stop; 0 = volta às regras normais.
+// comprada por ela ou pelo robô). alvoPct 100/150/200/300/500 = segura até lá (999 = Infinito), sem stop; 0 = volta às regras normais.
 const ARQ_SEG = () => path.join(DIR, 'segurar-manual.json');
-export const ALVOS_SEGURAR = [0, 100, 150, 200];
+// 27/11: 999 = Infinito (sem alvo; stop móvel a partir de +500%)
+export const INFINITO = 999;
+export const ALVOS_SEGURAR = [0, 100, 150, 200, 300, 500, INFINITO];
 export async function lerSegurar() {
   try { const j = JSON.parse(await readFile(ARQ_SEG(), 'utf8')); return j && typeof j.mints === 'object' ? j.mints : {}; } catch { return {}; }
 }
@@ -64,7 +66,7 @@ export async function definirSegurar(mint, alvoPct) {
   if (alvoPct == null) delete m[mint];
   else {
     const a = Number(alvoPct);
-    if (!ALVOS_SEGURAR.includes(a)) throw new Error('Alvo inválido (use 0, 100, 150 ou 200)');
+    if (!ALVOS_SEGURAR.includes(a)) throw new Error('Alvo inválido (use 0, 100, 150, 200, 300, 500 ou 999 = Infinito)');
     m[mint] = { alvoPct: a, at: Date.now() };
   }
   await mkdir(DIR, { recursive: true });

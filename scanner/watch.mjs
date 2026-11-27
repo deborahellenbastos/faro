@@ -12,7 +12,7 @@ import { getRugReport, getWalletHoldings, getRecentOps } from './api.mjs';
 import { summarizeRug, scamSignals, isLpSignal } from './analyze.mjs';
 import { weakSignals, realizeCheck } from './signals.mjs';
 import { avisar } from './push.mjs';
-import { lerSegurar, segurarDe } from './manual.mjs';
+import { lerSegurar, segurarDe, INFINITO } from './manual.mjs';
 
 const seconds = Math.max(0, Number(process.argv[2]) || 0);
 const until = Date.now() + seconds * 1000;
@@ -296,25 +296,27 @@ while (Date.now() < until) {
       if (SEGt) {
         const avgS = t.position?.avgPriceUsd > 0 && !t.staleCost ? t.position.avgPriceUsd : 0;
         const gS = avgS ? (px / avgS - 1) * 100 : null;
-        if (mem.segLog?.[t.mint] !== SEGt.alvoPct) { (mem.segLog = mem.segLog || {})[t.mint] = SEGt.alvoPct; log(`${t.symbol}: modo Segurar, só vende em +${SEGt.alvoPct ?? 150}%`); }
-        // 26/11 (pedido da Kerah): ao bater o alvo, não vende de uma vez. Liga um stop móvel (distanciaPct abaixo do maior
-        // preço desde o alvo) e segue a alta; vende quando cair essa distância e ficar 10 s abaixo
+        if (mem.segLog?.[t.mint] !== SEGt.alvoPct) { (mem.segLog = mem.segLog || {})[t.mint] = SEGt.alvoPct; log(`${t.symbol}: modo Segurar, ${(SEGt.alvoPct ?? 150) >= INFINITO ? 'Infinito (stop móvel a partir de +500%)' : `vende em +${SEGt.alvoPct ?? 150}%`}`); }
+        // 27/11 (pedido da Kerah): alvo fixo (100/150/200/300/500) vende assim que bater, sem stop depois do alvo.
+        // Só o Infinito (alvoPct 999) segue a alta: a partir de +aPartirPct (500) liga um stop móvel distanciaPct abaixo
+        // do maior preço e vende quando cair essa distância e ficar confirmarSegundos abaixo
         const AA = cfg.perfis?.segurar?.segurar?.aposAlvo || {}, alvoS = SEGt.alvoPct ?? 150, distS = AA.distanciaPct ?? 15;
+        const infS = alvoS >= INFINITO, ativaS = infS ? (AA.aPartirPct ?? 500) : alvoS;
         mem.segTopo = mem.segTopo || {}; mem.segBelow = mem.segBelow || {};
         let ST = mem.segTopo[t.mint];
-        if (ST && ((alvoS > ST.alvo && gS != null && gS < alvoS) || (t.heldSince && t.heldSince > ST.at))) { delete mem.segTopo[t.mint]; ST = null; } // subiu o alvo, ou é uma compra nova da mesma moeda
-        if (!ST && gS != null && gS >= alvoS) {
-          if (AA.ligado === false) { await sell(t, `alvo do modo Segurar: +${gS.toFixed(0)}% (alvo +${alvoS}%)`, 'alvo-segurar', px); continue; }
-          ST = mem.segTopo[t.mint] = { at: now, pico: px, alvo: alvoS };
-          log(`${t.symbol}: BATEU O ALVO +${alvoS}% (+${gS.toFixed(0)}%). Stop móvel ligado ${distS}% abaixo do topo, seguindo a alta`);
-          await avisar({ titulo: `Bateu o alvo: ${t.symbol}`, texto: `+${gS.toFixed(0)}%. O robô ligou um stop móvel ${distS}% abaixo do maior preço e segue a alta. Vende se ela virar.`, mint: t.mint, chave: `segtopo-${t.mint}-${alvoS}` });
+        if (ST && ((ativaS > ST.alvo && gS != null && gS < ativaS) || (t.heldSince && t.heldSince > ST.at))) { delete mem.segTopo[t.mint]; ST = null; } // subiu o alvo, ou é uma compra nova da mesma moeda
+        if (!ST && gS != null && gS >= ativaS) {
+          if (!infS || AA.ligado === false) { await sell(t, `bateu o alvo do modo Segurar: +${gS.toFixed(0)}% (alvo +${ativaS}%)`, 'alvo-segurar', px); continue; }
+          ST = mem.segTopo[t.mint] = { at: now, pico: px, alvo: ativaS };
+          log(`${t.symbol}: INFINITO passou de +${ativaS}% (+${gS.toFixed(0)}%). Stop móvel ligado ${distS}% abaixo do topo, seguindo a alta`);
+          await avisar({ titulo: `Passou de +${ativaS}%: ${t.symbol}`, texto: `+${gS.toFixed(0)}%. Modo Infinito: o robô ligou um stop móvel ${distS}% abaixo do maior preço e segue a alta. Vende se ela virar.`, mint: t.mint, chave: `segtopo-${t.mint}-${ativaS}` });
         }
         if (ST) {
           ST.pico = Math.max(ST.pico, px);
           const stopS = ST.pico * (1 - distS / 100), gTopo = avgS ? (ST.pico / avgS - 1) * 100 : 0;
           if (px < stopS) {
             mem.segBelow[t.mint] = mem.segBelow[t.mint] || now;
-            if (now - mem.segBelow[t.mint] >= (AA.confirmarSegundos ?? 10) * 1000) { await sell(t, `stop depois do alvo: caiu ${distS}% do topo (+${gTopo.toFixed(0)}%) e vendeu com +${(gS ?? 0).toFixed(0)}%`, 'alvo-segurar', px); continue; }
+            if (now - mem.segBelow[t.mint] >= (AA.confirmarSegundos ?? 10) * 1000) { await sell(t, `stop do Infinito: caiu ${distS}% do topo (+${gTopo.toFixed(0)}%) e vendeu com +${(gS ?? 0).toFixed(0)}%`, 'alvo-segurar', px); continue; }
           } else delete mem.segBelow[t.mint];
         }
         // 21/11 (pedido da Kerah): única proteção do Segurar: liquidez retirada do pool (golpe de verdade, não correção).

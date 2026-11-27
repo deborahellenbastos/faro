@@ -534,7 +534,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       } else delete t.trail;
       ctx.trail = t.trail;
       // 26/11: posição no modo Segurar não tem sinal de saída (nem "bateu o stop móvel")
-      if (t.segurar) { delete t.trail; sig = { tipo: 'saida', fase: 'segurar', titulo: `Segurando até +${t.segurar.alvoPct ?? 150}%`, msg: 'Modo Segurar: sem stop e sem sinais de saída. O robô vende quando chegar no alvo.', key: 'segurar' }; }
+      if (t.segurar) { delete t.trail; sig = { tipo: 'saida', fase: 'segurar', titulo: (t.segurar.alvoPct ?? 150) >= 999 ? 'Segurando sem limite (Infinito)' : `Segurando até +${t.segurar.alvoPct ?? 150}%`, msg: 'Modo Segurar: sem stop e sem sinais de saída. O robô vende quando chegar no alvo.', key: 'segurar' }; }
       else { const x = exitSignal(t.candles, { entryPx: t.position.avgPriceUsd, entryAt }, ctx); if (x) sig = { tipo: 'saida', ...x }; }
     } else if (t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || reentryOpen(t) || curveOn(t) || t.favorita) {
       sig = { tipo: 'entrada', ...entrySignal(t.candles, ctx) };
@@ -829,7 +829,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       const antes = t.segurar?.alvoPct || 0;
       if (e.alvoPct > 0) t.segurar = { ...(t.segurar || { desde: e.at }), alvoPct: e.alvoPct, manual: true };
       else delete t.segurar;
-      if (antes !== (e.alvoPct || 0)) log(`${t.symbol}: ${e.alvoPct > 0 ? `modo Segurar até +${e.alvoPct}% (escolhido no painel)` : 'saiu do modo Segurar, volta às regras normais (escolhido no painel)'}`);
+      if (antes !== (e.alvoPct || 0)) log(`${t.symbol}: ${e.alvoPct > 0 ? `modo Segurar ${e.alvoPct >= 999 ? 'Infinito' : `até +${e.alvoPct}%`} (escolhido no painel)` : 'saiu do modo Segurar, volta às regras normais (escolhido no painel)'}`);
     }
   }
   // Posição do Segurar fechada (vendeu tudo): a marca sai, e uma compra futura segue o perfil da hora

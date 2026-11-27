@@ -2532,6 +2532,9 @@
   })();
   // 21/11: alvo do modo Segurar moeda por moeda (qualquer moeda na carteira). Vai para o servidor e vale na hora na vigia
   const SEGPEND = new Map(); // mint -> { alvo, at } até os dados do robô mostrarem a escolha
+  // 27/11: 999 = Infinito (sem alvo, stop móvel a partir de +500%). Alvo fixo vende assim que bater
+  const SEGINF = 999, SEGINF_DE = 500;
+  const segTxt = (a) => a >= SEGINF ? `<b>sem limite</b> (stop móvel a partir de +${SEGINF_DE}%)` : `vender em <b>+${a}%</b> (sem stop)`;
   function segAlvoAtual(t) {
     const p = SEGPEND.get(t.mint), cur = t.segurar?.alvoPct || 0;
     if (p && (p.alvo === cur || Date.now() - p.at > 6 * 60000)) SEGPEND.delete(t.mint);
@@ -2544,18 +2547,19 @@
     const tem = (t.held && (t.heldAmount || 0) > 0) || WAL.bal[t.mint]?.amount > 0;
     const a = segAlvoAtual(t), g = tem && t.position?.avgPriceUsd > 0 && t.priceUsd > 0 ? (t.priceUsd / t.position.avgPriceUsd - 1) * 100 : null;
     const op = (v, l) => `<button data-segalvo="${v}" data-segmint="${esc(t.mint)}" class="${a === v ? 'on' : ''}">${l}</button>`;
-    return `<div class="seg-alvo" title="Vale só para esta moeda. Não precisa assinar na Phantom."><div><span>${tem ? 'Venda do robô nesta moeda' : 'Se você comprar agora, o robô vende'}: ${a ? `segurar até <b>+${a}%</b> (sem stop)` : '<b>regras normais</b>'}</span>${g != null ? `<span>agora <b class="num ${cls(g)}">${g >= 0 ? '+' : ''}${g.toFixed(0)}%</b></span>` : ''}</div>
-      <div class="pf-seg">${op(0, 'Normal')}${op(100, '+100%')}${op(150, '+150%')}${op(200, '+200%')}</div>${tem ? '' : '<small style="display:block;margin-top:6px;color:var(--faint)">Escolha antes de comprar: vale para a compra feita nos próximos 10 min.</small>'}</div>`;
+    return `<div class="seg-alvo" title="Vale só para esta moeda. Não precisa assinar na Phantom."><div><span>${tem ? 'Venda do robô nesta moeda' : 'Se você comprar agora, o robô vende'}: ${a ? segTxt(a) : '<b>regras normais</b>'}</span>${g != null ? `<span>agora <b class="num ${cls(g)}">${g >= 0 ? '+' : ''}${g.toFixed(0)}%</b></span>` : ''}</div>
+      <div class="pf-seg">${op(0, 'Normal')}${op(100, '+100%')}${op(150, '+150%')}${op(200, '+200%')}${op(300, '+300%')}${op(500, '+500%')}${op(SEGINF, '∞ Infinito')}</div>${tem ? '' : '<small style="display:block;margin-top:6px;color:var(--faint)">Escolha antes de comprar: vale para a compra feita nos próximos 10 min.</small>'}</div>`;
   }
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-segalvo]'); if (!b) return;
     const m = b.dataset.segmint, alvo = Number(b.dataset.segalvo), t = data?.tokens?.[m]; if (!t) return;
     const g = t.position?.avgPriceUsd > 0 && t.priceUsd > 0 ? (t.priceUsd / t.position.avgPriceUsd - 1) * 100 : null;
-    if (alvo > 0 && g != null && g >= alvo && !confirm(`${dispName(t)} já está em +${g.toFixed(0)}%. Com alvo de +${alvo}%, o robô vende agora. Continuar?`)) return;
+    const lim = alvo >= SEGINF ? SEGINF_DE : alvo;
+    if (alvo > 0 && g != null && g >= lim && !confirm(alvo >= SEGINF ? `${dispName(t)} já está em +${g.toFixed(0)}%. No Infinito, o robô liga o stop móvel ${15}% abaixo do topo agora. Continuar?` : `${dispName(t)} já está em +${g.toFixed(0)}%. Com alvo de +${alvo}%, o robô vende agora. Continuar?`)) return;
     SEGPEND.set(m, { alvo, at: Date.now() }); render();
     try {
       const r = await postJson('radar/segurar', { mint: m, alvo }); if (!r.ok) throw new Error(r.status);
-      toast(alvo ? `${dispName(t)}: segurando até +${alvo}%. Sem stop até lá.` : `${dispName(t)}: voltou às regras normais (stops e vigia).`);
+      toast(alvo >= SEGINF ? `${dispName(t)}: Infinito. Sem stop até +${SEGINF_DE}%, depois stop móvel seguindo a alta.` : alvo ? `${dispName(t)}: vende em +${alvo}%. Sem stop até lá.` : `${dispName(t)}: voltou às regras normais (stops e vigia).`);
     } catch { SEGPEND.delete(m); render(); toast('Não consegui avisar o robô agora. Tente de novo em instantes.'); }
   });
   function manDesfazer(m) { MANREP.delete(m); saveManRep(); avisaRobo('desfazer', m); render(); toast(`${data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda'} voltou para Em análise`); }
@@ -3330,7 +3334,7 @@ function fakeBuys(per = {}) {
       const entryAt = start || t.heldSince || Date.now();
       // 26/11 (pedido da Kerah): no modo Segurar não existe stop nem sinal de saída; só o alvo
       const seg = typeof segAlvoAtual === 'function' ? segAlvoAtual(t) : t.segurar?.alvoPct || 0;
-      if (seg > 0) return { tipo: 'saida', fase: 'segurar', titulo: `Segurando até +${seg}%`, msg: 'Modo Segurar: sem stop e sem sinais de saída. O robô vende quando chegar no alvo.', key: 'segurar' };
+      if (seg > 0) return { tipo: 'saida', fase: 'segurar', titulo: seg >= SEGINF ? 'Segurando sem limite (Infinito)' : `Segurando até +${seg}%`, msg: seg >= SEGINF ? `Modo Infinito: sem stop até +${SEGINF_DE}%. Dali em diante o robô segue a alta com um stop móvel.` : 'Modo Segurar: sem stop e sem sinais de saída. O robô vende assim que chegar no alvo.', key: 'segurar' };
       ctx.trail = liveTrail(t, c, entryAt);
       const x = exitSignal(c, { entryPx: t.position.avgPriceUsd, entryAt }, ctx);
       return x ? { tipo: 'saida', ...x } : null;
@@ -3954,7 +3958,7 @@ function fakeBuys(per = {}) {
         ${t.status === 'aprovada' && !t.held && levelOf(t) === 'danger' ? `<div class="obs-note">${ICON.warn}<span><b>Saiu do Radar por perigo:</b> ${esc((crashAlert(t)?.level === 'danger' && crashAlert(t)?.msg) || (t.safety?.alerts || []).find((x) => x.level === 'danger')?.msg || 'alerta grave')}. Os critérios de aprovação continuam ok, mas o Faro tira do Radar enquanto esse alerta durar.</span></div>` : ''}
         ${t.status === 'aguardando' && !t.held ? `<div class="obs-note">${ICON.warn}<span><b>Ainda em observação</b> (nota ${t.score}). ${(t.pending ?? (t.reasons || []).length) ? `Falta${(t.pending ?? t.reasons.length) > 1 ? 'm' : ''} ${t.pending ?? t.reasons.length} critério${(t.pending ?? t.reasons.length) > 1 ? 's' : ''}: ${esc((t.reasons || [])[0] || '')}` : 'Ainda na fila de checagem.'}</span></div>` : ''}
         ${['aguardando', 'aprovada', 'reprovada'].includes(t.status) && !t.held && (t.status !== 'reprovada' || MANREP.has(t.mint) || t.reprovadaManual) ? (MANREP.has(t.mint) || t.reprovadaManual ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
-        ${t.held && t.segurar ? `<div class="obs-note">${ICON.warn}<span><b>Perfil Segurar:</b> sem stop até +${t.segurar.alvoPct ?? 150}%: se cair, ela fica na carteira. Ao bater o alvo, o robô liga um stop móvel ${data.config?.perfis?.segurar?.segurar?.aposAlvo?.distanciaPct ?? 15}% abaixo do maior preço e segue a alta (vende quando ela virar). Também vende se a liquidez do pool for retirada (golpe). Dá para mudar o alvo ou voltar ao Normal acima.</span></div>` : ''}
+        ${t.held && t.segurar ? `<div class="obs-note">${ICON.warn}<span><b>Perfil Segurar:</b> ${(t.segurar.alvoPct ?? 150) >= SEGINF ? `Infinito. Sem stop até +${SEGINF_DE}%: se cair, ela fica na carteira. Passando de +${SEGINF_DE}%, o robô liga um stop móvel ${data.config?.perfis?.segurar?.segurar?.aposAlvo?.distanciaPct ?? 15}% abaixo do maior preço e segue a alta (vende quando ela virar).` : `sem stop até +${t.segurar.alvoPct ?? 150}%: se cair, ela fica na carteira. Ao bater o alvo, o robô vende na hora.`} Também vende se a liquidez do pool for retirada (golpe). Dá para mudar o alvo ou voltar ao Normal acima.</span></div>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
         <div class="tbal"><span>Saldo</span><span class="num">${bal}</span></div>
@@ -4332,14 +4336,14 @@ function fakeBuys(per = {}) {
       // 26/11: no Segurar, depois que a moeda bate o alvo o robô liga um stop móvel (distância abaixo do maior preço desde
       // o alvo). O painel refaz a mesma conta com as velas e o preço ao vivo e desenha a linha onde o robô vende
       let segStop = null;
-      if (t.held && tp?.segurar) {
+      if (t.held && tp?.inf) {
         const dist = data?.config?.perfis?.segurar?.segurar?.aposAlvo?.distanciaPct ?? 15, ini = posStart(t) / 1000;
         const cs = (CH.bars || []).filter((b) => b.time >= ini - 60);
         const iHit = cs.findIndex((b) => b.high >= tp.px);
         if (iHit >= 0 || t.priceUsd >= tp.px) { const topo = Math.max(t.priceUsd || 0, ...cs.slice(Math.max(0, iHit)).map((b) => b.high)); segStop = topo * (1 - dist / 100); }
       }
-      if (t.held && tp) add(tp.px, '#10d27f', tp.segurar ? (segStop ? `alvo +${tp.pct}% batido` : `alvo Segurar +${tp.pct}% (robô liga o stop)`) : tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
-      if (segStop) add(segStop, '#f5b14c', `stop depois do alvo (robô vende)`, 2, 2);
+      if (t.held && tp) add(tp.px, '#10d27f', tp.inf ? (segStop ? `+${tp.pct}% batido (Infinito)` : `+${tp.pct}% liga o stop (Infinito)`) : tp.segurar ? `alvo +${tp.pct}% (robô vende)` : tp.robot ? `meta +${tp.pct}% (robô vende)` : `meta +${tp.pct}%`, 1, 2);
+      if (segStop) add(segStop, '#f5b14c', `stop do Infinito (robô vende)`, 2, 2);
       // Metas do robô (liga e desliga pelo botão da bandeira): stop móvel e realização em faixas
       if (t.held && !tp?.segurar && store.get('faro-metas', false)) {
         const E = t.position.avgPriceUsd, V = data?.config?.venda || {};
@@ -4553,7 +4557,7 @@ function fakeBuys(per = {}) {
     const p = t.position; if (!p?.known || !(p.avgPriceUsd > 0)) return null;
     // 26/11: moeda no modo Segurar: a meta é o alvo dela (100/150/200%), e é ali que o robô vende
     const seg = typeof segAlvoAtual === 'function' ? segAlvoAtual(t) : t.segurar?.alvoPct || 0;
-    if (seg > 0) return { pct: seg, px: p.avgPriceUsd * (1 + seg / 100), robot: true, segurar: true };
+    if (seg > 0) { const sp = seg >= SEGINF ? SEGINF_DE : seg; return { pct: sp, px: p.avgPriceUsd * (1 + sp / 100), robot: true, segurar: true, inf: seg >= SEGINF }; }
     const L = data?.lastRun?.takeProfit; const pct = L?.alvoPct || 100;
     return { pct, px: p.avgPriceUsd * (1 + pct / 100), robot: !!L && p.costOpenUsd > 0 && p.costOpenUsd < (L.ateUsd || 10) };
   }
@@ -4901,7 +4905,7 @@ function fakeBuys(per = {}) {
         ${row('Compras por dia', lim(c.maxComprasPorDia ?? 5), lim(A.compra?.maxComprasPorDia ?? 8))}
         ${row('Perda máxima no dia', lim(S.perdaMaxDiaVezesBase ?? 3, 'x uma operação'), lim(A.simulacao?.perdaMaxDiaVezesBase ?? 4, 'x uma operação'))}
       </tbody></table>
-      <p><b>Segurar +150%:</b> entra nos mesmos sinais do Conservador e segura até a moeda chegar a <b>+${data.config?.perfis?.segurar?.segurar?.alvoPct ?? 150}%</b>. Ao bater o alvo, liga um stop móvel ${data.config?.perfis?.segurar?.segurar?.aposAlvo?.distanciaPct ?? 15}% abaixo do maior preço e segue a alta. Não tem stop de perda, stop móvel nem venda parcelada: se a moeda cair, ela fica na carteira. A única proteção é contra golpe: se a liquidez do pool for retirada (queda de ${data.config?.perfis?.segurar?.segurar?.liquidezRetiradaPct ?? 70}% ou mais em 5 min), o robô vende. Vale só para o que o robô comprar com esse perfil ligado. De madrugada (0h às 6h) a compra entra no Normal, e você muda o alvo no painel se estiver acompanhando. As suas compras manuais e as posições antigas seguem as regras normais.</p>
+      <p><b>Segurar +150%:</b> entra nos mesmos sinais do Conservador e segura até a moeda chegar a <b>+${data.config?.perfis?.segurar?.segurar?.alvoPct ?? 150}%</b>. Ao bater o alvo, vende na hora. Em cada moeda você pode trocar o alvo (+100% a +500%) ou escolher o <b>Infinito</b>: sem alvo, e a partir de +${data.config?.perfis?.segurar?.segurar?.aposAlvo?.aPartirPct ?? 500}% liga um stop móvel ${data.config?.perfis?.segurar?.segurar?.aposAlvo?.distanciaPct ?? 15}% abaixo do maior preço e segue a alta. Não tem stop de perda, stop móvel nem venda parcelada: se a moeda cair, ela fica na carteira. A única proteção é contra golpe: se a liquidez do pool for retirada (queda de ${data.config?.perfis?.segurar?.segurar?.liquidezRetiradaPct ?? 70}% ou mais em 5 min), o robô vende. Vale só para o que o robô comprar com esse perfil ligado. De madrugada (0h às 6h) a compra entra no Normal, e você muda o alvo no painel se estiver acompanhando. As suas compras manuais e as posições antigas seguem as regras normais.</p>
       <p class="sp-note">Os três perfis rodam o tempo todo na simulação (gaveta do Robô, aba Simulação). A troca é assinada pela sua carteira (menos de US$ 0,01 de taxa, não movimenta dinheiro) e vale na próxima rodada do robô.</p></div>`;
     m.hidden = false;
   }
