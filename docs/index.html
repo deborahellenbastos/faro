@@ -746,6 +746,8 @@
   .manrep .btn-rep { height: 40px; padding: 0 18px; border-radius: 12px; border: 1px solid rgba(255,91,91,.4); background: rgba(255,91,91,.1); color: #ff6b6b; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
   .manrep .btn-rep.undo { border-color: var(--line); background: rgba(255,255,255,.06); color: var(--text); }
   .manrep small { color: var(--muted); }
+  .btn-rep-sm:not(.undo) { color: #ff6b6b !important; border-color: rgba(255,91,91,.35) !important; background: rgba(255,91,91,.08) !important; }
+  .btn-rep-sm:not(.undo):hover { background: rgba(255,91,91,.16) !important; }
 
   /* Tela de senha */
   .lock-screen { position: fixed; inset: 0; z-index: 60; display: none; place-items: center; padding: var(--sp-5); background: radial-gradient(600px 400px at 50% 30%, rgba(16,210,127,.10), transparent 70%), var(--bg); }
@@ -3564,6 +3566,13 @@ function fakeBuys(per = {}) {
     return `${base}${base.includes('?') ? '&' : '?'}embed=1&theme=dark&chartTheme=dark&chartStyle=1&chartType=usd&interval=5&trades=0&info=0&chartLeftToolbar=1`;
   };
   // As duas visões ficam montadas ao mesmo tempo; trocar entre Dex e Faro só mostra/esconde (sem recarregar)
+  // 27/11 (pedido da Kerah): Reprovar fica na linha do gráfico (junto de Abrir na Dex e Expandir), não na área de compra
+  function repBtn(t) {
+    if (!(['aguardando', 'nova', 'aprovada', 'reprovada'].includes(t.status) && !t.held && !isMine(t) && (t.status !== 'reprovada' || ui.tab === 'devvendeu' || MANREP.has(t.mint) || t.reprovadaManual))) return '';
+    return MANREP.has(t.mint) || t.reprovadaManual
+      ? `<button class="btn btn-sm btn-rep-sm undo" data-manundo="${esc(t.mint)}" title="Você reprovou essa moeda">Desfazer reprovação</button>`
+      : `<button class="btn btn-sm btn-rep-sm" data-manrep="${esc(t.mint)}" title="Tira a moeda do Radar e da Análise (ou arraste a moeda para a esquerda na lista)">Reprovar</button>`;
+  }
   function chartBox(t) {
     const iv = CH.interval;
     const dex = chartSrc === 'dex';
@@ -3577,6 +3586,7 @@ function fakeBuys(per = {}) {
         ${t.held && (t.heldAmount || 0) > 0 && !isDust(t) ? `<button class="emerg emerg-sm" data-temerg="${esc(t.mint)}" ${tradeState(t.mint).busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}<span class="lbl">Venda de emergência</span></button>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 && !isDust(t) ? moSeg(t).replace('class="mo-seg"', 'class="mo-seg cmax-only cmax-seg"') : ''}
         <span style="flex:1"></span>
+        ${repBtn(t)}
         ${dexOn() ? '' : `<a class="btn btn-sm" href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}Abrir na Dex</a>`}
         ${(Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x)).length > 1) ? `<button class="btn btn-sm" data-mosaic title="Ver todas as compradas lado a lado">${ICON.grid}<span class="lbl">Mosaico</span></button>` : ''}
         ${t.held ? `<button class="btn btn-sm desk-only" data-optab="${esc(t.mint)}" title="Abrir a operação em outra guia (com mais de uma comprada, abre o mosaico)">${ICON.ext}<span class="lbl">Outra guia</span></button>` : ''}
@@ -3980,7 +3990,6 @@ function fakeBuys(per = {}) {
       <div class="tbody">
         ${t.status === 'aprovada' && !t.held && levelOf(t) === 'danger' ? `<div class="obs-note">${ICON.warn}<span><b>Saiu do Radar por perigo:</b> ${esc((crashAlert(t)?.level === 'danger' && crashAlert(t)?.msg) || (t.safety?.alerts || []).find((x) => x.level === 'danger')?.msg || 'alerta grave')}. Os critérios de aprovação continuam ok, mas o Faro tira do Radar enquanto esse alerta durar.</span></div>` : ''}
         ${t.status === 'aguardando' && !t.held ? `<div class="obs-note">${ICON.warn}<span><b>Ainda em observação</b> (nota ${t.score}). ${(t.pending ?? (t.reasons || []).length) ? `Falta${(t.pending ?? t.reasons.length) > 1 ? 'm' : ''} ${t.pending ?? t.reasons.length} critério${(t.pending ?? t.reasons.length) > 1 ? 's' : ''}: ${esc((t.reasons || [])[0] || '')}` : 'Ainda na fila de checagem.'}</span></div>` : ''}
-        ${['aguardando', 'nova', 'aprovada', 'reprovada'].includes(t.status) && !t.held && (t.status !== 'reprovada' || ui.tab === 'devvendeu' || MANREP.has(t.mint) || t.reprovadaManual) ? (MANREP.has(t.mint) || t.reprovadaManual ? `<div class="manrep"><button class="btn-rep undo" data-manundo="${esc(t.mint)}">Desfazer reprovação</button><small>Você reprovou essa moeda</small></div>` : `<div class="manrep"><button class="btn-rep" data-manrep="${esc(t.mint)}">Reprovar</button><small>ou arraste a moeda para a esquerda na lista</small></div>`) : ''}
         ${t.held && t.segurar ? `<div class="obs-note">${ICON.warn}<span><b>Perfil Segurar:</b> ${(t.segurar.alvoPct ?? 150) >= SEGINF ? `Infinito. Sem stop até +${SEGINF_DE}%: se cair, ela fica na carteira. Passando de +${SEGINF_DE}%, o robô liga um stop móvel ${data.config?.perfis?.segurar?.segurar?.aposAlvo?.distanciaPct ?? 15}% abaixo do maior preço e segue a alta (vende quando ela virar).` : `sem stop até +${t.segurar.alvoPct ?? 150}%: se cair, ela fica na carteira. Ao bater o alvo, o robô vende na hora.`} Também vende se a liquidez do pool for retirada (golpe). Dá para mudar o alvo ou voltar ao Normal acima.</span></div>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg" data-temerg="${m}" ${st.busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}Venda de emergência (100%)</button>` : ''}
         <div class="mode"><button data-tmode="market" data-tmint="${m}" class="${limit ? '' : 'on'}">A mercado</button><button data-tmode="limit" data-tmint="${m}" class="${limit ? 'on' : ''}">Limite</button></div>
@@ -5522,6 +5531,10 @@ function fakeBuys(per = {}) {
       const oldSide = el.querySelector('.d-side'), newSide = tpl.content.querySelector('.d-side');
       if (oldSide && newSide && !patch(oldSide, newSide)) oldSide.replaceChildren(...newSide.childNodes);
       const split = el.querySelector('.d-split'); if (split) split.className = tpl.content.querySelector('.d-split').className;
+      // 27/11: a barra do gráfico também atualiza (Emergência sumia/aparecia só ao reabrir a moeda; Reprovar idem)
+      { const ot = oldBox.querySelector(':scope > .chart-tools'), nt = newBox.querySelector(':scope > .chart-tools');
+        if (ot && nt) { const oi = ot.querySelector('[data-cmaxinfo]'), ni = nt.querySelector('[data-cmaxinfo]'); if (oi && ni) ni.innerHTML = oi.innerHTML;
+          if (ot.outerHTML !== nt.outerHTML) ot.replaceWith(nt); } }
       return false;
     }
     if (chartIsMax()) document.body.style.overflow = '';
