@@ -1501,6 +1501,9 @@
   .mark-tip p { margin: 3px 0 0; color: var(--muted); line-height: 1.4; }
   /* Venda de emergência no topo do gráfico (normal, expandido e mosaico) */
   .emerg.emerg-sm { width: auto; height: 32px; padding: 0 12px; font-size: 13px; flex: none; }
+  .mo-seg.seg-alvo { margin: 0 12px 8px; padding: 0; border: 0; background: none; }
+  .mo-seg .pf-seg { width: 100%; }
+  .mo-seg .pf-seg button { height: 26px; font-size: 12px; padding: 0 4px; }
   .mo-info .emerg-sm { margin-left: auto; height: 28px; padding: 0 10px; font-size: 12px; }
   @media (max-width: 700px) { .chart-tools .emerg-sm .lbl { display: inline !important; } }
   /* Notificações: radar neutro; venda com lucro em verde */
@@ -2561,11 +2564,11 @@
     const g = t.position?.avgPriceUsd > 0 && t.priceUsd > 0 ? (t.priceUsd / t.position.avgPriceUsd - 1) * 100 : null;
     const lim = alvo >= SEGINF ? SEGINF_DE : alvo;
     if (alvo > 0 && g != null && g >= lim && !confirm(alvo >= SEGINF ? `${dispName(t)} já está em +${g.toFixed(0)}%. No Infinito, o robô liga o stop móvel ${15}% abaixo do topo agora. Continuar?` : `${dispName(t)} já está em +${g.toFixed(0)}%. Com alvo de +${alvo}%, o robô vende agora. Continuar?`)) return;
-    SEGPEND.set(m, { alvo, at: Date.now() }); render();
+    SEGPEND.set(m, { alvo, at: Date.now() }); render(); const moX = () => { moRefreshHead(m); const x = MOS.tiles?.find((y) => y.mint === m); if (x) moDraw(x); }; moX();
     try {
       const r = await postJson('radar/segurar', { mint: m, alvo }); if (!r.ok) throw new Error(r.status);
       toast(alvo >= SEGINF ? `${dispName(t)}: Infinito. Sem stop até +${SEGINF_DE}%, depois stop móvel seguindo a alta.` : alvo ? `${dispName(t)}: vende em +${alvo}%. Sem stop até lá.` : `${dispName(t)}: voltou às regras normais (stops e vigia).`);
-    } catch { SEGPEND.delete(m); render(); toast('Não consegui avisar o robô agora. Tente de novo em instantes.'); }
+    } catch { SEGPEND.delete(m); render(); moX(); toast('Não consegui avisar o robô agora. Tente de novo em instantes.'); }
   });
   function manDesfazer(m) { MANREP.delete(m); saveManRep(); avisaRobo('desfazer', m); render(); toast(`${data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda'} voltou para Em análise`); }
   const FAVS = new Set(store.get('faro-favs', []));
@@ -4113,7 +4116,20 @@ function fakeBuys(per = {}) {
   const MOS = { tiles: [], timer: null, iv: store.get('faro-mos-iv', '5m') };
   function closeMosaic() { const m = $('mosaic'); if (m) m.remove(); MOS.tiles.forEach((x) => { try { x.ch.remove(); } catch {} }); MOS.tiles = []; clearInterval(MOS.timer); MOS.timer = null; document.body.classList.remove('mosaic-on'); }
   const MO_TOOLS = [['cursor', TOOL_ICON?.cursor || '&#8598;', 'Cursor'], ['h', TOOL_ICON?.h || '&#8212;', 'Linha horizontal: clique no preço'], ['t', TOOL_ICON?.t || '&#8599;', 'Tendência: clique no início e no fim']];
-  function moHead(t) { const p = t.position || {}; return `<div class="mo-h"><button class="mo-open" data-mosaicgo="${esc(t.mint)}" title="Abrir a moeda">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b></span></button><button class="copy" data-copy="${esc(t.mint)}" title="Copiar endereço do contrato" aria-label="Copiar endereço">${ICON.copy}</button><span style="flex:1"></span><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div><div class="mo-info">${infoHtml(t)}${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg emerg-sm" data-temerg="${esc(t.mint)}" title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}<span class="lbl">Emergência</span></button>` : ''}</div>`; }
+  function moHead(t) { const p = t.position || {}; return `<div class="mo-h"><button class="mo-open" data-mosaicgo="${esc(t.mint)}" title="Abrir a moeda">${avatar(t)}<span class="mo-n"><b>${esc(dispName(t))}</b></span></button><button class="copy" data-copy="${esc(t.mint)}" title="Copiar endereço do contrato" aria-label="Copiar endereço">${ICON.copy}</button><span style="flex:1"></span><span class="mo-v"><b class="num">${p.valueUsd != null ? money(p.valueUsd) : '-'}</b>${p.known ? `<small class="num ${cls(p.openPnlPct)}">${pct(p.openPnlPct)}</small>` : ''}</span></div><div class="mo-info">${infoHtml(t)}${t.held && (t.heldAmount || 0) > 0 ? `<button class="emerg emerg-sm" data-temerg="${esc(t.mint)}" title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}<span class="lbl">Emergência</span></button>` : ''}</div>${moSeg(t)}`; }
+  // 27/11 (pedido da Kerah): alvo do Segurar direto no mosaico (mesmos botões do detalhe da moeda)
+  function moSeg(t) {
+    if (!ROBO_OK || isDemo() || !t.mint || !(t.held && (t.heldAmount || 0) > 0)) return '';
+    const a = segAlvoAtual(t), op = (v, l) => `<button data-segalvo="${v}" data-segmint="${esc(t.mint)}" class="${a === v ? 'on' : ''}" title="${v === 0 ? 'Regras normais (stops e vigia)' : v >= SEGINF ? `Sem limite: stop móvel a partir de +${SEGINF_DE}%` : `Vende assim que bater +${v}%`}">${l}</button>`;
+    return `<div class="mo-seg seg-alvo"><div class="pf-seg">${op(0, 'Normal')}${op(100, '100%')}${op(150, '150%')}${op(200, '200%')}${op(300, '300%')}${op(500, '500%')}${op(SEGINF, '∞')}</div></div>`;
+  }
+  function moRefreshHead(mint) {
+    const tile = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(mint)}"]`), nt = data?.tokens?.[mint]; if (!tile || !nt) return;
+    const h = tile.querySelector('.mo-h'); if (!h) return;
+    const html = moHead(nt); if (h.__html === html) return;
+    tile.querySelectorAll(':scope > .mo-info, :scope > .mo-seg').forEach((e) => e.remove());
+    h.outerHTML = html; const nh = tile.querySelector('.mo-h'); if (nh) nh.__html = html;
+  }
   // Usa o mesmo desenho do gráfico principal (entrada, meta, stop de perda/móvel, metas do robô, fib, ordens, traços,
   // marcas de compra/venda e sinais), apontando o desenho para o gráfico deste quadro
   function moDraw(x) {
@@ -4168,7 +4184,7 @@ function fakeBuys(per = {}) {
     }
     MOS.timer = setInterval(() => {
       if (!$('mosaic')) return closeMosaic();
-      MOS.tiles.forEach((x) => { moFill(x); const h = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); const nt = data?.tokens?.[x.mint]; if (h && nt) { const html = moHead(nt); if (h.__html !== html) { h.nextElementSibling?.classList.contains('mo-info') && h.nextElementSibling.remove(); h.outerHTML = html; const nh = $('mosaic')?.querySelector(`[data-motile="${CSS.escape(x.mint)}"] .mo-h`); if (nh) nh.__html = html; } } });
+      MOS.tiles.forEach((x) => { moFill(x); moRefreshHead(x.mint); });
     }, 15000);
   }
   // Menu lateral recolhível (só ícones), lembrado entre visitas
