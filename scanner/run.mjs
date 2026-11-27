@@ -350,7 +350,10 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       }
       if (t.autoSell) {
         const a = t.autoSell;
-        const alert = a.skipped
+        // 26/11: no modo Segurar o robô decide NÃO vender; isso aparecia como "venda falhou: undefined" (DEXDATA)
+        const alert = a.segurando
+          ? { id: 'auto-venda', level: 'info', at: a.at, msg: `Sinal de golpe (${a.why}), mas a moeda está no modo Segurar: o robô não vende por isso` }
+          : a.skipped
           ? { id: 'auto-venda', level: 'info', at: a.at, msg: `Golpe no contrato (${a.why}), mas a operação é menor que US$ ${cfg.venda?.valorMinimoProtecaoUsd ?? 0.25}: não compensa vender` }
           : a.ok
           ? { id: 'auto-venda', level: 'danger', at: a.at, msg: `Robô vendeu 100% automaticamente${a.outSol ? ` por ${a.outSol.toFixed(4)} SOL` : ''}. Motivo: ${a.why}`, sig: a.sig }
