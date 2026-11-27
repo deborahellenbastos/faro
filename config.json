@@ -67,6 +67,8 @@
   "venda": {
     "automatica": true,
     "slippageMaxPct": 30,
+    "devFatiaMinPct": 5,
+    "_devFatiaMinPct": "26/11: dev vendendo só conta como golpe (vende e dá Perigo) se ele tinha 5% ou mais da moeda",
     "valorMinimoUsd": 1,
     "valorMinimoProtecaoUsd": 0.25,
     "restoSemValorUsd": 0.05,

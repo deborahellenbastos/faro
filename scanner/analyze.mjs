@@ -332,7 +332,9 @@ export function scamSignals(base, sum, cfg) {
   if (base.lpLockedPct != null && base.lpLockedPct >= f.lpTravadaMinPct && sum.lpLockedPct != null && sum.lpLockedPct < f.lpTravadaMinPct) {
     out.push(`liquidez destravada (era ${base.lpLockedPct.toFixed(0)}%, agora ${sum.lpLockedPct.toFixed(0)}%)`);
   }
-  if (base.devPct != null && base.devPct >= 1 && sum.devPct != null && sum.devPct <= base.devPct * 0.5) {
+  // 26/11 (pedido da Kerah): dev com fatia pequena (menos de devFatiaMinPct, 5%) vendendo não é golpe; com isso o
+  // risco dele até acaba (DEXDATA: dev com 3,9% zerou e a moeda seguiu de pé). Só vende se a fatia era grande
+  if (base.devPct != null && base.devPct >= (cfg.venda?.devFatiaMinPct ?? 5) && sum.devPct != null && sum.devPct <= base.devPct * 0.5) {
     out.push(`dev vendeu mais da metade (tinha ${base.devPct.toFixed(1)}%, agora ${sum.devPct.toFixed(1)}%)`);
   }
   return out;
@@ -370,7 +372,10 @@ export function rugAlerts(base, sum, cfg) {
   if (newDanger.length) out.push({ id: 'risco-novo', level: 'danger', msg: `Novo alerta grave no RugCheck: ${newDanger.join('; ')}` });
   if (base) {
     if (base.devPct != null && sum.devPct != null && base.devPct - sum.devPct >= 1) {
-      out.push({ id: 'dev-vendendo', level: 'danger', msg: `Dev vendendo: tinha ${base.devPct.toFixed(1)}%, agora ${sum.devPct.toFixed(1)}%` });
+      const grande = base.devPct >= (cfg.venda?.devFatiaMinPct ?? 5);
+      out.push(grande
+        ? { id: 'dev-vendendo', level: 'danger', msg: `Dev vendendo: tinha ${base.devPct.toFixed(1)}%, agora ${sum.devPct.toFixed(1)}%` }
+        : { id: 'dev-vendendo', level: 'info', msg: `Dev ${sum.devPct < 0.1 ? 'saiu' : 'vendendo'}: tinha só ${base.devPct.toFixed(1)}%, agora ${sum.devPct.toFixed(1)}%. Fatia pequena: não é golpe${sum.devPct < 0.1 ? ', e o risco de venda dele acabou' : ''}` });
     }
     if (sum.top10Pct - base.top10Pct >= 10 || (sum.top10Pct > f.top10MaxPct && base.top10Pct <= f.top10MaxPct)) {
       out.push({ id: 'concentracao', level: 'warn', msg: `Holders concentrando: top 10 foi de ${base.top10Pct.toFixed(0)}% para ${sum.top10Pct.toFixed(0)}%` });

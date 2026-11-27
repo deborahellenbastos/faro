@@ -220,7 +220,8 @@ const cfgT = { filtros: { lpTravadaMinPct: 90 } };
 const base0 = { lpLockedPct: 100, devPct: 4, mint: false, freeze: false };
 assert.equal(scamSignals(base0, { lpLockedPct: 100, devPct: 4, mintAuthority: null, freezeAuthority: null }, cfgT).length, 0);
 assert.equal(scamSignals(base0, { lpLockedPct: 20, devPct: 4, mintAuthority: null, freezeAuthority: null }, cfgT).length, 1);
-assert.equal(scamSignals(base0, { lpLockedPct: 100, devPct: 1, mintAuthority: 'X', freezeAuthority: null }, cfgT).length, 2);
+assert.equal(scamSignals(base0, { lpLockedPct: 100, devPct: 1, mintAuthority: 'X', freezeAuthority: null }, cfgT).length, 1, 'dev com 4% vendendo não é golpe (26/11)');
+assert.equal(scamSignals({ ...base0, devPct: 8 }, { lpLockedPct: 100, devPct: 1, mintAuthority: 'X', freezeAuthority: null }, cfgT).length, 2, 'dev com 8% vendendo é golpe');
 assert.equal(scamSignals(base0, { rugged: true, lpLockedPct: 100, devPct: 4 }, cfgT).length, 1);
 // moeda comprada já sem liquidez travada não dispara venda
 assert.equal(scamSignals({ lpLockedPct: 0, devPct: 0 }, { lpLockedPct: 0, devPct: 0 }, cfgT).length, 0);
