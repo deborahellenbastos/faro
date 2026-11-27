@@ -3600,8 +3600,8 @@ function fakeBuys(per = {}) {
         ${dexOn() ? `<div class="seg-sm" title="Qual gráfico mostrar"><button data-csrc="dex" class="${dex ? 'on' : ''}">Dex</button><button data-csrc="faro" class="${dex ? '' : 'on'}">Faro</button></div>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 && !isDust(t) ? `<button class="emerg emerg-sm" data-temerg="${esc(t.mint)}" ${tradeState(t.mint).busy ? 'disabled' : ''} title="Vende tudo com slippage largo e prioridade alta, num clique">${ICON.warn}<span class="lbl">Venda de emergência</span></button>` : ''}
         ${t.held && (t.heldAmount || 0) > 0 && !isDust(t) ? moSeg(t).replace('class="mo-seg"', 'class="mo-seg cmax-only cmax-seg"') : ''}
-        <span style="flex:1"></span>
         ${repBtn(t)}
+        <span style="flex:1"></span>
         ${dexOn() ? '' : `<a class="btn btn-sm" href="${esc(t.pairUrl || `https://dexscreener.com/solana/${t.mint}`)}" target="_blank" rel="noopener" title="Abrir o gráfico na DexScreener (outra aba)">${ICON.ext}Abrir na Dex</a>`}
         ${(Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x)).length > 1) ? `<button class="btn btn-sm" data-mosaic title="Ver todas as compradas lado a lado">${ICON.grid}<span class="lbl">Mosaico</span></button>` : ''}
         ${t.held ? `<button class="btn btn-sm desk-only" data-optab="${esc(t.mint)}" title="Abrir a operação em outra guia (com mais de uma comprada, abre o mosaico)">${ICON.ext}<span class="lbl">Outra guia</span></button>` : `<button class="btn btn-sm desk-only" data-newtab="${esc(t.mint)}" title="Abrir esta moeda em outra aba">${ICON.ext}<span class="lbl">Outra aba</span></button>`}
