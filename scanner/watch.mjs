@@ -174,8 +174,10 @@ async function contractCheck(now) {
         if (!sum) continue;
         // Moeda nova na carteira: a primeira leitura vira a referência (o que já era assim na compra não conta)
         const mb = (mem.base[t.mint] = mem.base[t.mint] || {});
-        if (!mb.rug) mb.rug = { lpLockedPct: sum.lpLockedPct, devPct: sum.devPct, mint: sum.mintAuthority != null, freeze: sum.freezeAuthority != null };
-        const base = t.baseline || mb.rug;
+        // 26/11: posição nova (recompra depois de vender tudo) recomeça a referência
+        if (mb.rug && t.heldSince && (mb.rug.at || 0) < t.heldSince - 60000 && t.autoSell?.ok) mb.rug = null;
+        if (!mb.rug) mb.rug = { lpLockedPct: sum.lpLockedPct, devPct: sum.devPct, mint: sum.mintAuthority != null, freeze: sum.freezeAuthority != null, at: now };
+        const base = mb.rug.at && t.heldSince && t.autoSell?.ok && mb.rug.at > (t.baselineAt || 0) ? mb.rug : t.baseline || mb.rug;
         const sig = scamSignals(base, sum, cfg);
         if (sig.some(isLpSignal)) lpSeen.push(t.mint);
         if (sig.length) (rugSig[t.mint] = sig);

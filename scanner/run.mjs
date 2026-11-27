@@ -308,7 +308,10 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       t._rugAt = now;
       const sum = summarizeRug(report);
       if (!sum) continue;
-      if (!t.baseline) t.baseline = baselineFrom(sum);
+      // 26/11 (DEXDATA): recompra é uma posição nova; a referência dos sinais de golpe passa a ser a de agora.
+      // Antes valia a da primeira compra (dev com 3,9%) e o robô via "dev vendeu" de novo e vendia a recompra
+      if (t.held && t.heldSince && (t.baselineAt || 0) < t.heldSince - 60000 && t.autoSell?.ok) { t.baseline = baselineFrom(sum); t.baselineAt = now; delete t.autoSell; log(`${t.symbol}: recompra, sinais de golpe recomeçam do zero`); }
+      if (!t.baseline) { t.baseline = baselineFrom(sum); t.baselineAt = now; }
       t._rugAlerts = rugAlerts(t.baseline, sum, cfg);
       // LP "destravada" com a liquidez estável no mercado: provavelmente falha do RugCheck, vira só atenção
       { const ld = t.entryLiquidityUsd > 0 ? (1 - m.liquidityUsd / t.entryLiquidityUsd) * 100 : 0;
