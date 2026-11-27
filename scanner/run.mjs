@@ -313,6 +313,11 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (t.held && t.heldSince && (t.baselineAt || 0) < t.heldSince - 60000 && t.autoSell?.ok) { t.baseline = baselineFrom(sum); t.baselineAt = now; delete t.autoSell; log(`${t.symbol}: recompra, sinais de golpe recomeçam do zero`); }
       if (!t.baseline) { t.baseline = baselineFrom(sum); t.baselineAt = now; }
       t._rugAlerts = rugAlerts(t.baseline, sum, cfg);
+      // 27/11: lista "Dev vendeu" no painel. Guarda quando o dev começou a vender e quanto tinha
+      if (t.baseline.devPct != null && sum.devPct != null && t.baseline.devPct - sum.devPct >= 1) {
+        t.devVendeu = { at: t.devVendeu?.at || now, tinhaPct: t.baseline.devPct, agoraPct: sum.devPct, pxAt: t.devVendeu?.pxAt || t.priceUsd || null };
+        if (sum.devPct < 0.1 && !t.devVendeu.zerouAt) t.devVendeu.zerouAt = now;
+      }
       // LP "destravada" com a liquidez estável no mercado: provavelmente falha do RugCheck, vira só atenção
       { const ld = t.entryLiquidityUsd > 0 ? (1 - m.liquidityUsd / t.entryLiquidityUsd) * 100 : 0;
         if (ld < 15) t._rugAlerts = t._rugAlerts.map((a) => (a.id === 'lp' ? { ...a, level: 'warn', msg: `${a.msg} (a liquidez no mercado não caiu: pode ser falha do RugCheck)` } : a)); }

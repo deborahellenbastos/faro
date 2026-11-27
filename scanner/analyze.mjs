@@ -373,7 +373,10 @@ export function rugAlerts(base, sum, cfg) {
   if (base) {
     if (base.devPct != null && sum.devPct != null && base.devPct - sum.devPct >= 1) {
       const grande = base.devPct >= (cfg.venda?.devFatiaMinPct ?? 5);
-      out.push(grande
+      // 27/11 (pedido da Kerah, Zhaki subiu +2700% depois do dev vender): dev que ZEROU não é perigo. O risco de venda
+      // dele acabou; a queda da venda já aparece nos alertas de mercado (liquidez e preço)
+      if (sum.devPct < 0.1) out.push({ id: 'dev-vendendo', level: 'info', msg: `Dev saiu de vez: tinha ${base.devPct.toFixed(1)}%, agora 0%. O risco de venda dele acabou` });
+      else out.push(grande
         ? { id: 'dev-vendendo', level: 'danger', msg: `Dev vendendo: tinha ${base.devPct.toFixed(1)}%, agora ${sum.devPct.toFixed(1)}%` }
         : { id: 'dev-vendendo', level: 'info', msg: `Dev ${sum.devPct < 0.1 ? 'saiu' : 'vendendo'}: tinha só ${base.devPct.toFixed(1)}%, agora ${sum.devPct.toFixed(1)}%. Fatia pequena: não é golpe${sum.devPct < 0.1 ? ', e o risco de venda dele acabou' : ''}` });
     }

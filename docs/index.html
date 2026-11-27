@@ -794,7 +794,7 @@
     body.show-detail .list-panel, body.show-detail .summary, body.show-detail .topbar { display: none; }
     .back { display: inline-flex; }
     .d-back { display: block; }
-    .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 6px var(--sp-2) calc(env(safe-area-inset-bottom) + 6px); background: rgba(17,19,23,.92); backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
+    .tabbar { display: grid; grid-template-columns: repeat(6, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; padding: 6px var(--sp-2) calc(env(safe-area-inset-bottom) + 6px); background: rgba(17,19,23,.92); backdrop-filter: blur(14px); border-top: 1px solid var(--line); }
     .tabbar button { position: relative; border: 0; background: transparent; display: grid; justify-items: center; gap: 3px; padding: 6px 0; color: var(--faint); font-size: 11px; font-weight: 700; }
     .tabbar button svg { width: 22px; height: 22px; }
     .tabbar button.on { color: var(--brand); }
@@ -854,7 +854,7 @@
     .m-badges { display: flex; }
     .m-live { display: inline-flex; }
     body.show-detail .m-badges { display: none; }
-    .tabbar { grid-template-columns: repeat(4, 1fr) !important; }
+    .tabbar { grid-template-columns: repeat(5, 1fr) !important; }
     .tabbar .tb-robot { display: none !important; }
     .topbar .top-tools { flex: 0 0 auto; margin-left: auto; }
     .m-search-slot { display: block; }
@@ -1564,6 +1564,7 @@
       <button class="nav-item" data-tab="aprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg><span>Radar</span><em data-count="aprovada"></em></button>
       <button class="nav-item" data-tab="aguardando"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span>Análise</span><em data-count="aguardando"></em></button>
       <button class="nav-item" data-tab="reprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path class="x1" d="m9.5 9.5 5 5"/><path class="x2" d="m14.5 9.5-5 5"/></svg><span>Reprovadas</span><em data-count="reprovada"></em></button>
+      <button class="nav-item" data-tab="devvendeu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M16 11h6"/></svg><span>Dev vendeu</span><em data-count="devvendeu"></em></button>
       <div class="nav-label">Sistema</div>
       <button class="nav-item" data-open-robot><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg><span>Robô e filtros</span></button>
     </nav>
@@ -1637,6 +1638,7 @@
     <button data-tab="aprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg>Radar<em class="tb-count" data-count="aprovada"></em></button>
     <button data-tab="aguardando"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>Análise</button>
     <button data-tab="reprovada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path class="x1" d="m9.5 9.5 5 5"/><path class="x2" d="m14.5 9.5-5 5"/></svg>Reprovadas</button>
+    <button data-tab="devvendeu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M16 11h6"/></svg>Dev vendeu</button>
     <button class="tb-robot" data-open-robot><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1.2" fill="currentColor"/><circle cx="15" cy="14" r="1.2" fill="currentColor"/></svg>Robô</button>
   </nav>
 </div>
@@ -1740,6 +1742,7 @@
     aprovada: ['Radar', 'Passaram em todos os filtros de segurança'],
     aguardando: ['Análise', 'Podem ser aprovadas nas próximas rodadas'],
     reprovada: ['Reprovadas', 'Sinais de golpe ou passaram de 24h'],
+    devvendeu: ['Dev vendeu', 'Moedas em que o dev vendeu, de qualquer lista. Dev que zerou não é perigo'],
   };
   const ui = { tab: 'minhas', sort: 'score', page: 1, q: '', sel: {}, trade: {}, hist: {}, tf: {} };
   const store = {
@@ -2655,7 +2658,15 @@
   // Só sobe a barra do Faro quando a página vai até o fim da tela (barra por cima); senão ficava um vão
   function phOverlay() { if (!document.body.classList.contains('in-phantom')) return; const portrait = window.innerHeight > window.innerWidth; const full = Math.max(screen.height, screen.width); document.body.classList.toggle('ph-overlay', portrait && full - window.innerHeight < 40); }
   phOverlay(); window.addEventListener('resize', phOverlay); window.visualViewport?.addEventListener('resize', phOverlay);
-  const TAB_ORDER = ['minhas', 'aprovada', 'aguardando', 'reprovada'];
+  const TAB_ORDER = ['minhas', 'aprovada', 'aguardando', 'reprovada', 'devvendeu'];
+  // 27/11 (pedido da Kerah, Zhaki): dev que vendeu. Vem do robô (t.devVendeu) ou, nas mais antigas, do alerta dev-vendendo
+  function devVendeuOf(t) {
+    if (t.devVendeu) return { ...t.devVendeu, zerou: (t.devVendeu.agoraPct ?? 1) < 0.1 };
+    const a = (t.safety?.alerts || []).find((x) => x.id === 'dev-vendendo'); if (!a) return null;
+    const m = /tinha (?:só )?([\d.]+)%, agora ([\d.]+)%/.exec(a.msg || '');
+    const ag = m ? Number(m[2]) : null;
+    return { at: a.at || 0, tinhaPct: m ? Number(m[1]) : null, agoraPct: ag, zerou: ag != null ? ag < 0.1 : /saiu/.test(a.msg || ''), pxAt: null };
+  }
   // Barra de baixo: o fundo do item ativo desliza de um item para o outro
   function moveTabPill() {
     const bar = $('tabbar'); if (!bar) return;
@@ -3997,6 +4008,12 @@ function fakeBuys(per = {}) {
       const mk = store.get('faro-an-motivo', 'todos'), rz = (AN_MOTIVO[mk]?.[1] && (t.reasons || []).find((r) => AN_MOTIVO[mk][1].test(r))) || (t.reasons || [])[0] || '';
       main = `<b>${esc(dispName(t))}</b><small>${left ? `${left === 1 ? 'Falta 1 critério' : `Faltam ${left} critérios`} - ${esc(rz)}` : esc((t.reasons || [])[0] || 'Na fila de checagem')}</small>`;
       side = `<div style="display:flex;align-items:center;gap:10px"><small class="num" style="color:var(--muted)">${t.mcapUsd ? `MC ${usd(t.mcapUsd)}` : ''}</small>${t.score != null ? scoreBadge(t.score, true, true) : ''}</div>`;
+    } else if (ui.tab === 'devvendeu') {
+      const d = devVendeuOf(t) || {}, onde = isMine(t) ? 'Carteira' : MANREP.has(t.mint) ? 'Reprovada por você' : { aprovada: 'Radar', aguardando: 'Análise', nova: 'Análise', reprovada: 'Reprovada' }[t.status] || '';
+      const fx = (v) => v == null ? '?' : `${v.toFixed(1).replace('.', ',')}%`;
+      const desde = d.pxAt > 0 && t.priceUsd > 0 ? (t.priceUsd / d.pxAt - 1) * 100 : null;
+      main = `<b>${esc(dispName(t))} <i class="mini-tag ${d.zerou ? 'ok' : 'warn'}">${d.zerou ? 'dev zerou' : 'dev vendendo'}</i></b><small>${d.zerou ? `Tinha ${fx(d.tinhaPct)}` : `${fx(d.tinhaPct)} → ${fx(d.agoraPct)}`}${d.at ? ` - ${ago(d.zerouAt || d.at)}` : ''}${onde ? ` - ${onde}` : ''}</small>`;
+      side = `<b class="num" style="font-size:13px">${t.mcapUsd ? usd(t.mcapUsd) : '-'}</b>${desde != null ? `<small class="num ${cls(desde)}" title="Desde que o robô viu o dev vender">${pct(desde)} desde</small>` : `<small class="num ${cls(Number(t.changePct) || 0)}">${pct(Number(t.changePct) || 0)}</small>`}`;
     } else {
       const why = MANREP.has(t.mint) && t.status === 'aguardando' ? `Reprovada por você${(t.reasons || [])[0] ? ` - ${t.reasons[0]}` : ''}` : t.status === 'aprovada' ? (MANREP.has(t.mint) ? 'Reprovada por você' : `Saiu do Radar por perigo: ${(crashAlert(t)?.level === 'danger' && crashAlert(t)?.msg) || (t.safety?.alerts || []).find((x) => x.level === 'danger')?.msg || 'alerta grave'}`) : (t.reasons || [])[0] || '';
       main = `<b>${esc(dispName(t))}</b><small>${esc(why)}</small>`;
@@ -5506,7 +5523,7 @@ function fakeBuys(per = {}) {
     const danger = mine.filter((t) => levelOf(t) === 'danger').length;
     // Aprovada que virou perigo não fica no radar: vai para as reprovadas na hora (o robô confirma na rodada)
     const fell = (t) => t.status === 'aprovada' && levelOf(t) === 'danger';
-    const lists = { minhas: [...mine, ...dead, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t) && !MANREP.has(t.mint)), aguardando: [...by('aguardando'), ...by('nova')].filter((t) => !MANREP.has(t.mint)), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => (fell(t) && !isSold(t)) || MANREP.has(t.mint)), ...by('aguardando').filter((t) => MANREP.has(t.mint))] };
+    const lists = { minhas: [...mine, ...dead, ...closed], aprovada: by('aprovada').filter((t) => !fell(t) && !isSold(t) && !MANREP.has(t.mint)), aguardando: [...by('aguardando'), ...by('nova')].filter((t) => !MANREP.has(t.mint)), devvendeu: all.filter(devVendeuOf).sort((a, b) => (devVendeuOf(b).at || 0) - (devVendeuOf(a).at || 0)), reprovada: [...by('reprovada'), ...by('aprovada').filter((t) => (fell(t) && !isSold(t)) || MANREP.has(t.mint)), ...by('aguardando').filter((t) => MANREP.has(t.mint))] };
 
     // Moeda aberta que você acabou de comprar: o Faro vai junto com ela para a Carteira
     const opened = ui.sel[ui.tab];
@@ -5646,7 +5663,7 @@ function fakeBuys(per = {}) {
     ro.querySelectorAll('[data-rord]').forEach((b) => b.classList.toggle('on', b.dataset.rord === radarOrd()));
     renderFavSync();
     // Carteira é título da página (não categoria): sem contador e maior; as categorias (Em aberto, Mortas, Encerradas) mantêm o contador
-    $('list-title').innerHTML = ui.tab === 'minhas' ? 'Carteira' : `${{ aprovada: 'No radar', aguardando: 'Em análise', reprovada: 'Reprovadas' }[ui.tab]}<small>${realN}</small>`;
+    $('list-title').innerHTML = ui.tab === 'minhas' ? 'Carteira' : `${{ aprovada: 'No radar', aguardando: 'Em análise', reprovada: 'Reprovadas', devvendeu: 'Dev vendeu' }[ui.tab]}<small>${realN}</small>`;
     $('list-title').classList.toggle('page-title', ui.tab === 'minhas');
     // Encerradas: abre/fecha pelo título (começa aberta)
     if (ui.tab === 'minhas' && !q && closed.length && prefs.encOpen === false) {

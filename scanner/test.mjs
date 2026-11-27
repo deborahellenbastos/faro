@@ -224,6 +224,12 @@ assert.equal(scamSignals(base0, { lpLockedPct: 100, devPct: 1, mintAuthority: 'X
 assert.equal(scamSignals({ ...base0, devPct: 8 }, { lpLockedPct: 100, devPct: 1, mintAuthority: 'X', freezeAuthority: null }, cfgT).length, 2, 'dev com 8% vendendo é golpe');
 assert.equal(scamSignals(base0, { rugged: true, lpLockedPct: 100, devPct: 4 }, cfgT).length, 1);
 // moeda comprada já sem liquidez travada não dispara venda
+{ const { rugAlerts } = await import('./analyze.mjs');
+  const sumZ = { devPct: 0, top10Pct: 20, insiders: 0, lpLockedPct: 100, dangerRisks: [], mintAuthority: null, freezeAuthority: null };
+  const a = rugAlerts({ devPct: 12, top10Pct: 20, insiders: 0, dangerNames: [] }, sumZ, cfgT).find((x) => x.id === 'dev-vendendo');
+  assert.equal(a.level, 'info', 'dev que zerou não é perigo (27/11)');
+  const b = rugAlerts({ devPct: 12, top10Pct: 20, insiders: 0, dangerNames: [] }, { ...sumZ, devPct: 5 }, cfgT).find((x) => x.id === 'dev-vendendo');
+  assert.equal(b.level, 'danger', 'dev grande vendendo em parte continua perigo'); }
 assert.equal(scamSignals({ lpLockedPct: 0, devPct: 0 }, { lpLockedPct: 0, devPct: 0 }, cfgT).length, 0);
 
 // Simulação e compra automática: entram no sinal de boa entrada; saem no +100% ou no stop
