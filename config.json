@@ -23,7 +23,7 @@
     "lpTravadaMinPct": 90,
     "top10MaxPct": 35,
     "bundleCarteirasMin": 7,
-    "bundlePctMin": 10,
+    "bundlePctMin": 15,
     "maiorHolderMaxPct": 10,
     "insidersMax": 10,
     "devMaxPct": 5,
