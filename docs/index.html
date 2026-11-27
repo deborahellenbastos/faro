@@ -2326,13 +2326,15 @@
   }
   // 27/11 (pedido da Kerah): moeda que você não tem (Em análise, Radar...) abre sozinha numa aba nova, sem mexer na guia da operação
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-newtab]'); if (!b) return; e.preventDefault(); e.stopPropagation();
-    const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('m', b.dataset.newtab); u.searchParams.set('t', String(Date.now())); window.open(u.toString(), '_blank'); }, true);
+    const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('m', b.dataset.newtab); u.searchParams.set('t', String(Date.now())); u.searchParams.set('solo', '1'); window.open(u.toString(), '_blank', 'noopener'); }, true);
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-optab]'); if (b) { e.preventDefault(); e.stopPropagation(); openOpTab(b.dataset.optab); } }, true);
   let opDone = false, opHeld = '';
   let mosRestored = false;
   // mosaico aberto na guia normal: recarregar a página mantém o mosaico aberto
   function restoreMosaic() {
     if (OP_MODE || mosRestored || !data?.tokens || isDemo()) return;
+    // 27/11: aba aberta pelo botão Outra aba herda o sessionStorage da aba de origem e reabria o mosaico/expandido
+    if (START_MINT || new URLSearchParams(location.search).get('solo')) { mosRestored = true; try { sessionStorage.removeItem('faro-mos-on'); } catch {} return; }
     mosRestored = true;
     if (sessionStorage.getItem('faro-mos-on') === '1' && Object.values(data.tokens).filter((x) => x.held && !isDead(x) && !isDust(x)).length > 1) setTimeout(() => { if (!$('mosaic')) openMosaic(); }, 0);
     else sessionStorage.removeItem('faro-mos-on');
@@ -2424,7 +2426,7 @@
       startDone = true; setTimeout(() => { goTo(START_MINT); runStartOrder(); }, 0);
       // Tira a moeda do endereço depois de abrir: senão, toda vez que a página recarrega (a Phantom e o iPhone recarregam
       // sozinhos), ela volta para essa moeda (18/11: voltava sempre para a JALU, a do link da compra pela Phantom)
-      setTimeout(() => { try { const u = new URL(location.href); u.searchParams.delete('m'); u.searchParams.delete('t'); if (u.searchParams.get('op') === '1') u.searchParams.delete('op'); history.replaceState(null, '', u.toString()); } catch {} }, 1500);
+      setTimeout(() => { try { const u = new URL(location.href); u.searchParams.delete('m'); u.searchParams.delete('t'); u.searchParams.delete('solo'); if (u.searchParams.get('op') === '1') u.searchParams.delete('op'); history.replaceState(null, '', u.toString()); } catch {} }, 1500);
     }
     try { runOpMode(); } catch {}
     try { runStartSwitch(); } catch {}
@@ -4943,7 +4945,7 @@ function fakeBuys(per = {}) {
       const t = data?.tokens?.[mt], ch = Number(t?.changePct);
       const onde = !t ? 'fora dos dados do robô' : isMine(t) ? 'na carteira' : { aprovada: 'Radar', aguardando: 'Análise', nova: 'Análise', reprovada: 'Reprovada' }[t.status] || '';
       return `<div class="fav-row"><button class="fav-go" data-favgo="${esc(mt)}" title="Abrir aqui">${t ? avatar(t) : ''}<span><b>${esc(t ? dispName(t) : mt.slice(0, 4) + '...' + mt.slice(-4))} ${F.robot.includes(mt) ? '<i class="mini-tag ok" title="O robô recebeu e está de olho nela">enviada</i>' : '<i class="mini-tag warn" title="Ainda não foi para o robô">não enviada</i>'}</b><small>${onde}${t?.mcapUsd ? ` - MC ${usd(t.mcapUsd)}` : ''}${t && !isNaN(ch) ? ` - <em class="${cls(ch)}">${pct(ch)}</em>` : ''}</small></span></button>
-        <button class="btn btn-sm" data-newtab="${esc(mt)}" title="Abrir em outra aba">${ICON.ext}<span class="lbl">Outra aba</span></button>
+        ${t ? `<button class="btn btn-sm" data-newtab="${esc(mt)}" title="Abrir em outra aba">${ICON.ext}<span class="lbl">Outra aba</span></button>` : `<a class="btn btn-sm" href="https://dexscreener.com/solana/${esc(mt)}" target="_blank" rel="noopener" title="O robô não tem mais os dados dela: abre na DexScreener">${ICON.ext}<span class="lbl">Dex</span></a>`}
         <button class="fav-del" data-favdel="${esc(mt)}" title="Tirar das favoritas" aria-label="Tirar das favoritas">${(typeof TOOL_ICON !== 'undefined' && TOOL_ICON.trash) || '&#10005;'}</button></div>`;
     }).join('');
     const st = !mints.length ? '' : F.same ? `<div class="fav-st ok">O robô está de olho ${F.robot.length === 1 ? 'nela' : `nas ${F.robot.length}`} (vigia por 24h).</div>`
