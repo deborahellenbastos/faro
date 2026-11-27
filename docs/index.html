@@ -2318,6 +2318,7 @@
   })();
   // Guia de operação: ?op=1 abre a moeda já expandida; ?op=mosaico abre o mosaico das compradas
   const OP_MODE = new URLSearchParams(location.search).get('op');
+  const FULL_MINT = new URLSearchParams(location.search).get('full'); let fullDone = false;
   function openOpTab(target) {
     const held = Object.values(data?.tokens || {}).filter((x) => x.held && !isDead(x) && !isDust(x));
     const u = new URL(location.href); u.search = ''; u.hash = '';
@@ -2326,7 +2327,11 @@
   }
   // 27/11 (pedido da Kerah): moeda que você não tem (Em análise, Radar...) abre sozinha numa aba nova, sem mexer na guia da operação
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-newtab]'); if (!b) return; e.preventDefault(); e.stopPropagation();
-    const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('m', b.dataset.newtab); u.searchParams.set('t', String(Date.now())); u.searchParams.set('solo', '1'); window.open(u.toString(), '_blank', 'noopener'); }, true);
+    const mint = b.dataset.newtab, u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('full', mint); u.searchParams.set('solo', '1');
+    // Já existe uma aba com essa moeda em tela cheia: só troca para ela (sem recarregar)
+    const w = window.open('', 'faro-m-' + mint); if (!w) return;
+    let blank = true; try { blank = w.location.href === 'about:blank'; } catch {}
+    if (blank) w.location.href = u.toString(); else w.focus(); }, true);
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-optab]'); if (b) { e.preventDefault(); e.stopPropagation(); openOpTab(b.dataset.optab); } }, true);
   let opDone = false, opHeld = '';
   let mosRestored = false;
@@ -2334,7 +2339,7 @@
   function restoreMosaic() {
     if (OP_MODE || mosRestored || !data?.tokens || isDemo()) return;
     // 27/11: aba aberta pelo botão Outra aba herda o sessionStorage da aba de origem e reabria o mosaico/expandido
-    if (START_MINT || new URLSearchParams(location.search).get('solo')) { mosRestored = true; try { sessionStorage.removeItem('faro-mos-on'); } catch {} return; }
+    if (START_MINT || FULL_MINT || new URLSearchParams(location.search).get('solo')) { mosRestored = true; try { sessionStorage.removeItem('faro-mos-on'); } catch {} return; }
     mosRestored = true;
     if (sessionStorage.getItem('faro-mos-on') === '1' && Object.values(data.tokens).filter((x) => x.held && !isDead(x) && !isDust(x)).length > 1) setTimeout(() => { if (!$('mosaic')) openMosaic(); }, 0);
     else sessionStorage.removeItem('faro-mos-on');
@@ -2422,6 +2427,7 @@
   }
   function checkSignals() {
     try { checkRobotBuys(); } catch {}
+    try { runFullMode(); } catch {}
     if (START_MINT && !startDone && data?.tokens?.[START_MINT]) {
       startDone = true; setTimeout(() => { goTo(START_MINT); runStartOrder(); }, 0);
       // Tira a moeda do endereço depois de abrir: senão, toda vez que a página recarrega (a Phantom e o iPhone recarregam
@@ -5591,6 +5597,7 @@ function fakeBuys(per = {}) {
   // ---------- Render ----------
   function render() {
     if (!data) return;
+    if (FULL_MINT && !fullDone) setTimeout(runFullMode, 0);
     const all = Object.values(data.tokens || {});
     const day = Date.now() - 86400000;
     const by = (s) => all.filter((t) => t.status === s && !isMine(t));
@@ -6020,6 +6027,19 @@ function fakeBuys(per = {}) {
     const box = document.querySelector('.chart-box'); if (!box) return;
     box.classList.toggle('max', on);
     document.body.style.overflow = on ? 'hidden' : '';
+    // 27/11 (ideia da Kerah): moeda em tela cheia fica marcada no endereço (?full=) e a aba ganha o nome da moeda.
+    // Assim o botão Outra aba acha a aba que já está com ela e só troca para lá, e recarregar mantém a tela cheia
+    try {
+      const mint = box.querySelector('[data-cmaxinfo]')?.dataset.cmaxinfo, u = new URL(location.href);
+      if (on && mint) { u.searchParams.set('full', mint); window.name = 'faro-m-' + mint; }
+      else { u.searchParams.delete('full'); u.searchParams.delete('solo'); if (/^faro-m-/.test(window.name)) window.name = ''; }
+      if (u.toString() !== location.href) history.replaceState(history.state, '', u.toString());
+    } catch {}
+  }
+  function runFullMode() {
+    if (!FULL_MINT || fullDone || OP_MODE || !data?.tokens?.[FULL_MINT]) return;
+    fullDone = true; window.name = 'faro-m-' + FULL_MINT; goTo(FULL_MINT);
+    let n = 0; const tick = () => { if (document.querySelector('.chart-box [data-cmaxinfo="' + CSS.escape(FULL_MINT) + '"]')) setChartMax(true); else if (n++ < 25) setTimeout(tick, 200); }; setTimeout(tick, 300);
   }
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-chart]')) return setChartMax(true);
