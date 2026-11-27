@@ -398,6 +398,18 @@
   .ntm { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.6); display: grid; place-items: center; padding: 16px; }
   .ntm[hidden] { display: none; }
   .ntm-card { width: 440px; max-width: 100%; background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r-3); padding: var(--sp-5); display: grid; gap: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .fav-card { width: 520px; }
+  .fav-card .ntm-h small { color: var(--faint); font-size: 13px; margin-left: 4px; }
+  .fav-list { display: grid; gap: 6px; }
+  .fav-row { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 14px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.05); }
+  .fav-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; font: inherit; padding: 0; }
+  .fav-go .avatar { width: 32px; height: 32px; flex: none; }
+  .fav-go span { display: grid; min-width: 0; } .fav-go b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .fav-go small { color: var(--muted); font-size: 12px; } .fav-go em { font-style: normal; }
+  .fav-go:hover b { text-decoration: underline; }
+  .fav-del { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--faint); cursor: pointer; }
+  .fav-del:hover { background: rgba(255,91,91,.12); color: #ff6b6b; } .fav-del svg { width: 16px; height: 16px; }
+  .fav-st { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.04); }
+  .fav-st.ok { color: #10d27f; background: rgba(16,210,127,.08); } .fav-st.warn { color: #f5b14c; background: rgba(245,177,76,.08); }
   .ntm-h { display: flex; align-items: center; gap: 8px; } .ntm-h b { flex: 1; font-size: 16px; }
   .ntm-at { color: var(--faint); font-size: 13px; margin-top: -6px; } .ntm-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
   .ntm-rows { display: grid; gap: 10px; } .ntm-rows div { display: grid; gap: 2px; } .ntm-rows > div > span { color: var(--faint); font-size: 12px; } .ntm-rows b { font-size: 14px; font-weight: 600; line-height: 1.45; }
@@ -4894,6 +4906,7 @@ function fakeBuys(per = {}) {
   }
   // ---------- Favoritas para o robô: o coração fica no navegador; o botão manda a lista para o robô (memo assinado) ----------
   const favList = () => [...FAVS].slice(-12);
+  const CLOSE_X = `<button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
   function favState() {
     const robot = (data?.favs && Date.now() - (data.favs.at || 0) < 24 * 3600000) ? (data.favs.mints || []).filter((m) => !(data.favsOut || []).includes(m)) : [];
     const mine = favList(), same = mine.length === robot.length && mine.every((m) => robot.includes(m));
@@ -4921,16 +4934,40 @@ function fakeBuys(per = {}) {
       ? `<span>${ICON.heart || '&#9829;'}<b>O robô está de olho em ${F.robot.length} ${F.robot.length === 1 ? 'favorita' : 'favoritas'}</b><small>vigia por 24h, aviso de entrada e compra automática se a segurança estiver 7 de 7</small></span>`
       : `<span>${ICON.heart || '&#9829;'}<b>${pend ? 'Enviadas, esperando a próxima rodada do robô...' : `${F.mine.length} ${F.mine.length === 1 ? 'favorita' : 'favoritas'} - o robô ainda não sabe`}</b><small>${FAVS.size > 12 ? 'vão as 12 mais recentes - ' : ''}uma assinatura na Phantom para todas</small></span>${pend ? '' : '<button class="btn btn-sm" data-favsend>Enviar ao robô</button>'}`;
   }
+  // 27/11 (pedido da Kerah): o coração ao lado do sino abre a lista de favoritas: abrir aqui, abrir em outra aba, tirar da lista
+  // e mandar para o robô
+  function openFavModal() {
+    const m = $('ntm'), F = favState(), pend = F.pend && Date.now() - F.pend.at < 15 * 60000 && !F.same;
+    const mints = [...FAVS].reverse();
+    const rows = mints.map((mt) => {
+      const t = data?.tokens?.[mt], ch = Number(t?.changePct);
+      const onde = !t ? 'fora dos dados do robô' : isMine(t) ? 'na carteira' : { aprovada: 'Radar', aguardando: 'Análise', nova: 'Análise', reprovada: 'Reprovada' }[t.status] || '';
+      return `<div class="fav-row"><button class="fav-go" data-favgo="${esc(mt)}" title="Abrir aqui">${t ? avatar(t) : ''}<span><b>${esc(t ? dispName(t) : mt.slice(0, 4) + '...' + mt.slice(-4))} ${F.robot.includes(mt) ? '<i class="mini-tag ok" title="O robô recebeu e está de olho nela">enviada</i>' : '<i class="mini-tag warn" title="Ainda não foi para o robô">não enviada</i>'}</b><small>${onde}${t?.mcapUsd ? ` - MC ${usd(t.mcapUsd)}` : ''}${t && !isNaN(ch) ? ` - <em class="${cls(ch)}">${pct(ch)}</em>` : ''}</small></span></button>
+        <button class="btn btn-sm" data-newtab="${esc(mt)}" title="Abrir em outra aba">${ICON.ext}<span class="lbl">Outra aba</span></button>
+        <button class="fav-del" data-favdel="${esc(mt)}" title="Tirar das favoritas" aria-label="Tirar das favoritas">${(typeof TOOL_ICON !== 'undefined' && TOOL_ICON.trash) || '&#10005;'}</button></div>`;
+    }).join('');
+    const st = !mints.length ? '' : F.same ? `<div class="fav-st ok">O robô está de olho ${F.robot.length === 1 ? 'nela' : `nas ${F.robot.length}`} (vigia por 24h).</div>`
+      : pend ? '<div class="fav-st">Enviadas. O robô lê na próxima rodada.</div>'
+      : `<div class="fav-st warn"><span>O robô ainda não sabe desta lista${FAVS.size > 12 ? ' (vão as 12 mais recentes)' : ''}.</span><button class="btn btn-sm" data-favsend>Enviar ao robô</button></div>`;
+    m.innerHTML = `<div class="ntm-card fav-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Favoritas <small>${mints.length || ''}</small></b>${CLOSE_X}</div>
+      ${mints.length ? `${st}<div class="fav-list">${rows}</div>` : '<p style="color:var(--muted)">Nenhuma favorita. Toque no coração de uma moeda para guardar aqui.</p>'}</div>`;
+    m.hidden = false; m.dataset.fav = '1';
+  }
+  const favModalOpen = () => { const m = $('ntm'); return m && !m.hidden && m.dataset.fav === '1' && m.querySelector('.fav-card'); };
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-favbtn]')) { e.preventDefault(); openFavModal(); return; }
+    const g = e.target.closest('[data-favgo]'); if (g) { $('ntm').hidden = true; goTo(g.dataset.favgo); return; }
+    const d = e.target.closest('[data-favdel]'); if (d) { const mt = d.dataset.favdel; FAVS.delete(mt); store.set('faro-favs', [...FAVS]);
+      document.querySelectorAll(`[data-fav="${CSS.escape(mt)}"]`).forEach((x) => { x.classList.remove('on'); x.setAttribute('aria-pressed', false); });
+      toast('Removida das favoritas'); renderFavSync(); openFavModal(); if (ui.tab === 'aprovada' && radarFilt() === 'favs') render(); }
+  });
   document.addEventListener('click', async (e) => {
-    const hb = e.target.closest('[data-favbtn]');
-    if (hb) { const F = favState(); const pend = F.pend && Date.now() - F.pend.at < 15 * 60000 && !F.same;
-      if (F.same) { toast(hb.title); return; } if (pend) { toast('Já enviadas: o robô lê na próxima rodada'); return; } }
-    const b = e.target.closest('[data-favsend], [data-favbtn]'); if (!b) return;
+    const b = e.target.closest('[data-favsend]'); if (!b) return;
     if (!getPhantom()) { toast('Abra o Faro dentro da Phantom para enviar'); if (/iPhone|iPad|Android/i.test(navigator.userAgent)) location.href = phantomLink(); return; }
     b.disabled = true;
     try { await sendMemo(`faro:favs=${favList().join(',')}`); store.set('faro-favs-pend', { at: Date.now() }); toast('Favoritas enviadas. O robô lê na próxima rodada.'); }
     catch (err) { toast(/reject|denied|cancel/i.test(err.message || '') ? 'Você cancelou na Phantom' : err.message); }
-    renderFavSync();
+    renderFavSync(); if (favModalOpen()) openFavModal();
   });
   function updatePerfilRows() {
     const rows = document.querySelectorAll('[data-pfrow]'); if (!rows.length) return;
