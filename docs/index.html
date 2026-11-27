@@ -2329,7 +2329,10 @@
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-newtab]'); if (!b) return; e.preventDefault(); e.stopPropagation();
     const mint = b.dataset.newtab, u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('full', mint); u.searchParams.set('solo', '1');
     // Já existe uma aba com essa moeda em tela cheia: só troca para ela (sem recarregar)
-    const w = window.open('', 'faro-m-' + mint); if (!w) return;
+    // Esta própria aba pode estar com o nome da moeda (ficou de uma tela cheia anterior): aí abre uma aba nova de verdade
+    if (window.name === 'faro-m-' + mint && !document.querySelector('.chart-box.max')) window.name = '';
+    if (window.name === 'faro-m-' + mint) { toast('Esta moeda já está aberta nesta aba'); return; }
+    const w = window.open('', 'faro-m-' + mint); if (!w) { toast('O navegador bloqueou a aba nova. Libere pop-ups do meufaro.tech.'); return; }
     let blank = true; try { blank = w.location.href === 'about:blank'; } catch {}
     if (blank) w.location.href = u.toString(); else w.focus(); }, true);
   document.addEventListener('click', (e) => { const b = e.target.closest('[data-optab]'); if (b) { e.preventDefault(); e.stopPropagation(); openOpTab(b.dataset.optab); } }, true);
