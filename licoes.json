@@ -688,7 +688,7 @@
       ],
       "tipo": "compra",
       "status": "sugerida",
-      "aconteceu": "27/11: das 15 moedas novas que a Kerah comprou no dia, 13 estavam -90% ou mais às 19:15 (liquidez de US$ 1 mil a 3,5 mil). As compradas com o par de 27 a 60 min: CaveBaby (46 min, -92%), VOLALITY (55 min, aberta, ~-99%), ATX (32 min, aberta, ~-100%), TWORBIT (40 min, -100% em 3 compras), H100 (27 min, -88%), VICAT (35 min, 3 compras, depois -95%) e DCTY (60 min, aberta, ~-98%; outra moeda com o mesmo símbolo da DCTY reprovada em 22/11). Só a KITT (65 min) deu lucro (+114%, vendida às 13:17, depois -98%). As duas melhores do dia, Kibo (+109%) e CINU (+165%), tinham o par de 4 h e 6 h.",
+      "aconteceu": "27/11: das 19 moedas novas compradas no dia, 13 estavam -90% ou mais às 19:15 (liquidez de US$ 1 mil a 3,5 mil). As compradas com o par de 27 a 60 min: CaveBaby (46 min, -92%), VOLALITY (55 min, aberta, ~-99%), ATX (32 min, aberta, ~-100%), TWORBIT (40 min, -100% em 3 compras), H100 (27 min, -88%), VICAT (35 min, 3 compras, depois -95%) e DCTY (60 min, aberta, ~-98%; outra moeda com o mesmo símbolo da DCTY reprovada em 22/11). Só a KITT (65 min) deu lucro (+114%, vendida às 13:17, depois -98%). As duas melhores do dia, Kibo (+109%) e CINU (+165%), tinham o par de 4 h e 6 h.",
       "regra": "Na compra manual, se o par tiver menos de 1 h, o painel avisa 'par novo: 9 de cada 10 morreram no dia' e sugere metade do valor. Se a moeda não estiver aprovada no Radar, pede confirmação. Conferir o endereço quando o símbolo repetir o de uma moeda já reprovada."
     },
     {
