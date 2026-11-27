@@ -55,7 +55,7 @@ const reports = {
   GOOD1: report(),
   GOOD2: report({ score: 30, totalHolders: 600 }),
   MINTX: report({ mint: 'SomeAuthority111' }),
-  WHALE: report({ holders: holders([22, 18, 6, 5, 4, 3, 2, 2, 2, 1]), insiders: 4 }),
+  WHALE: report({ holders: holders([22, 18, 6, 5, 4, 3, 2, 2, 2, 1]), insiders: 12 }),
   SERIAL: report({ creatorTokens: new Array(14).fill({}) }),
   FEE: report({ fee: 5, risks: [{ name: 'Transfer fee', level: 'danger' }] }),
   NOLOCK: report({ lp: 0 }),

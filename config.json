@@ -25,7 +25,7 @@
     "bundleCarteirasMin": 7,
     "bundlePctMin": 10,
     "maiorHolderMaxPct": 10,
-    "insidersMax": 0,
+    "insidersMax": 10,
     "devMaxPct": 5,
     "devMaxTokensAnteriores": 5,
     "rugcheckScoreMax": 50,
