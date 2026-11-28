@@ -307,9 +307,16 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   let rugCalls = 0;
   let shapeCalls = 0;
   let paused = false;
+  // 28/11: o RugCheck ficou lento (cada consulta caía por tempo esgotado, ~45 s cada) e a rodada passava dos 10 min,
+  // era cortada e nada era salvo (7 h sem Radar e sem avisos). Depois de 2 falhas por tempo seguidas, para de
+  // consultar nesta rodada; a rodada termina normal e tenta de novo na próxima
+  let rugTimeouts = 0;
   const fetchRug = async (t) => {
+    if (rugTimeouts >= 2) { const e = new Error('RugCheck fora do ar nesta rodada'); e.rateLimited = true; throw e; }
     rugCalls++;
-    const r = await api.getRugReport(t.mint);
+    let r;
+    try { r = await api.getRugReport(t.mint); rugTimeouts = 0; }
+    catch (e) { if (/abort|timeout|ETIMEDOUT|ECONNRESET|fetch failed|50[234]/i.test(e.message || '')) { if (++rugTimeouts >= 2) { log('RugCheck não está respondendo: pula as consultas dele nesta rodada', true); e.rateLimited = true; } } throw e; }
     if (api.sleep) await api.sleep(400);
     return slimReport(r);
   };
