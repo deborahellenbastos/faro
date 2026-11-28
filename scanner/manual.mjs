@@ -110,3 +110,20 @@ export async function removerSeguida(endereco, padrao = []) {
   await gravarSeguidas(lista);
   return lista;
 }
+
+// 28/11 (pedido da Kerah): favoritas guardadas no servidor. Uma lista só para todos os aparelhos e navegadores
+// (antes cada navegador tinha a sua e era preciso assinar na Phantom para o robô saber). O robô lê daqui
+const ARQ_FAVS = () => path.join(DIR, 'favoritas.json');
+export async function lerFavs() {
+  try { const j = JSON.parse(await readFile(ARQ_FAVS(), 'utf8')); if (Array.isArray(j.mints)) return { mints: j.mints.filter((m) => MINT.test(m)), at: Number(j.at) || 0 }; } catch { /* sem arquivo */ }
+  return { mints: [], at: 0 };
+}
+export async function salvarFavs(mints) {
+  if (!Array.isArray(mints)) throw new Error('Lista inválida');
+  const lista = [...new Set(mints.map((m) => String(m || '').trim()).filter((m) => MINT.test(m)))].slice(-20);
+  await mkdir(DIR, { recursive: true });
+  const tmp = ARQ_FAVS() + '.tmp', at = Date.now();
+  await writeFile(tmp, JSON.stringify({ mints: lista, at }, null, 2));
+  await rename(tmp, ARQ_FAVS());
+  return { mints: lista, at };
+}

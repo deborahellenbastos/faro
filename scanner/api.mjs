@@ -410,7 +410,7 @@ export async function getSolUsd() {
   const v = Number(best?.priceUsd);
   return Number.isFinite(v) && v > 0 ? v : null;
 }
-export { lerReprovadas, atualizarPainel, lerSegurar, definirSegurar, lerSeguidas } from './manual.mjs';
+export { lerReprovadas, atualizarPainel, lerSegurar, definirSegurar, lerSeguidas, lerFavs } from './manual.mjs';
 
 // 28/11 (pedido da Kerah): checagem própria, usada quando o RugCheck está fora do ar. Lê direto da blockchain
 // mint/freeze, maiores holders (com o dono de cada conta) e taxa escondida (token-2022). O criador vem da pump.fun.

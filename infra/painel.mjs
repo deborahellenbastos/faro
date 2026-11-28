@@ -10,7 +10,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chaves, guardarAparelho, tirarAparelho, avisar, historico } from '../scanner/push.mjs';
-import { reprovar, desfazer, definirSegurar, lerSeguidas, salvarSeguida, removerSeguida } from '../scanner/manual.mjs';
+import { reprovar, desfazer, definirSegurar, lerSeguidas, salvarSeguida, removerSeguida, lerFavs, salvarFavs } from '../scanner/manual.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'docs');
 const PORT = Number(process.env.FARO_PAINEL_PORTA || 8080);
@@ -69,6 +69,7 @@ async function rotaPush(req, res, rota) {
     const k = await chaves({ criar: true });
     return json(res, 200, { publicKey: k.publicKey });
   }
+  if (rota === '/radar/favs' && req.method === 'GET') return json(res, 200, await lerFavs());
   if (rota === '/radar/seguidas' && req.method === 'GET') return json(res, 200, { carteiras: await lerSeguidas(await seguirPadrao()) });
   if (rota === '/push/historico' && req.method === 'GET') {
     const desde = Number(new URL(req.url, 'http://x').searchParams.get('desde')) || 0;
@@ -94,6 +95,8 @@ async function rotaPush(req, res, rota) {
     // 26/11: carteiras que ela segue (incluir ou renomear, e excluir)
     if (rota === '/radar/seguir') return json(res, 200, { ok: true, carteiras: await salvarSeguida(corpo.endereco, corpo.apelido, await seguirPadrao()) });
     if (rota === '/radar/seguir-remover') return json(res, 200, { ok: true, carteiras: await removerSeguida(corpo.endereco, await seguirPadrao()) });
+    // 28/11: favoritas no servidor (mesma lista em todos os aparelhos; o robô lê na próxima rodada)
+    if (rota === '/radar/favs') return json(res, 200, { ok: true, ...(await salvarFavs(corpo.mints)) });
     if (rota === '/radar/desfazer') return json(res, 200, { ok: true, total: await desfazer(String(corpo.mint || '')) });
     if (rota === '/push/teste') {
       const n = await avisar({ titulo: 'Faro: avisos ligados', texto: 'Pronto! Agora o robô te avisa mesmo com o app fechado.', chave: `teste-${Date.now()}` });

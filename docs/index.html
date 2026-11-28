@@ -2647,6 +2647,7 @@
       FAVS.has(m) ? FAVS.delete(m) : FAVS.add(m); store.set('faro-favs', [...FAVS]);
       toast(FAVS.has(m) ? 'Adicionada às favoritas' : 'Removida das favoritas');
       document.querySelectorAll(`[data-fav="${CSS.escape(m)}"]`).forEach((x) => { x.classList.toggle('on', FAVS.has(m)); x.setAttribute('aria-pressed', FAVS.has(m)); });
+      pushFavs();
       if (ui.tab === 'aprovada' && radarFilt() === 'favs') render();
     }
   });
@@ -4919,11 +4920,35 @@ function fakeBuys(per = {}) {
     return (await ph.signAndSendTransaction(new W.VersionedTransaction(msg))).signature;
   }
   // ---------- Favoritas para o robô: o coração fica no navegador; o botão manda a lista para o robô (memo assinado) ----------
-  const favList = () => [...FAVS].slice(-12);
+  const favList = () => [...FAVS].slice(-20);
+  // 28/11 (pedido da Kerah): favoritas no servidor, a mesma lista no app, no navegador e dentro da Phantom.
+  // Depois que existe lista no servidor, ela manda: cada mudança no coração salva lá e o robô lê na próxima rodada
+  let FAV_SRV = null, favPosting = 0;
+  const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+  function applyFavSrv(j) {
+    FAV_SRV = j; if (!(j?.at > 0) || favPosting) return;
+    if (sameSet([...FAVS], j.mints)) return;
+    FAVS.clear(); j.mints.forEach((m) => FAVS.add(m)); store.set('faro-favs', [...FAVS]);
+    document.querySelectorAll('[data-fav]').forEach((x) => { const on = FAVS.has(x.dataset.fav); x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
+    renderFavSync(); if (favModalOpen()) openFavModal();
+  }
+  async function syncFavsSrv() {
+    if (!ROBO_OK || isDemo()) return;
+    try { const r = await fetch('radar/favs', { cache: 'no-store' }); if (r.ok) applyFavSrv(await r.json()); } catch {}
+  }
+  async function pushFavs(force) {
+    if (!ROBO_OK || isDemo() || (!force && !(FAV_SRV?.at > 0))) return false;
+    favPosting++;
+    try { const r = await postJson('radar/favs', { mints: [...FAVS] }); if (!r.ok) throw new Error(r.status); FAV_SRV = await r.json(); return true; }
+    catch { toast('Não consegui salvar as favoritas no robô agora. Tento de novo na próxima mudança.'); return false; }
+    finally { favPosting--; renderFavSync(); if (favModalOpen()) openFavModal(); }
+  }
+  setInterval(() => { if (!document.hidden) syncFavsSrv(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) syncFavsSrv(); });
   const CLOSE_X = `<button class="ntm-x" data-ntmclose aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
   function favState() {
     const robot = (data?.favs && Date.now() - (data.favs.at || 0) < 24 * 3600000) ? (data.favs.mints || []).filter((m) => !(data.favsOut || []).includes(m)) : [];
-    const mine = favList(), same = mine.length === robot.length && mine.every((m) => robot.includes(m));
+    const mine = favList(), same = FAV_SRV?.at > 0 ? sameSet(mine, FAV_SRV.mints) : sameSet(mine, robot);
     return { robot, mine, same, pend: store.get('faro-favs-pend', null) };
   }
   function renderFavSync() {
@@ -4951,16 +4976,19 @@ function fakeBuys(per = {}) {
   // 27/11 (pedido da Kerah): o coração ao lado do sino abre a lista de favoritas: abrir aqui, abrir em outra aba, tirar da lista
   // e mandar para o robô
   function openFavModal() {
+    const srvOn = ROBO_OK && FAV_SRV?.at > 0, srvOff = ROBO_OK && FAV_SRV && !(FAV_SRV.at > 0);
     const m = $('ntm'), F = favState(), pend = F.pend && Date.now() - F.pend.at < 15 * 60000 && !F.same;
     const mints = [...FAVS].reverse();
     const rows = mints.map((mt) => {
       const t = data?.tokens?.[mt], ch = Number(t?.changePct);
       const onde = !t ? 'fora dos dados do robô' : isMine(t) ? 'na carteira' : { aprovada: 'Radar', aguardando: 'Análise', nova: 'Análise', reprovada: 'Reprovada' }[t.status] || '';
-      return `<div class="fav-row"><button class="fav-go" data-favgo="${esc(mt)}" title="Abrir aqui">${t ? avatar(t) : ''}<span><b>${esc(t ? dispName(t) : mt.slice(0, 4) + '...' + mt.slice(-4))} ${F.robot.includes(mt) ? '<i class="mini-tag ok" title="O robô recebeu e está de olho nela">enviada</i>' : '<i class="mini-tag warn" title="Ainda não foi para o robô">não enviada</i>'}</b><small>${onde}${t?.mcapUsd ? ` - MC ${usd(t.mcapUsd)}` : ''}${t && !isNaN(ch) ? ` - <em class="${cls(ch)}">${pct(ch)}</em>` : ''}</small></span></button>
+      return `<div class="fav-row"><button class="fav-go" data-favgo="${esc(mt)}" title="Abrir aqui">${t ? avatar(t) : ''}<span><b>${esc(t ? dispName(t) : mt.slice(0, 4) + '...' + mt.slice(-4))} ${F.robot.includes(mt) ? '<i class="mini-tag ok" title="O robô recebeu e está de olho nela">vigiando</i>' : srvOn ? '<i class="mini-tag" title="Salva; o robô lê na próxima rodada (até 2 min)">próxima rodada</i>' : '<i class="mini-tag warn" title="Ainda não foi para o robô">não enviada</i>'}</b><small>${onde}${t?.mcapUsd ? ` - MC ${usd(t.mcapUsd)}` : ''}${t && !isNaN(ch) ? ` - <em class="${cls(ch)}">${pct(ch)}</em>` : ''}</small></span></button>
         ${t ? `<button class="btn btn-sm" data-newtab="${esc(mt)}" title="Abrir em outra aba">${ICON.ext}<span class="lbl">Outra aba</span></button>` : `<a class="btn btn-sm" href="https://dexscreener.com/solana/${esc(mt)}" target="_blank" rel="noopener" title="O robô não tem mais os dados dela: abre na DexScreener">${ICON.ext}<span class="lbl">Dex</span></a>`}
         <button class="fav-del" data-favdel="${esc(mt)}" title="Tirar das favoritas" aria-label="Tirar das favoritas">${(typeof TOOL_ICON !== 'undefined' && TOOL_ICON.trash) || '&#10005;'}</button></div>`;
     }).join('');
-    const st = !mints.length ? '' : F.same ? `<div class="fav-st ok">O robô está de olho ${F.robot.length === 1 ? 'nela' : `nas ${F.robot.length}`} (vigia por 24h).</div>`
+    const st = srvOn ? `<div class="fav-st ok">Lista salva no robô: a mesma no app, no navegador e na Phantom. Mudou aqui, muda em todos.</div>`
+      : srvOff ? `<div class="fav-st warn"><span>Cada aparelho ainda tem a sua lista. A que você salvar passa a valer em todos e o robô vigia.</span><button class="btn btn-sm" data-favsend>Usar esta lista</button></div>`
+      : !mints.length ? '' : F.same ? `<div class="fav-st ok">O robô está de olho ${F.robot.length === 1 ? 'nela' : `nas ${F.robot.length}`} (vigia por 24h).</div>`
       : pend ? '<div class="fav-st">Enviadas. O robô lê na próxima rodada.</div>'
       : `<div class="fav-st warn"><span>O robô ainda não sabe desta lista${FAVS.size > 12 ? ' (vão as 12 mais recentes)' : ''}.</span><button class="btn btn-sm" data-favsend>Enviar ao robô</button></div>`;
     m.innerHTML = `<div class="ntm-card fav-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Favoritas <small>${mints.length || ''}</small></b>${CLOSE_X}</div>
@@ -4969,14 +4997,15 @@ function fakeBuys(per = {}) {
   }
   const favModalOpen = () => { const m = $('ntm'); return m && !m.hidden && m.querySelector('.fav-card'); };
   document.addEventListener('click', (e) => {
-    if (e.target.closest('[data-favbtn]')) { e.preventDefault(); openFavModal(); return; }
+    if (e.target.closest('[data-favbtn]')) { e.preventDefault(); openFavModal(); syncFavsSrv(); return; }
     const g = e.target.closest('[data-favgo]'); if (g) { $('ntm').hidden = true; goTo(g.dataset.favgo); return; }
     const d = e.target.closest('[data-favdel]'); if (d) { const mt = d.dataset.favdel; FAVS.delete(mt); store.set('faro-favs', [...FAVS]);
       document.querySelectorAll(`[data-fav="${CSS.escape(mt)}"]`).forEach((x) => { x.classList.remove('on'); x.setAttribute('aria-pressed', false); });
-      toast('Removida das favoritas'); renderFavSync(); openFavModal(); if (ui.tab === 'aprovada' && radarFilt() === 'favs') render(); }
+      toast('Removida das favoritas'); renderFavSync(); openFavModal(); pushFavs(); if (ui.tab === 'aprovada' && radarFilt() === 'favs') render(); }
   });
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-favsend]'); if (!b) return;
+    if (ROBO_OK && !isDemo()) { b.disabled = true; if (await pushFavs(true)) toast('Lista salva. Agora ela vale em todos os aparelhos.'); return; }
     if (!getPhantom()) { toast('Abra o Faro dentro da Phantom para enviar'); if (/iPhone|iPad|Android/i.test(navigator.userAgent)) location.href = phantomLink(); return; }
     b.disabled = true;
     try { await sendMemo(`faro:favs=${favList().join(',')}`); store.set('faro-favs-pend', { at: Date.now() }); toast('Favoritas enviadas. O robô lê na próxima rodada.'); }
@@ -5604,6 +5633,7 @@ function fakeBuys(per = {}) {
   function render() {
     if (!data) return;
     if (FULL_MINT && !fullDone) setTimeout(runFullMode, 0);
+    if (!window.__favSync1) { window.__favSync1 = true; setTimeout(syncFavsSrv, 0); }
     const all = Object.values(data.tokens || {});
     const day = Date.now() - 86400000;
     const by = (s) => all.filter((t) => t.status === s && !isMine(t));

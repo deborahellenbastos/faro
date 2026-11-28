@@ -776,13 +776,24 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       if (pf) state.perfil = pf;
     } catch (e) { log(`Não consegui ler o perfil de operação: ${e.message}`, true); }
   }
-  // Favoritas enviadas pelo painel
-  if (wallet && api.getMemos && api.txSigner) {
+  // Favoritas enviadas pelo painel (memo assinado). Desde 28/11 só vale se ainda não existe a lista salva no servidor
+  const favArq = api.lerFavs ? await api.lerFavs().catch(() => ({ at: 0 })) : { at: 0 };
+  if (!(favArq.at > 0) && wallet && api.getMemos && api.txSigner) {
     try {
       const fv = await readFavs(await api.getMemos(wallet), async (sig) => (await api.txSigner(sig)) === wallet);
       if (fv && (!state.favs || state.favs.sig !== fv.sig)) { log(`Favoritas recebidas do painel: ${fv.mints.length}`); state.favsOut = []; }
       if (fv) state.favs = fv;
     } catch (e) { log(`Não consegui ler as favoritas: ${e.message}`, true); }
+  }
+  // 28/11: favoritas salvas no servidor pelo painel valem mais que o memo e não vencem em 24 h (ficam até ela tirar)
+  {
+    try {
+      const ff = favArq;
+      if (ff.at > 0) {
+        if (!state.favs || state.favs.sig !== `painel-${ff.at}`) { log(`Favoritas do painel: ${ff.mints.length}`); state.favsOut = []; }
+        state.favs = { mints: ff.mints, at: now, sig: `painel-${ff.at}`, painel: true };
+      }
+    } catch (e) { log(`Não consegui ler as favoritas do painel: ${e.message}`, true); }
   }
   // Favorita com golpe confirmado no contrato (mint/freeze/liquidez sumindo) sai da lista sozinha
   for (const t of Object.values(tokens)) if (t.favorita && (t.safety?.alerts || []).some((a) => a.level === 'danger' && ['rugged', 'mint', 'freeze', 'liq-sumiu'].includes(a.id))) {
