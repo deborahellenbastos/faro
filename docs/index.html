@@ -2606,7 +2606,9 @@
     } catch { SEGPEND.delete(m); render(); moX(); toast('Não consegui avisar o robô agora. Tente de novo em instantes.'); }
   });
   function manDesfazer(m) { MANREP.delete(m); saveManRep(); avisaRobo('desfazer', m); render(); toast(`${data?.tokens?.[m] ? dispName(data.tokens[m]) : 'Moeda'} voltou para Em análise`); }
-  const FAVS = new Set(store.get('faro-favs', []));
+  // 28/11: só endereços de moeda válidos (limpa o "1" que entrou pelo bug da janela de favoritas)
+  const FAVS = new Set(store.get('faro-favs', []).filter((m) => typeof m === 'string' && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(m)));
+  try { store.set('faro-favs', [...FAVS]); } catch {}
   const isFav = (t) => FAVS.has(t.mint);
   const radarFilt = () => store.get('faro-radar-filt', 'todas');
   const RADAR_FILTERS = {
@@ -4963,9 +4965,9 @@ function fakeBuys(per = {}) {
       : `<div class="fav-st warn"><span>O robô ainda não sabe desta lista${FAVS.size > 12 ? ' (vão as 12 mais recentes)' : ''}.</span><button class="btn btn-sm" data-favsend>Enviar ao robô</button></div>`;
     m.innerHTML = `<div class="ntm-card fav-card" role="dialog" aria-modal="true"><div class="ntm-h"><b>Favoritas <small>${mints.length || ''}</small></b>${CLOSE_X}</div>
       ${mints.length ? `${st}<div class="fav-list">${rows}</div>` : '<p style="color:var(--muted)">Nenhuma favorita. Toque no coração de uma moeda para guardar aqui.</p>'}</div>`;
-    m.hidden = false; m.dataset.fav = '1';
+    m.hidden = false; // 28/11: não usar data-fav aqui (era o atributo do coração: cada clique na janela favoritava a moeda "1")
   }
-  const favModalOpen = () => { const m = $('ntm'); return m && !m.hidden && m.dataset.fav === '1' && m.querySelector('.fav-card'); };
+  const favModalOpen = () => { const m = $('ntm'); return m && !m.hidden && m.querySelector('.fav-card'); };
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-favbtn]')) { e.preventDefault(); openFavModal(); return; }
     const g = e.target.closest('[data-favgo]'); if (g) { $('ntm').hidden = true; goTo(g.dataset.favgo); return; }
