@@ -131,6 +131,7 @@ export function entryCandidates(tokens, cfg, now, opts = {}) {
 function filterCandidates(list, cfg, now, scoreOk, byApproval) {
   const c = cfg.compra || {};
   return list
+    .filter((t) => !t.rugProprio) // 28/11: aprovada só pela checagem própria (RugCheck fora): quem decide é a Kerah
     .filter((t) => t.status === 'aprovada' || (t.status === 'aguardando' && (t.score || 0) >= 75) || isReentry(t, cfg, now) || (t.favorita && securityOk(t) && (t.checks || []).length && t.checks.every((k) => k.ok !== false)))
     // reentrada: só com a liquidez ainda de pé (golpe tira a liquidez) e sem alerta de perigo
     .filter((t) => !isReentry(t, cfg, now) || !(t.entryLiquidityUsd > 0) || t.liquidityUsd >= t.entryLiquidityUsd * 0.7)

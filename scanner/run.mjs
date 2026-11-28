@@ -310,7 +310,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   // 28/11: o RugCheck ficou lento (cada consulta caía por tempo esgotado, ~45 s cada) e a rodada passava dos 10 min,
   // era cortada e nada era salvo (7 h sem Radar e sem avisos). Depois de 2 falhas por tempo seguidas, para de
   // consultar nesta rodada; a rodada termina normal e tenta de novo na próxima
-  let rugTimeouts = 0;
+  let rugTimeouts = 0, ownCalls = 0;
   const fetchRug = async (t) => {
     if (rugTimeouts >= 2) { const e = new Error('RugCheck fora do ar nesta rodada'); e.rateLimited = true; throw e; }
     rugCalls++;
@@ -327,7 +327,7 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
     if (paused || rugCalls >= cfg.busca.maxRugcheckPorRodada) break;
     try {
       const report = await fetchRug(t);
-      t._rugAt = now;
+      t._rugAt = now; delete t.rugProprio;
       const sum = summarizeRug(report);
       if (!sum) continue;
       // 26/11 (DEXDATA): recompra é uma posição nova; a referência dos sinais de golpe passa a ser a de agora.
@@ -404,20 +404,39 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
   rugQueue.sort((a, b) => b.m.volumeH1 - a.m.volumeH1);
   const newlyApproved = [];
   for (const { t, m } of rugQueue) {
-    let report = t._rug && now - t._rugAt < RUG_CACHE_MIN * 60000 ? t._rug : null;
+    // checagem própria guardada vale só enquanto o RugCheck segue fora (quando ele volta, consulta ele)
+    let report = t._rug && now - t._rugAt < RUG_CACHE_MIN * 60000 && (!t._rug._proprio || rugTimeouts >= 2) ? t._rug : null;
     if (!report) {
-      if (paused || rugCalls >= cfg.busca.maxRugcheckPorRodada) { t.status = 'aguardando'; t.reasons = ['Na fila do RugCheck (próxima rodada)']; continue; }
-      try {
-        report = await fetchRug(t);
-        t._rug = report;
-        t._rugAt = now;
-      } catch (e) {
-        log(`RugCheck falhou para ${t.symbol || t.mint}: ${e.message}`, true);
-        if (e.rateLimited) { paused = true; t.status = 'aguardando'; t.reasons = ['RugCheck pediu uma pausa, tenta na próxima rodada']; }
-        continue;
+      const propria = async (why) => {
+        // 28/11: RugCheck fora do ar: checagem própria pela blockchain (limite por rodada para não estourar o RPC)
+        if (!api.getOwnRugReport || ownCalls >= (cfg.busca.maxChecagemPropriaPorRodada ?? 8)) return null;
+        ownCalls++;
+        try { const r = slimReport(await api.getOwnRugReport(t.mint, { pairAddress: t.pairAddress, dexId: t.dexId })); log(`${t.symbol}: checagem própria (${why})`); return r; }
+        catch (e) { log(`Checagem própria falhou para ${t.symbol || t.mint}: ${e.message}`, true); return null; }
+      };
+      if (rugTimeouts >= 2) report = await propria('RugCheck fora do ar');
+      else if (paused || rugCalls >= cfg.busca.maxRugcheckPorRodada) { t.status = 'aguardando'; t.reasons = ['Na fila do RugCheck (próxima rodada)']; continue; }
+      else {
+        try { report = await fetchRug(t); }
+        catch (e) {
+          log(`RugCheck falhou para ${t.symbol || t.mint}: ${e.message}`, true);
+          if (rugTimeouts >= 2) report = await propria('RugCheck fora do ar');
+          else if (e.rateLimited) { paused = true; t.status = 'aguardando'; t.reasons = ['RugCheck pediu uma pausa, tenta na próxima rodada']; continue; }
+          else continue;
+        }
       }
+      if (!report) { t.status = 'aguardando'; t.reasons = ['RugCheck fora do ar, na fila da checagem própria (próxima rodada)']; continue; }
+      t._rug = report;
+      t._rugAt = now;
     }
     const res = analyze(m, report, cfg);
+    // 28/11: aprovada pela checagem própria: marca e explica o que ficou de fora (o robô não compra sozinho essas)
+    t.rugProprio = !!report._proprio;
+    if (report._proprio) {
+      const rc = res.checks.find((c) => c.id === 'rugcheck'); if (rc) { rc.label = 'Checagem própria (RugCheck fora do ar)'; if (rc.ok) rc.detail = 'Sem taxa escondida. Não vê insiders, histórico do dev nem nota de risco: confira no GMGN'; }
+      const lp = res.checks.find((c) => c.id === 'lp'); if (lp && lp.ok) lp.detail = 'Pool da PumpSwap: liquidez queimada na migração da pump.fun';
+      const hd = res.checks.find((c) => c.id === 'holders'); if (hd && hd.ok) hd.detail += ' (insiders: não verificado)';
+    }
     // Passou em tudo: antes de aprovar, olha o desenho do gráfico (morta ou subida reta = fora)
     if (res.status === 'aprovada' && t.pairAddress && api.getCandles) {
       try {
@@ -448,10 +467,12 @@ export async function runOnce({ api, cfg, state, now = Date.now(), trader = null
       t.maxPriceUsd = m.priceUsd;
       t.changePct = 0;
       t.maxChangePct = 0;
-      t.baseline = baselineFrom(res.summary); t.baselineAt = now;
+      // checagem própria: sem referência de golpe (a primeira leitura do RugCheck, quando ele voltar, vira a referência)
+      // e rechecagem logo na próxima rodada em que ele responder
+      if (report._proprio) { delete t.baseline; delete t.baselineAt; t._rugAt = 0; } else { t.baseline = baselineFrom(res.summary); t.baselineAt = now; }
       t.safety = { level: 'ok', alerts: [], checkedAt: now };
       newlyApproved.push(t);
-      log(`APROVADA: ${t.symbol} (nota ${t.score})`);
+      log(`APROVADA: ${t.symbol} (nota ${t.score})${report._proprio ? ' pela checagem própria (RugCheck fora do ar)' : ''}`);
     }
   }
 
@@ -964,7 +985,7 @@ function slimReport(r) {
     graphInsidersDetected: r.graphInsidersDetected, totalHolders: r.totalHolders,
     score_normalised: r.score_normalised, transferFee: r.transferFee,
     tokenMeta: r.tokenMeta ? { mutable: r.tokenMeta.mutable } : undefined,
-    rugged: r.rugged, risks: r.risks, lpLockedPct: r.lpLockedPct,
+    rugged: r.rugged, risks: r.risks, lpLockedPct: r.lpLockedPct, _proprio: r._proprio,
   };
 }
 

@@ -4051,7 +4051,7 @@ function fakeBuys(per = {}) {
     } else if (ui.tab === 'aprovada') {
       const ch = Number(t.changePct) || 0;
       const tw = twinInfo(t);
-      main = `<b>${isUnseen(t) ? '<i class="new-dot" title="Nova, você ainda não abriu"></i>' : ''}${esc(dispName(t))}${isUnseen(t) ? ' <i class="mini-tag new">nova</i>' : ''}${tw ? ` <i class="mini-tag ${tw.best ? 'ok' : 'warn'}">${tw.best ? 'mais forte' : 'cópia'}</i>` : ''}${sigTag(t)}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}${t.shape && SHAPE[t.shape.tipo] && t.shape.tipo !== 'nova' ? ` - ${SHAPE[t.shape.tipo][0].toLowerCase()}` : ''}</small>`;
+      main = `<b>${isUnseen(t) ? '<i class="new-dot" title="Nova, você ainda não abriu"></i>' : ''}${esc(dispName(t))}${isUnseen(t) ? ' <i class="mini-tag new">nova</i>' : ''}${t.rugProprio ? ' <i class="mini-tag warn" title="RugCheck fora do ar: aprovada pela checagem própria (sem insiders, histórico do dev e nota de risco). O robô não compra sozinho essa">checagem própria</i>' : ''}${tw ? ` <i class="mini-tag ${tw.best ? 'ok' : 'warn'}">${tw.best ? 'mais forte' : 'cópia'}</i>` : ''}${sigTag(t)}</b><small class="num">${ago(t.approvedAt)} - MC ${usd(t.mcapUsd)}${t.shape && SHAPE[t.shape.tipo] && t.shape.tipo !== 'nova' ? ` - ${SHAPE[t.shape.tipo][0].toLowerCase()}` : ''}</small>`;
       side = `<div class="r-radar">${sparkSvg(t)}<small class="num ${cls(ch)}" style="font-size:13px">${pct(ch)}</small>${scoreBadge(t.score, true)}</div>`;
     } else if (ui.tab === 'aguardando') {
       const left = t.pending ?? (t.reasons || []).length;

@@ -148,6 +148,7 @@ export function summarizeRug(r) {
     transferFeePct: num(r.transferFee?.pct),
     mutableMetadata: r.tokenMeta?.mutable === true,
     rugged: r.rugged === true,
+    proprio: r._proprio === true,
     dangerRisks: risks.filter((x) => x.level === 'danger'),
     warnRisks: risks.filter((x) => x.level === 'warn'),
   };

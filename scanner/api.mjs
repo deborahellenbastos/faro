@@ -411,3 +411,32 @@ export async function getSolUsd() {
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 export { lerReprovadas, atualizarPainel, lerSegurar, definirSegurar, lerSeguidas } from './manual.mjs';
+
+// 28/11 (pedido da Kerah): checagem própria, usada quando o RugCheck está fora do ar. Lê direto da blockchain
+// mint/freeze, maiores holders (com o dono de cada conta) e taxa escondida (token-2022). O criador vem da pump.fun.
+// Liquidez: nas moedas da PumpSwap (migradas da pump.fun) a liquidez é queimada na migração. NÃO tem: insiders,
+// histórico do dev, total de holders e nota de risco. Devolve no mesmo formato do RugCheck (com _proprio: true)
+const BURN = '1nc1nerator11111111111111111111111111111111';
+export async function getOwnRugReport(mint, { pairAddress = null, dexId = null } = {}) {
+  const acc = await rpc('getAccountInfo', [mint, { encoding: 'jsonParsed' }]);
+  const info = acc?.value?.data?.parsed?.info;
+  if (!info) throw new Error('contrato da moeda não encontrado na blockchain');
+  const dec = Number(info.decimals) || 0, supply = Number(info.supply) / 10 ** dec;
+  if (!(supply > 0)) throw new Error('supply zerado');
+  const fee = (info.extensions || []).find((e) => e.extension === 'transferFeeConfig')?.state?.newerTransferFee?.transferFeeBasisPoints;
+  const big = (await rpc('getTokenLargestAccounts', [mint]))?.value || [];
+  const addrs = big.slice(0, 20).map((b) => b.address);
+  const accs = addrs.length ? (await rpc('getMultipleAccounts', [addrs, { encoding: 'jsonParsed' }]))?.value || [] : [];
+  const topHolders = big.slice(0, 20).map((b, i) => ({ address: b.address, owner: accs[i]?.data?.parsed?.info?.owner || null, pct: (Number(b.uiAmount) || 0) / supply * 100, insider: false }));
+  let creator = null;
+  try { const j = await getJson(`https://frontend-api-v3.pump.fun/coins/${mint}`, { timeoutMs: 6000, retries: 0 }); creator = j?.creator || null; } catch {}
+  const knownAccounts = { [BURN]: { type: 'LOCKER' } };
+  if (pairAddress) knownAccounts[pairAddress] = { type: 'AMM' };
+  return {
+    _proprio: true,
+    mintAuthority: info.mintAuthority || null, freezeAuthority: info.freezeAuthority || null,
+    topHolders, markets: pairAddress ? [{ pubkey: pairAddress }] : [], knownAccounts, creator,
+    lpLockedPct: dexId === 'pumpswap' ? 100 : null,
+    transferFee: { pct: fee ? fee / 100 : 0 }, totalHolders: null, score_normalised: null, risks: [],
+  };
+}
